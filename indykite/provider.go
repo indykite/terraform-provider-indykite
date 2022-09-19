@@ -1,0 +1,139 @@
+// Copyright (c) 2022 IndyKite
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package indykite
+
+import (
+	"context"
+	"time"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/indykite/jarvis-sdk-go/config"
+	api "github.com/indykite/jarvis-sdk-go/grpc"
+	apicfg "github.com/indykite/jarvis-sdk-go/grpc/config"
+)
+
+type (
+	Config struct {
+		terraformVersion string
+	}
+
+	MetaContext struct {
+		client *config.Client
+		config *Config
+	}
+
+	contextKey int
+)
+
+const (
+	// ClientContext for unit testing to pass *config.Client along.
+	ClientContext contextKey = 1
+)
+
+// Provider returns a terraform.ResourceProvider.
+func Provider() *schema.Provider {
+	// The actual provider
+	provider := &schema.Provider{
+		DataSourcesMap: map[string]*schema.Resource{
+			"indykite_customer":           dataSourceCustomer(),
+			"indykite_application_space":  dataSourceAppSpace(),
+			"indykite_application_spaces": dataSourceAppSpaceList(),
+			"indykite_application":        dataSourceApplication(),
+			"indykite_applications":       dataSourceApplicationList(),
+			"indykite_tenant":             dataSourceTenant(),
+			"indykite_tenants":            dataSourceTenantList(),
+			"indykite_application_agent":  dataSourceAppAgent(),
+			"indykite_application_agents": dataSourceAppAgentList(),
+			"indykite_oauth2_provider":    dataSourceOAuth2Provider(),
+			"indykite_oauth2_application": dataSourceOAuth2Application(),
+		},
+
+		ResourcesMap: map[string]*schema.Resource{
+			"indykite_application_space":            resourceApplicationSpace(),
+			"indykite_application":                  resourceApplication(),
+			"indykite_tenant":                       resourceTenant(),
+			"indykite_application_agent":            resourceApplicationAgent(),
+			"indykite_application_agent_credential": resourceApplicationAgentCredential(),
+			"indykite_auth_flow":                    resourceAuthFlow(),
+			"indykite_authorization_policy":         resourceAuthorizationPolicy(),
+			"indykite_email_notification":           resourceEmailNotification(),
+			"indykite_ingest_mapping":               resourceIngestMapping(),
+			"indykite_oauth2_client":                resourceOAuth2Client(),
+			"indykite_oauth2_provider":              resourceOAuth2Provider(),
+			"indykite_oauth2_application":           resourceOAuth2Application(),
+		},
+	}
+
+	provider.ConfigureContextFunc =
+		func(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
+			return providerConfigure(ctx, data, provider.TerraformVersion)
+		}
+
+	return provider
+}
+
+func providerConfigure(ctx context.Context, _ *schema.ResourceData, version string) (interface{}, diag.Diagnostics) {
+	cfg := &Config{terraformVersion: version}
+	c, err := cfg.Client(ctx)
+	if err.HasError() {
+		return nil, err
+	}
+	return &MetaContext{client: c, config: cfg}, nil
+}
+
+func fromMeta(d *diag.Diagnostics, meta interface{}) *MetaContext {
+	client, ok := meta.(*MetaContext)
+	if !ok || client == nil {
+		*d = append(*d, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable retrieve IndyKite client",
+			Detail:   "Unable retrieve IndyKite client from meta",
+		})
+	}
+	return client
+}
+
+func (x *MetaContext) Client() *config.Client {
+	return x.client
+}
+
+// Client configures and returns a fully initialized Client
+func (c *Config) Client(ctx context.Context) (*config.Client, diag.Diagnostics) {
+	if client, ok := ctx.Value(ClientContext).(*config.Client); ok {
+		return client, nil
+	}
+
+	conn, err := config.NewClient(ctx,
+		api.WithServiceAccount(), api.WithCredentialsLoader(apicfg.DefaultEnvironmentLoader))
+	if err != nil {
+		return nil, diag.Diagnostics{{
+			Severity: diag.Error,
+			Summary:  "Unable to create IndyKite client",
+			Detail:   err.Error(),
+		}}
+	}
+	return conn, nil
+}
+
+func defaultTimeouts() *schema.ResourceTimeout {
+	return &schema.ResourceTimeout{
+		Create:  schema.DefaultTimeout(4 * time.Minute),
+		Read:    schema.DefaultTimeout(4 * time.Minute),
+		Update:  schema.DefaultTimeout(4 * time.Minute),
+		Delete:  schema.DefaultTimeout(4 * time.Minute),
+		Default: schema.DefaultTimeout(4 * time.Minute),
+	}
+}
