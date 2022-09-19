@@ -1,0 +1,86 @@
+---
+# Copyright (c) 2022 IndyKite
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+
+default_stages: [commit, push]
+fail_fast: false
+repos:
+    - repo: https://github.com/pre-commit/pre-commit-hooks
+      rev: v2.4.0
+      hooks:
+          - id: trailing-whitespace
+          - id: end-of-file-fixer
+          - id: check-yaml
+          - id: check-toml
+          - id: check-merge-conflict
+          - id: check-added-large-files
+          - id: detect-private-key
+            exclude: ^indykite\/(utilities.go|resource_oauth2_client_test.go)$
+          - id: pretty-format-json
+            args: [--no-sort-keys, --autofix]
+          - id: no-commit-to-branch
+            args: [--branch, master]
+
+    - repo: https://github.com/jumanjihouse/pre-commit-hook-yamlfmt.git
+      rev: 0.0.10
+      hooks:
+          - id: yamlfmt
+
+    - repo: https://github.com/jumanjihouse/pre-commit-hooks.git
+      rev: 2.1.6 # Do not update to 3.0.0 unless macOS comes with Ruby 2.7
+      hooks:
+          - id: markdownlint
+
+    - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
+      rev: v9.0.0
+      hooks:
+          - id: commitlint
+            stages: [commit-msg]
+            additional_dependencies:
+                - '@commitlint/config-conventional'
+                - commitlint-plugin-function-rules
+    - repo: https://github.com/antonbabenko/pre-commit-terraform.git
+      rev: v1.50.0
+      hooks:
+          - id: terraform_fmt
+          - id: terraform_validate
+
+    - repo: local
+      hooks:
+          - id: go_tools
+            name: Install go tools
+            entry: make install-tools
+            language: system
+            pass_filenames: false
+
+          - id: gci
+            name: Fix imports and Format go code
+            entry: make fmt gci
+            language: system
+            pass_filenames: false
+
+          - id: go_lint
+            name: Run lint
+            entry: make lint
+            language: system
+            pass_filenames: false
+
+          - id: go_test
+            name: Run tests
+            entry: make test
+            language: system
+            pass_filenames: false
