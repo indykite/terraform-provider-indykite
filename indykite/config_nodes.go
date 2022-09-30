@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/indykite/jarvis-sdk-go/config"
@@ -32,7 +31,7 @@ import (
 type preBuildConfig func(
 	d *diag.Diagnostics,
 	data *schema.ResourceData,
-	meta *MetaContext,
+	meta *metaContext,
 	builder *config.NodeRequest)
 type postFlattenConfig func(data *schema.ResourceData, resp *configpb.ReadConfigNodeResponse) diag.Diagnostics
 
@@ -54,21 +53,17 @@ func configCreateContextFunc(configBuilder preBuildConfig, read schema.ReadConte
 		}
 
 		if data.HasChanges(customerIDKey, appSpaceIDKey, tenantIDKey) {
-			return append(d, diag.Diagnostic{
-				Severity: diag.Error,
-				Summary: fmt.Sprintf("properties %s, %s and %s are readonly, use %s instead",
-					customerIDKey, appSpaceIDKey, tenantIDKey, locationKey),
-				AttributePath: cty.IndexStringPath(authFlowHasUIJson),
-			})
+			// This is error shouldn't happen as those fields should be marked as read-only in definition
+			return append(d, buildPluginError(fmt.Sprintf(
+				"properties %s, %s and %s are readonly, use %s instead and report to us",
+				customerIDKey, appSpaceIDKey, tenantIDKey, locationKey,
+			)))
 		}
 
 		loc, ok := data.GetOk(locationKey)
 		if !ok {
-			return append(d, diag.Diagnostic{
-				Severity:      diag.Error,
-				Summary:       "location is required for creation",
-				AttributePath: cty.IndexStringPath(locationKey),
-			})
+			// This is error shouldn't happen as those fields should be marked as required in definition
+			return append(d, buildPluginErrorWithAttrName("location is required for creation", locationKey))
 		}
 		builder.ForLocation(loc.(string))
 
@@ -80,8 +75,8 @@ func configCreateContextFunc(configBuilder preBuildConfig, read schema.ReadConte
 			return d
 		}
 
-		resp, err := invokeCreateConfigNode(ctx, data, client.Client(), builder)
-		if hasFailed(&d, err, "Operation failed: %s", builder) {
+		resp, err := invokeCreateConfigNode(ctx, data, client.getClient(), builder)
+		if hasFailed(&d, err) {
 			return d
 		}
 		data.SetId(resp.Id)
@@ -99,35 +94,32 @@ func configReadContextFunc(flatten postFlattenConfig) schema.ReadContextFunc {
 			return d
 		}
 
-		resp, err := invokeReadConfigNode(ctx, data, client.Client(), builder)
-		if hasFailed(&d, err, "Operation failed: %s", builder) {
+		resp, err := invokeReadConfigNode(ctx, data, client.getClient(), builder)
+		if hasFailed(&d, err) {
 			return d
 		}
 		if resp.ConfigNode == nil {
-			return append(d, diag.Diagnostic{
-				Severity: diag.Error,
-				Summary:  "config response is empty",
-			})
+			return append(d, buildPluginError("config response is empty"))
 		}
 		data.SetId(resp.ConfigNode.Id)
-		Set(&d, data, customerIDKey, resp.ConfigNode.CustomerId)
-		Set(&d, data, appSpaceIDKey, resp.ConfigNode.AppSpaceId)
-		Set(&d, data, tenantIDKey, resp.ConfigNode.TenantId)
+		setData(&d, data, customerIDKey, resp.ConfigNode.CustomerId)
+		setData(&d, data, appSpaceIDKey, resp.ConfigNode.AppSpaceId)
+		setData(&d, data, tenantIDKey, resp.ConfigNode.TenantId)
 
 		switch {
 		case resp.ConfigNode.TenantId != "":
-			Set(&d, data, locationKey, resp.ConfigNode.TenantId)
+			setData(&d, data, locationKey, resp.ConfigNode.TenantId)
 		case resp.ConfigNode.AppSpaceId != "":
-			Set(&d, data, locationKey, resp.ConfigNode.AppSpaceId)
+			setData(&d, data, locationKey, resp.ConfigNode.AppSpaceId)
 		case resp.ConfigNode.CustomerId != "":
-			Set(&d, data, locationKey, resp.ConfigNode.CustomerId)
+			setData(&d, data, locationKey, resp.ConfigNode.CustomerId)
 		}
 
-		Set(&d, data, nameKey, resp.ConfigNode.Name)
-		Set(&d, data, displayNameKey, resp.ConfigNode.DisplayName)
-		Set(&d, data, descriptionKey, resp.ConfigNode.Description)
-		Set(&d, data, createTimeKey, resp.ConfigNode.CreateTime)
-		Set(&d, data, updateTimeKey, resp.ConfigNode.UpdateTime)
+		setData(&d, data, nameKey, resp.ConfigNode.Name)
+		setData(&d, data, displayNameKey, resp.ConfigNode.DisplayName)
+		setData(&d, data, descriptionKey, resp.ConfigNode.Description)
+		setData(&d, data, createTimeKey, resp.ConfigNode.CreateTime)
+		setData(&d, data, updateTimeKey, resp.ConfigNode.UpdateTime)
 
 		// Post-Process
 		return flatten(data, resp)
@@ -158,8 +150,8 @@ func configUpdateContextFunc(configBuilder preBuildConfig, read schema.ReadConte
 			return d
 		}
 
-		resp, err := invokeUpdateConfigNode(ctx, data, client.Client(), builder)
-		if hasFailed(&d, err, "Operation failed: %s", builder) {
+		resp, err := invokeUpdateConfigNode(ctx, data, client.getClient(), builder)
+		if hasFailed(&d, err) {
 			return d
 		}
 		data.SetId(resp.Id)
@@ -179,7 +171,7 @@ func configDeleteContextFunc() schema.DeleteContextFunc {
 		if d.HasError() {
 			return d
 		}
-		_, err = invokeDeleteConfigNode(ctx, data, client.Client(), builder)
+		_, err = invokeDeleteConfigNode(ctx, data, client.getClient(), builder)
 		if err != nil {
 			var er *sdkerror.StatusError
 			if errors.As(err, &er) {
@@ -190,7 +182,7 @@ func configDeleteContextFunc() schema.DeleteContextFunc {
 					return nil
 				}
 			}
-			hasFailed(&d, err, "Operation failed: %s", builder)
+			hasFailed(&d, err)
 		}
 		return d
 	}

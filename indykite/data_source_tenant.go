@@ -90,23 +90,23 @@ func dataTenantReadContext(ctx context.Context, data *schema.ResourceData, meta 
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.Client().ReadTenant(ctx, req)
-	if hasFailed(&d, err, "") {
+	resp, err := client.getClient().ReadTenant(ctx, req)
+	if hasFailed(&d, err) {
 		return d
 	}
 
-	if resp == nil {
-		return diag.Errorf("empty Tenant response")
+	if resp.GetTenant() == nil {
+		return diag.Diagnostics{buildPluginError("empty Tenant response")}
 	}
 	data.SetId(resp.Tenant.Id)
-	Set(&d, data, customerIDKey, resp.Tenant.CustomerId)
-	Set(&d, data, appSpaceIDKey, resp.Tenant.AppSpaceId)
-	Set(&d, data, issuerIDKey, resp.Tenant.IssuerId)
-	Set(&d, data, nameKey, resp.Tenant.Name)
-	Set(&d, data, displayNameKey, resp.Tenant.DisplayName)
-	Set(&d, data, descriptionKey, resp.Tenant.Description)
-	Set(&d, data, createTimeKey, resp.Tenant.CreateTime)
-	Set(&d, data, updateTimeKey, resp.Tenant.UpdateTime)
+	setData(&d, data, customerIDKey, resp.Tenant.CustomerId)
+	setData(&d, data, appSpaceIDKey, resp.Tenant.AppSpaceId)
+	setData(&d, data, issuerIDKey, resp.Tenant.IssuerId)
+	setData(&d, data, nameKey, resp.Tenant.Name)
+	setData(&d, data, displayNameKey, resp.Tenant.DisplayName)
+	setData(&d, data, descriptionKey, resp.Tenant.Description)
+	setData(&d, data, createTimeKey, resp.Tenant.CreateTime)
+	setData(&d, data, updateTimeKey, resp.Tenant.UpdateTime)
 	return d
 }
 
@@ -123,11 +123,11 @@ func dataTenantListContext(ctx context.Context, data *schema.ResourceData, meta 
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.Client().ListTenants(ctx, &configpb.ListTenantsRequest{
+	resp, err := client.getClient().ListTenants(ctx, &configpb.ListTenantsRequest{
 		AppSpaceId: data.Get(appSpaceIDKey).(string),
 		Match:      match,
 	})
-	if hasFailed(&d, err, "") {
+	if hasFailed(&d, err) {
 		return d
 	}
 
@@ -138,7 +138,8 @@ func dataTenantListContext(ctx context.Context, data *schema.ResourceData, meta 
 			if err == io.EOF {
 				break
 			}
-			return append(d, diag.FromErr(err)...)
+			hasFailed(&d, err)
+			return d
 		}
 		allTenants = append(allTenants, map[string]interface{}{
 			customerIDKey:  app.GetTenant().GetCustomerId(),
@@ -150,7 +151,7 @@ func dataTenantListContext(ctx context.Context, data *schema.ResourceData, meta 
 			descriptionKey: flattenOptionalString(app.GetTenant().GetDescription()),
 		})
 	}
-	Set(&d, data, "tenants", allTenants)
+	setData(&d, data, "tenants", allTenants)
 
 	id := data.Get(appSpaceIDKey).(string) + "/tenants/" + strings.Join(match, ",")
 	data.SetId(id)

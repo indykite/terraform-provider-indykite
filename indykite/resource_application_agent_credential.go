@@ -118,8 +118,8 @@ func resAppAgentCredCreate(ctx context.Context, data *schema.ResourceData, meta 
 
 	if expRaw, ok := data.GetOk(expireTimeKey); ok {
 		exp, err := time.Parse(time.RFC3339, expRaw.(string))
-		if hasFailed(&d, err, "cannot parse expire time") {
-			return d
+		if err != nil {
+			return append(d, buildPluginErrorWithAttrName(err.Error(), expireTimeKey))
 		}
 		req.ExpireTime = timestamppb.New(exp)
 	}
@@ -134,12 +134,12 @@ func resAppAgentCredCreate(ctx context.Context, data *schema.ResourceData, meta 
 		}
 	}
 
-	resp, err := client.Client().RegisterApplicationAgentCredential(ctx, req)
-	if hasFailed(&d, err, "error creating ApplicationAgentCredential") {
+	resp, err := client.getClient().RegisterApplicationAgentCredential(ctx, req)
+	if hasFailed(&d, err) {
 		return d
 	}
 	data.SetId(resp.Id)
-	Set(&d, data, agentConfigKey, string(resp.AgentConfig))
+	setData(&d, data, agentConfigKey, string(resp.AgentConfig))
 
 	return resAppAgentCredRead(ctx, data, meta)
 }
@@ -159,7 +159,7 @@ func resAppAgentCredUpdate(ctx context.Context, data *schema.ResourceData, meta 
 	mapCfg := map[string]interface{}{}
 	err := json.Unmarshal([]byte(agentConfig), &mapCfg)
 	if err != nil {
-		return append(d, buildPluginErrorWithPath(err.Error(), agentConfigKey))
+		return append(d, buildPluginErrorWithAttrName(err.Error(), agentConfigKey))
 	}
 
 	mapCfg["defaultTenantId"] = data.Get(defaultTenantKey).(string)
@@ -167,10 +167,10 @@ func resAppAgentCredUpdate(ctx context.Context, data *schema.ResourceData, meta 
 	var byteCfg []byte
 	byteCfg, err = json.Marshal(mapCfg)
 	if err != nil {
-		return append(d, buildPluginErrorWithPath(err.Error(), agentConfigKey))
+		return append(d, buildPluginErrorWithAttrName(err.Error(), agentConfigKey))
 	}
 
-	Set(&d, data, agentConfigKey, string(byteCfg))
+	setData(&d, data, agentConfigKey, string(byteCfg))
 	return d
 }
 
@@ -179,26 +179,26 @@ func resAppAgentCredRead(ctx context.Context, data *schema.ResourceData, meta in
 	if client == nil {
 		return d
 	}
-	resp, err := client.Client().ReadApplicationAgentCredential(ctx, &config.ReadApplicationAgentCredentialRequest{
+	resp, err := client.getClient().ReadApplicationAgentCredential(ctx, &config.ReadApplicationAgentCredentialRequest{
 		Id: data.Id(),
 	})
-	if err != nil {
-		return diag.FromErr(err)
+	if hasFailed(&d, err) {
+		return d
 	}
 
-	if resp == nil {
-		return diag.Errorf("empty ApplicationAgentCredential response")
+	if resp.GetApplicationAgentCredential() == nil {
+		return diag.Diagnostics{buildPluginError("empty ApplicationAgentCredential response")}
 	}
 
 	data.SetId(resp.ApplicationAgentCredential.Id)
-	Set(&d, data, customerIDKey, resp.ApplicationAgentCredential.CustomerId)
-	Set(&d, data, appSpaceIDKey, resp.ApplicationAgentCredential.AppSpaceId)
-	Set(&d, data, applicationIDKey, resp.ApplicationAgentCredential.ApplicationId)
-	Set(&d, data, appAgentIDKey, resp.ApplicationAgentCredential.ApplicationAgentId)
+	setData(&d, data, customerIDKey, resp.ApplicationAgentCredential.CustomerId)
+	setData(&d, data, appSpaceIDKey, resp.ApplicationAgentCredential.AppSpaceId)
+	setData(&d, data, applicationIDKey, resp.ApplicationAgentCredential.ApplicationId)
+	setData(&d, data, appAgentIDKey, resp.ApplicationAgentCredential.ApplicationAgentId)
 
-	Set(&d, data, displayNameKey, resp.ApplicationAgentCredential.DisplayName)
-	Set(&d, data, kidKey, resp.ApplicationAgentCredential.Kid)
-	Set(&d, data, createTimeKey, resp.ApplicationAgentCredential.CreateTime)
+	setData(&d, data, displayNameKey, resp.ApplicationAgentCredential.DisplayName)
+	setData(&d, data, kidKey, resp.ApplicationAgentCredential.Kid)
+	setData(&d, data, createTimeKey, resp.ApplicationAgentCredential.CreateTime)
 
 	return d
 }
@@ -211,11 +211,9 @@ func resAppAgentCredDelete(ctx context.Context, data *schema.ResourceData, meta 
 	if hasDeleteProtection(&d, data) {
 		return d
 	}
-	_, err := client.Client().DeleteApplicationAgentCredential(ctx, &config.DeleteApplicationAgentCredentialRequest{
+	_, err := client.getClient().DeleteApplicationAgentCredential(ctx, &config.DeleteApplicationAgentCredentialRequest{
 		Id: data.Id(),
 	})
-	if hasFailed(&d, err, "Error while deleting ApplicationAgentCredential #%s", data.Id()) {
-		return d
-	}
+	hasFailed(&d, err)
 	return d
 }

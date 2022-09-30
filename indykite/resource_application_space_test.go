@@ -16,6 +16,7 @@ package indykite_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 
@@ -241,24 +242,22 @@ func testAppSpaceResourceDataExists(n string, data *configpb.ApplicationSpace) r
 		}
 
 		if rs.Primary.ID != data.Id {
-			return fmt.Errorf("ID does not match")
+			return errors.New("ID does not match")
 		}
-		if v, has := rs.Primary.Attributes["issuer_id"]; !has || v != data.IssuerId {
-			return fmt.Errorf("invalid issuerID: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["name"]; !has || v != data.Name {
-			return fmt.Errorf("invalid name: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["display_name"]; !has || v != data.DisplayName {
-			//
-			if data.DisplayName != data.Name {
-				return fmt.Errorf("invalid display name: %s", v)
-			}
-		}
-		if v, has := rs.Primary.Attributes["description"]; !has || v != data.Description.GetValue() {
-			return fmt.Errorf("invalid description: %s", v)
+		keys := Keys{
+			"id": Equal(data.Id),
+			"%":  Not(BeEmpty()), // This is Terraform helper
+
+			"customer_id":         Equal(data.CustomerId),
+			"issuer_id":           Equal(data.IssuerId),
+			"name":                Equal(data.Name),
+			"display_name":        Equal(data.DisplayName),
+			"description":         Equal(data.Description.GetValue()),
+			"create_time":         Not(BeEmpty()),
+			"update_time":         Not(BeEmpty()),
+			"deletion_protection": Not(BeEmpty()),
 		}
 
-		return nil
+		return convertOmegaMatcherToError(MatchAllKeys(keys), rs.Primary.Attributes)
 	}
 }

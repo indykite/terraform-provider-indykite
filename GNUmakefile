@@ -36,8 +36,11 @@ test:
 	go test -v -cpu 4 -covermode=count -coverpkg github.com/indykite/terraform-provider-indykite/... -coverprofile=coverage.out ./...
 
 upgrade:
-	@echo "==> Upgrading"
+	@echo "==> Upgrading Go"
 	@GO111MODULE=on go get -u all && go mod tidy
+	@echo "==> Upgrading pre-commit"
+	@pre-commit autoupdate
+	@echo "Please, upgrade workflows manually"
 
 tidy:
 	@GO111MODULE=on go mod tidy

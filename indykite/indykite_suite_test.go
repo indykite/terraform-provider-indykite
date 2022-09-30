@@ -37,7 +37,7 @@ const (
 	applicationID  = "gid:AAAABGluZHlraURlgAACDwAAAAA"
 	appAgentID     = "gid:AAAABWluZHlraURlgAAFDwAAAAA"
 	appAgentCredID = "gid:AAAABt7z4hZzpkbAtZXbIEYsT9Q"
-	// sampleID is plain empty ID just for responses
+	// sampleID is plain empty ID just for responses.
 	sampleID = "gid:AAAAAAAAAAAAAAAAAAAAAAAAAAA"
 )
 
@@ -85,45 +85,14 @@ func (t terraformGomockTestReporter) Cleanup(callback func()) {
 	t.ginkgoT.Cleanup(callback)
 }
 
-func testStringArrayInDataMatchers(key string, value []string) Keys {
+func addStringArrayToKeys(keys Keys, key string, value []string) {
 	if len(value) == 0 {
-		return nil
+		return
 	}
-
-	keys := Keys{
-		key + ".#": Equal(strconv.Itoa(len(value))),
-	}
+	keys[key+".#"] = Equal(strconv.Itoa(len(value)))
 	for i, v := range value {
 		keys[key+"."+strconv.Itoa(i)] = Equal(v)
 	}
-
-	return keys
-}
-
-// testStringArraySchemaData validates the attrs (from Terraform State) under key are equals as passed data
-func testStringArraySchemaData(attrs map[string]string, key string, data []string) error {
-	return convertOmegaMatcherToError(
-		MatchKeys(IgnoreExtras|IgnoreMissing, testStringArrayInDataMatchers(key, data)),
-		attrs,
-	)
-}
-
-// testStringMapSchemaData validates the attrs (from Terraform State) under key are equals as passed data
-func testStringMapSchemaData(attrs map[string]string, key string, data map[string]string) error {
-	cnt, _ := strconv.Atoi(attrs[key+".%"])
-	if replyLen := len(data); cnt != replyLen {
-		return fmt.Errorf("expected %d elements under '%s', got %d", cnt, key, replyLen)
-	}
-	for k, v := range data {
-		tfVal, has := attrs[key+"."+k]
-		if !has {
-			return fmt.Errorf("key '%s' is missing", key+"."+k)
-		}
-		if tfVal != v {
-			return fmt.Errorf("invalid value '%s' under key '%s'", tfVal, key+"."+k)
-		}
-	}
-	return nil
 }
 
 func JSONEquals(oldValue, newValue string) bool {
@@ -144,4 +113,16 @@ func convertOmegaMatcherToError(matcher OmegaMatcher, actual interface{}) error 
 	}
 
 	return nil
+}
+
+func addStringMapMatcherToKeys(keys Keys, key string, data map[string]string) {
+	if len(data) == 0 {
+		return
+	}
+
+	keys[key+".%"] = Equal(strconv.Itoa(len(data)))
+
+	for k, v := range data {
+		keys[key+"."+k] = Equal(v)
+	}
 }

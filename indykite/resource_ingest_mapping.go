@@ -79,7 +79,7 @@ func resourceIngestMappingFlatten(
 		return append(d, buildPluginError("failed to marshall message into JSON: "+err.Error()))
 	}
 
-	Set(&d, data, ingestMappingJSONConfigKey, string(jsonVal))
+	setData(&d, data, ingestMappingJSONConfigKey, string(jsonVal))
 
 	return d
 }
@@ -93,12 +93,12 @@ func ingestMappingConfigUnamrshalJSON(jsonVal string) (*configpb.IngestMappingCo
 func resourceIngestMappingBuild(
 	d *diag.Diagnostics,
 	data *schema.ResourceData,
-	_ *MetaContext,
+	_ *metaContext,
 	builder *config.NodeRequest,
 ) {
 	cfg, err := ingestMappingConfigUnamrshalJSON(data.Get(ingestMappingJSONConfigKey).(string))
 	if err != nil {
-		*d = append(*d, buildPluginErrorWithPath(
+		*d = append(*d, buildPluginErrorWithAttrName(
 			"Failed to Unmarshal IngestMapping config JSON into Proto message",
 			ingestMappingJSONConfigKey,
 		))
@@ -120,7 +120,7 @@ func ingestMappingValidateJSON(val interface{}, key string) (warnings []string, 
 		return warnings, errors
 	}
 
-	err = BetterValidationErrorWithPath(cfg.Validate())
+	err = betterValidationErrorWithPath(cfg.Validate())
 	if err != nil {
 		errors = append(errors, fmt.Errorf("%q has %s", key, err.Error()))
 	}

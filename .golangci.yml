@@ -16,24 +16,23 @@ linters:
         - bidichk
         - contextcheck
         - durationcheck
-        # - dupword # Available since 1.50
+        - dupword
         - exhaustive
         - gci
         - gocritic
-        # - godot # TODO Enable before publishing
+        - godot
         - gofmt
         - goheader
         - gosec
         - lll
-        # - loggercheck # Available since 1.50
+        - loggercheck
         - nakedret
-        - prealloc
         - prealloc
         - revive
         - testpackage
         - unconvert
         - unconvert
-        # - unparam # Lot's of false positives now, consider in future
+        - unparam
         - whitespace
 
 linters-settings:
@@ -52,13 +51,14 @@ linters-settings:
 
     staticcheck:
         go: '1.19'
-        checks: [all, -ST1000]
+        checks: [all]
 
     stylecheck:
         go: '1.19'
-        checks: [all, -ST1000]
+        checks: [all]
 
     govet:
+        check-shadowing: true
         enable:
             - fieldalignment
 
@@ -90,7 +90,6 @@ linters-settings:
             - switch
             - map
         default-signifies-exhaustive: true
-        ignore-enum-members: .*INVALID$   # TODO remove before publishing and fix
 
     revive:
         # When listed some additional rules, it overrides defaults as well.
@@ -105,7 +104,7 @@ linters-settings:
             - name: error-strings
             - name: error-naming
             - name: exported
-            # - name: if-return # TODO decide later if keep or ignore this linter rule
+            - name: if-return
             - name: increment-decrement
             - name: var-naming
             - name: var-declaration
@@ -140,6 +139,6 @@ issues:
         - linters:
               - lll
           source: ^[\t ]*(Detail|Description)\:.*,$
-        - linters: # Maybe try to refactor and remove this
-              - revive
-          text: exported .* should have comment .*or be unexported
+        - linters:
+              - unparam
+          source: indykiteProviderFactory # This needs to match input type, cannot be refactored

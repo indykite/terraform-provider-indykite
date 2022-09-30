@@ -40,6 +40,9 @@ func dataSourceCustomer() *schema.Resource {
 
 func dataSourceCustomerRead(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
 	client := fromMeta(&d, meta)
+	if client == nil {
+		return d
+	}
 
 	var req *configpb.ReadCustomerRequest
 	if name, exists := data.GetOk(nameKey); exists {
@@ -54,35 +57,28 @@ func dataSourceCustomerRead(ctx context.Context, data *schema.ResourceData, meta
 			}}
 	}
 
-	if err := req.Validate(); err != nil {
+	if err := betterValidationErrorWithPath(req.Validate()); err != nil {
 		return append(d, diag.Diagnostic{
 			Severity: diag.Error,
 			Summary:  err.Error(),
 		})
 	}
 
-	if client == nil {
-		return d
-	}
-
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.Client().ReadCustomer(ctx, req)
-	if hasFailed(&d, err, "") {
+	resp, err := client.getClient().ReadCustomer(ctx, req)
+	if hasFailed(&d, err) {
 		return d
 	}
 	if resp.Customer == nil {
-		return append(d, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "empty response from server",
-		})
+		return append(d, buildPluginError("empty response from server"))
 	}
 	data.SetId(resp.Customer.Id)
-	Set(&d, data, nameKey, resp.Customer.Name)
-	Set(&d, data, displayNameKey, resp.Customer.DisplayName)
-	Set(&d, data, descriptionKey, resp.Customer.Description)
-	Set(&d, data, createTimeKey, resp.Customer.CreateTime)
-	Set(&d, data, updateTimeKey, resp.Customer.UpdateTime)
+	setData(&d, data, nameKey, resp.Customer.Name)
+	setData(&d, data, displayNameKey, resp.Customer.DisplayName)
+	setData(&d, data, descriptionKey, resp.Customer.Description)
+	setData(&d, data, createTimeKey, resp.Customer.CreateTime)
+	setData(&d, data, updateTimeKey, resp.Customer.UpdateTime)
 
 	return d
 }

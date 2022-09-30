@@ -16,6 +16,7 @@ package indykite_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -128,9 +129,11 @@ var _ = Describe("Resource Email Notification", func() {
 							IpPoolName:  wrapperspb.String("oompa_pool"),
 							Host:        wrapperspb.String("https://wonka.sengrid.com"),
 						}},
-						InvitationMessage:    &configpb.EmailDefinition{Email: fullTemplateMsg},
-						ResetPasswordMessage: &configpb.EmailDefinition{Email: fullTemplateMsg},
-						VerificationMessage:  &configpb.EmailDefinition{Email: fullTemplateMsg},
+						AuthenticationMessage:  &configpb.EmailDefinition{Email: fullTemplateMsg},
+						InvitationMessage:      &configpb.EmailDefinition{Email: fullTemplateMsg},
+						ResetPasswordMessage:   &configpb.EmailDefinition{Email: fullTemplateMsg},
+						VerificationMessage:    &configpb.EmailDefinition{Email: fullTemplateMsg},
+						OneTimePasswordMessage: &configpb.EmailDefinition{Email: fullTemplateMsg},
 					},
 				},
 			},
@@ -262,9 +265,11 @@ var _ = Describe("Resource Email Notification", func() {
 								})),
 							})),
 						})),
-						"InvitationMessage":    PointTo(MatchFields(IgnoreExtras, Fields{"Email": templateMatch})),
-						"ResetPasswordMessage": PointTo(MatchFields(IgnoreExtras, Fields{"Email": templateMatch})),
-						"VerificationMessage":  PointTo(MatchFields(IgnoreExtras, Fields{"Email": templateMatch})),
+						"AuthenticationMessage":  PointTo(MatchFields(IgnoreExtras, Fields{"Email": templateMatch})),
+						"InvitationMessage":      PointTo(MatchFields(IgnoreExtras, Fields{"Email": templateMatch})),
+						"ResetPasswordMessage":   PointTo(MatchFields(IgnoreExtras, Fields{"Email": templateMatch})),
+						"VerificationMessage":    PointTo(MatchFields(IgnoreExtras, Fields{"Email": templateMatch})),
+						"OneTimePasswordMessage": PointTo(MatchFields(IgnoreExtras, Fields{"Email": templateMatch})),
 					}))},
 				)),
 			})))).
@@ -496,7 +501,7 @@ var _ = Describe("Resource Email Notification", func() {
 					// Checking Create and Read (fullEmailConfigResp)
 					Config: getFullEmailNotificationConfig(),
 					Check: resource.ComposeTestCheckFunc(
-						testEmailNotificationResourceDataExists(resourceName, fullEmailConfigResp),
+						testEmailNotificationResourceDataExists(resourceName, fullEmailConfigResp, nil),
 					),
 				},
 				{
@@ -509,7 +514,13 @@ var _ = Describe("Resource Email Notification", func() {
 					// Checking Read(fullEmailConfigResp), Update and Read(minimalEmailConfigResp)
 					Config: getMinimalEmailNotificationConfig(false),
 					Check: resource.ComposeTestCheckFunc(
-						testEmailNotificationResourceDataExists(resourceName, minimalEmailConfigResp),
+						testEmailNotificationResourceDataExists(resourceName, minimalEmailConfigResp, Keys{
+							// Those extra fields are sometimes required. Not sure why, but probably on first
+							// apply it is present, when previously it wasn't empty. Next apply does not contain those.
+							"invitation_message.0.template.0.categories.#":       Equal("0"),
+							"invitation_message.0.template.0.custom_arguments.%": Equal("0"),
+							"invitation_message.0.template.0.headers.%":          Equal("0"),
+						}),
 					),
 				},
 				{
@@ -517,7 +528,7 @@ var _ = Describe("Resource Email Notification", func() {
 					// Read(minimalEmailConfigResp), Delete, Create and Read(withTenantLocEmailConfigResp)
 					Config: getMinimalEmailNotificationConfig(true),
 					Check: resource.ComposeTestCheckFunc(
-						testEmailNotificationResourceDataExists(resourceName, withTenantLocEmailConfigResp),
+						testEmailNotificationResourceDataExists(resourceName, withTenantLocEmailConfigResp, nil),
 					),
 				},
 			},
@@ -525,178 +536,134 @@ var _ = Describe("Resource Email Notification", func() {
 	})
 })
 
-func testEmailNotificationResourceDataExists(n string, data *configpb.ReadConfigNodeResponse) resource.TestCheckFunc {
+func testEmailNotificationResourceDataExists(
+	n string,
+	data *configpb.ReadConfigNodeResponse,
+	extraKeys Keys,
+) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 		if !ok {
 			return fmt.Errorf("not found: %s", n)
 		}
 		if rs.Primary.ID != data.ConfigNode.Id {
-			return fmt.Errorf("ID does not match")
-		}
-		attrs := rs.Primary.Attributes
-		if v, has := attrs["name"]; !has || v != data.ConfigNode.Name {
-			return fmt.Errorf("invalid name: %s", v)
-		}
-		if v, has := attrs["display_name"]; !has || v != data.ConfigNode.DisplayName {
-			return fmt.Errorf("invalid display name: %s", v)
-		}
-		if v, has := attrs["description"]; !has || v != data.ConfigNode.Description.GetValue() {
-			return fmt.Errorf("invalid description: %s", v)
+			return errors.New("ID does not match")
 		}
 
-		if v, has := attrs["customer_id"]; !has || v != data.ConfigNode.CustomerId {
-			return fmt.Errorf("invalid customer_id: %s", v)
-		}
-		if v, has := attrs["app_space_id"]; !has || v != data.ConfigNode.AppSpaceId {
-			return fmt.Errorf("invalid app_space_id: %s", v)
-		}
-		if v, has := attrs["tenant_id"]; !has || v != data.ConfigNode.TenantId {
-			return fmt.Errorf("invalid tenant_id: %s", v)
-		}
-
-		var err error
 		mailConf := data.ConfigNode.GetEmailServiceConfig()
-		if err = testEmailSchemaData(attrs, mailConf.DefaultFromAddress, "default_from_address"); err != nil {
-			return err
-		}
-		switch p := mailConf.Provider.(type) {
-		case *configpb.EmailServiceConfig_Amazon:
-			err = testAmazonProviderData(attrs, p)
-		case *configpb.EmailServiceConfig_Sendgrid:
-			err = testSendgridProviderData(attrs, p)
-		}
-		if err != nil {
-			return err
+		keys := Keys{
+			"id": Equal(data.ConfigNode.Id),
+			"%":  Not(BeEmpty()), // This is Terraform helper
+
+			"location":     Not(BeEmpty()), // Response does not return this
+			"customer_id":  Equal(data.ConfigNode.CustomerId),
+			"app_space_id": Equal(data.ConfigNode.AppSpaceId),
+			"tenant_id":    Equal(data.ConfigNode.TenantId),
+			"name":         Equal(data.ConfigNode.Name),
+			"display_name": Equal(data.ConfigNode.DisplayName),
+			"description":  Equal(data.ConfigNode.GetDescription().GetValue()),
+			"create_time":  Not(BeEmpty()),
+			"update_time":  Not(BeEmpty()),
 		}
 
-		return testMailMessageData(attrs, mailConf.ResetPasswordMessage, "reset_password_message")
+		addEmailSchemaToKeys(keys, mailConf.DefaultFromAddress, "default_from_address")
+		addMailMessageDataToKeys(keys, mailConf.AuthenticationMessage, "authentication_message")
+		addMailMessageDataToKeys(keys, mailConf.InvitationMessage, "invitation_message")
+		addMailMessageDataToKeys(keys, mailConf.ResetPasswordMessage, "reset_password_message")
+		addMailMessageDataToKeys(keys, mailConf.VerificationMessage, "email_verification_message")
+		addMailMessageDataToKeys(keys, mailConf.OneTimePasswordMessage, "one_time_password_message")
+
+		testAmazonProviderData(keys, mailConf.GetAmazon())
+		testSendgridProviderData(keys, mailConf.GetSendgrid())
+
+		for k, v := range extraKeys {
+			keys[k] = v
+		}
+
+		return convertOmegaMatcherToError(MatchAllKeys(keys), rs.Primary.Attributes)
 	}
 }
 
-func testEmailSchemaData(attrs map[string]string, data *configpb.Email, key string) error {
+func addEmailSchemaToKeys(keys Keys, data *configpb.Email, key string) {
 	if data == nil {
-		return testEmailArraySchemaData(attrs, nil, key)
+		addEmailArraySchemaToKeys(keys, nil, key)
+	} else {
+		addEmailArraySchemaToKeys(keys, []*configpb.Email{data}, key)
 	}
-	return testEmailArraySchemaData(attrs, []*configpb.Email{data}, key)
 }
 
-func testEmailArraySchemaData(attrs map[string]string, data []*configpb.Email, key string) error {
-	cnt, _ := strconv.Atoi(attrs[key+".#"])
-	if cnt != len(data) {
-		return fmt.Errorf("under key %s got %d email schemas, expected %d", key, len(data), cnt)
+func addEmailArraySchemaToKeys(keys Keys, data []*configpb.Email, key string) {
+	keys[key+".#"] = Equal(strconv.Itoa(len(data)))
+	for i, v := range data {
+		currKey := fmt.Sprintf("%s.%d.", key, i)
+		keys[currKey+"%"] = Not(BeEmpty())
+		keys[currKey+"address"] = Equal(v.Address)
+		keys[currKey+"name"] = Equal(v.Name)
 	}
-	for i := 0; i < cnt; i++ {
-		curKey := fmt.Sprintf("%s.%d.%s", key, i, "address")
-		if v, has := attrs[curKey]; !has || v != data[i].Address {
-			return fmt.Errorf("invalid %s: %s", curKey, v)
-		}
-		curKey = fmt.Sprintf("%s.%d.%s", key, i, "name")
-		if v, has := attrs[curKey]; !has || v != data[i].Name {
-			return fmt.Errorf("invalid %s: %s", curKey, v)
-		}
-	}
-	return nil
 }
 
-func testAmazonProviderData(attrs map[string]string, provider *configpb.EmailServiceConfig_Amazon) error {
-	if v, has := attrs["amazon_ses.0.access_key_id"]; !has || v != provider.Amazon.AccessKeyId {
-		return fmt.Errorf("invalid amazon_ses.0.access_key_id: %s", v)
+func testAmazonProviderData(keys Keys, provider *configpb.AmazonSESProviderConfig) {
+	if provider == nil {
+		keys["amazon_ses.#"] = Equal("0")
+		return
 	}
-	if v, has := attrs["amazon_ses.0.secret_access_key"]; !has || v != provider.Amazon.SecretAccessKey {
-		return fmt.Errorf("invalid amazon_ses.0.secret_access_key: %s", v)
-	}
-	if v, has := attrs["amazon_ses.0.region"]; !has || v != provider.Amazon.Region {
-		return fmt.Errorf("invalid amazon_ses.0.region: %s", v)
-	}
+	keys["amazon_ses.#"] = Equal("1")
 
-	if v, has := attrs["amazon_ses.0.configuration_set_name"]; !has || v != provider.Amazon.ConfigurationSetName {
-		return fmt.Errorf("invalid amazon_ses.0.configuration_set_name: %s", v)
-	}
-	v, has := attrs["amazon_ses.0.feedback_forwarding_email_address"]
-	if !has || v != provider.Amazon.FeedbackForwardingEmailAddress {
-		return fmt.Errorf("invalid amazon_ses.0.feedback_forwarding_email_address: %s", v)
-	}
-	err := testEmailSchemaData(attrs, provider.Amazon.DefaultFromAddress, "amazon_ses.0.default_from_address")
-	if err != nil {
-		return err
-	}
-	err = testStringArraySchemaData(attrs, "amazon_ses.0.reply_to_addresses", provider.Amazon.ReplyToAddresses)
-	if err != nil {
-		return err
-	}
+	keys["amazon_ses.0.%"] = Not(BeEmpty())
+	keys["amazon_ses.0.access_key_id"] = Equal(provider.AccessKeyId)
+	keys["amazon_ses.0.secret_access_key"] = Equal(provider.SecretAccessKey)
+	keys["amazon_ses.0.region"] = Equal(provider.Region)
+	keys["amazon_ses.0.configuration_set_name"] = Equal(provider.ConfigurationSetName)
+	keys["amazon_ses.0.feedback_forwarding_email_address"] = Equal(provider.FeedbackForwardingEmailAddress)
 
-	return nil
+	addEmailSchemaToKeys(keys, provider.DefaultFromAddress, "amazon_ses.0.default_from_address")
+	addStringArrayToKeys(keys, "amazon_ses.0.reply_to_addresses", provider.ReplyToAddresses)
 }
 
-func testSendgridProviderData(attrs map[string]string, provider *configpb.EmailServiceConfig_Sendgrid) error {
-	if v, has := attrs["sendgrid.0.api_key"]; !has || v != provider.Sendgrid.ApiKey {
-		return fmt.Errorf("invalid sendgrid.0.api_key: %s", v)
+func testSendgridProviderData(keys Keys, provider *configpb.SendGridProviderConfig) {
+	if provider == nil {
+		keys["sendgrid.#"] = Equal("0")
+		return
 	}
-	if v, has := attrs["sendgrid.0.host"]; !has || v != provider.Sendgrid.Host.GetValue() {
-		return fmt.Errorf("invalid sendgrid.0.host: %s", v)
-	}
-	if v, has := attrs["sendgrid.0.ip_pool_name"]; !has || v != provider.Sendgrid.IpPoolName.GetValue() {
-		return fmt.Errorf("invalid sendgrid.0.ip_pool_name: %s", v)
-	}
-	if v, has := attrs["sendgrid.0.sandbox_mode"]; !has || v != strconv.FormatBool(provider.Sendgrid.SandboxMode) {
-		return fmt.Errorf("invalid sendgrid.0.sandbox_mode: %s", v)
-	}
-	return nil
+
+	keys["sendgrid.#"] = Equal("1")
+	keys["sendgrid.0.%"] = Not(BeEmpty())
+	keys["sendgrid.0.api_key"] = Equal(provider.ApiKey)
+	keys["sendgrid.0.host"] = Equal(provider.Host.GetValue())
+	keys["sendgrid.0.ip_pool_name"] = Equal(provider.IpPoolName.GetValue())
+	keys["sendgrid.0.sandbox_mode"] = Equal(strconv.FormatBool(provider.SandboxMode))
 }
 
-func testMailMessageData(attrs map[string]string, data *configpb.EmailDefinition, key string) error {
+func addMailMessageDataToKeys(keys Keys, data *configpb.EmailDefinition, key string) {
 	if data == nil {
-		return nil
+		keys[key+".#"] = Equal("0")
+		return
 	}
+	keys[key+".#"] = Equal("1")
+
 	tpl := data.GetTemplate()
-	key += ".0"
-	if err := testEmailSchemaData(attrs, tpl.From, key+".from"); err != nil {
-		return err
-	}
-	if err := testEmailSchemaData(attrs, tpl.ReplyTo, key+".reply_to"); err != nil {
-		return err
-	}
-	if err := testEmailArraySchemaData(attrs, tpl.To, key+".to"); err != nil {
-		return err
-	}
-	if err := testEmailArraySchemaData(attrs, tpl.Cc, key+".cc"); err != nil {
-		return err
-	}
-	if err := testEmailArraySchemaData(attrs, tpl.Bcc, key+".bcc"); err != nil {
-		return err
-	}
-	if v, has := attrs[key+".subject"]; !has || v != tpl.Subject {
-		return fmt.Errorf("invalid %s.subject: %s", key, v)
-	}
+	key += ".0."
+	keys[key+"%"] = Not(BeEmpty()) // Terraform helper
+	addEmailSchemaToKeys(keys, tpl.From, key+"from")
+	addEmailSchemaToKeys(keys, tpl.ReplyTo, key+"reply_to")
+	addEmailArraySchemaToKeys(keys, tpl.To, key+"to")
+	addEmailArraySchemaToKeys(keys, tpl.Cc, key+"cc")
+	addEmailArraySchemaToKeys(keys, tpl.Bcc, key+"bcc")
+	keys[key+"subject"] = Equal(tpl.Subject)
 
-	tplKey := key + ".template.0"
-	if v, has := attrs[tplKey+".id"]; !has || v != tpl.TemplateId {
-		return fmt.Errorf("invalid %s.id: %s", tplKey, v)
-	}
-	if v, has := attrs[tplKey+".version"]; !has || v != tpl.TemplateVersion.GetValue() {
-		return fmt.Errorf("invalid %s.version: %s", tplKey, v)
-	}
-	if v, has := attrs[tplKey+".event_payload"]; !has || v != tpl.EventPayload.GetValue() {
-		return fmt.Errorf("invalid %s.event_payload: %s", tplKey, v)
-	}
-	if v, has := attrs[tplKey+".ses_arn"]; !has || v != tpl.TemplateArn {
-		return fmt.Errorf("invalid %s.ses_arn: %s", tplKey, v)
-	}
-	err := testStringArraySchemaData(attrs, tplKey+".categories", tpl.Categories)
-	if err != nil {
-		return err
-	}
+	keys[key+"template.#"] = Not(BeEmpty()) // Terraform helper
+	tplKey := key + "template.0."
+	keys[tplKey+"%"] = Not(BeEmpty()) // Terraform helper
 
-	err = testStringMapSchemaData(attrs, tplKey+".headers", tpl.Headers)
-	if err != nil {
-		return err
-	}
-	err = testStringMapSchemaData(attrs, tplKey+".custom_arguments", tpl.CustomArgs)
-	if err != nil {
-		return err
-	}
-	return nil
+	keys[tplKey+"id"] = Equal(tpl.TemplateId)
+	keys[tplKey+"version"] = Equal(tpl.TemplateVersion.GetValue())
+	keys[tplKey+"event_payload"] = Equal(tpl.EventPayload.GetValue())
+	keys[tplKey+"ses_arn"] = Equal(tpl.TemplateArn)
+
+	addStringArrayToKeys(keys, tplKey+"categories", tpl.Categories)
+	addStringMapMatcherToKeys(keys, tplKey+"headers", tpl.Headers)
+	addStringMapMatcherToKeys(keys, tplKey+"custom_arguments", tpl.CustomArgs)
+	keys[tplKey+"template_dynamic_values"] = Not(BeNil())
 }
 
 func getFullEmailNotificationConfig() string {
@@ -775,6 +742,10 @@ func getFullEmailNotificationConfig() string {
 				host = "https://wonka.sengrid.com"
 			}
 
+			authentication_message {
+				%s
+			}
+
 			invitation_message {
 				%s
 			}
@@ -786,8 +757,12 @@ func getFullEmailNotificationConfig() string {
 			email_verification_message {
 				%s
 			}
+
+			one_time_password_message {
+				%s
+			}
 		}
-	`, messageDef, messageDef, messageDef)
+	`, messageDef, messageDef, messageDef, messageDef, messageDef)
 }
 
 func getMinimalEmailNotificationConfig(forTenantAndFullSES bool) string {

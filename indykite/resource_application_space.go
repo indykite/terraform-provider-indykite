@@ -52,13 +52,13 @@ func resAppSpaceCreateContext(ctx context.Context, data *schema.ResourceData, me
 	}
 
 	name := data.Get(nameKey).(string)
-	resp, err := client.Client().CreateApplicationSpace(ctx, &config.CreateApplicationSpaceRequest{
+	resp, err := client.getClient().CreateApplicationSpace(ctx, &config.CreateApplicationSpaceRequest{
 		CustomerId:  data.Get(customerIDKey).(string),
 		Name:        name,
 		DisplayName: optionalString(data, displayNameKey),
 		Description: optionalString(data, descriptionKey),
 	})
-	if hasFailed(&d, err, "error creating application space for %q", name) {
+	if hasFailed(&d, err) {
 		return d
 	}
 	data.SetId(resp.Id)
@@ -71,30 +71,33 @@ func resAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta
 	if client == nil {
 		return d
 	}
-	resp, err := client.Client().ReadApplicationSpace(ctx, &config.ReadApplicationSpaceRequest{
+	resp, err := client.getClient().ReadApplicationSpace(ctx, &config.ReadApplicationSpaceRequest{
 		Identifier: &config.ReadApplicationSpaceRequest_Id{
 			Id: data.Id(),
 		}})
-	if err != nil {
-		return diag.FromErr(err)
+	if hasFailed(&d, err) {
+		return d
 	}
-	if resp == nil {
-		return diag.Errorf("empty ApplicationSpace response")
+	if resp.GetAppSpace() == nil {
+		return diag.Diagnostics{buildPluginError("empty ApplicationSpace response")}
 	}
 
 	data.SetId(resp.AppSpace.Id)
-	Set(&d, data, customerIDKey, resp.AppSpace.CustomerId)
-	Set(&d, data, nameKey, resp.AppSpace.Name)
-	Set(&d, data, displayNameKey, resp.AppSpace.DisplayName)
-	Set(&d, data, descriptionKey, resp.AppSpace.Description)
-	Set(&d, data, issuerIDKey, resp.AppSpace.IssuerId)
-	Set(&d, data, createTimeKey, resp.AppSpace.CreateTime)
-	Set(&d, data, updateTimeKey, resp.AppSpace.UpdateTime)
+	setData(&d, data, customerIDKey, resp.AppSpace.CustomerId)
+	setData(&d, data, nameKey, resp.AppSpace.Name)
+	setData(&d, data, displayNameKey, resp.AppSpace.DisplayName)
+	setData(&d, data, descriptionKey, resp.AppSpace.Description)
+	setData(&d, data, issuerIDKey, resp.AppSpace.IssuerId)
+	setData(&d, data, createTimeKey, resp.AppSpace.CreateTime)
+	setData(&d, data, updateTimeKey, resp.AppSpace.UpdateTime)
 	return d
 }
 
 func resAppSpaceUpdateContext(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
 	client := fromMeta(&d, meta)
+	if client == nil {
+		return d
+	}
 
 	// If only change in plan is delete_protection, just ignore the request
 	if !data.HasChangeExcept(deletionProtectionKey) {
@@ -107,11 +110,8 @@ func resAppSpaceUpdateContext(ctx context.Context, data *schema.ResourceData, me
 		Description: updateOptionalString(data, descriptionKey),
 	}
 
-	if client == nil {
-		return d
-	}
-	_, err := client.Client().UpdateApplicationSpace(ctx, req)
-	if hasFailed(&d, err, "Error while updating application space #%s", data.Id()) {
+	_, err := client.getClient().UpdateApplicationSpace(ctx, req)
+	if hasFailed(&d, err) {
 		return d
 	}
 	return resAppSpaceReadContext(ctx, data, meta)
@@ -125,11 +125,9 @@ func resAppSpaceDeleteContext(ctx context.Context, data *schema.ResourceData, me
 	if hasDeleteProtection(&d, data) {
 		return d
 	}
-	_, err := client.Client().DeleteApplicationSpace(ctx, &config.DeleteApplicationSpaceRequest{
+	_, err := client.getClient().DeleteApplicationSpace(ctx, &config.DeleteApplicationSpaceRequest{
 		Id: data.Id(),
 	})
-	if hasFailed(&d, err, "Error while deleting application space #%s", data.Id()) {
-		return d
-	}
+	hasFailed(&d, err)
 	return d
 }

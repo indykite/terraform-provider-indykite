@@ -16,6 +16,7 @@ package indykite_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -229,7 +230,12 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 						testAppAgentCredResourceDataExists(
 							resourceName,
 							appAgentJWKCredResp,
-							fmt.Sprintf(appAgentConfig, tenantID, appAgentID),
+							Keys{
+								"expire_time":       Not(BeEmpty()), // Is string, do not compare with BeTemporarily
+								"public_key_jwk":    ContainSubstring("xuyd5-9bT0L09mi810mycfREAxBG3KnpctlGQCYtCdM"),
+								"default_tenant_id": Equal(tenantID),
+								"agent_config":      MatchJSON(fmt.Sprintf(appAgentConfig, tenantID, appAgentID)),
+							},
 						),
 						func(s *terraform.State) error {
 							rs, ok := s.RootModule().Resources[resourceName]
@@ -266,7 +272,12 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 						testAppAgentCredResourceDataExists(
 							resourceName,
 							appAgentJWKCredResp,
-							fmt.Sprintf(appAgentConfig, sampleID, appAgentID),
+							Keys{
+								"expire_time":       Not(BeEmpty()), // Is string, do not compare with BeTemporarily
+								"public_key_jwk":    ContainSubstring("xuyd5-9bT0L09mi810mycfREAxBG3KnpctlGQCYtCdM"),
+								"default_tenant_id": Equal(sampleID),
+								"agent_config":      MatchJSON(fmt.Sprintf(appAgentConfig, sampleID, appAgentID)),
+							},
 						),
 						func(s *terraform.State) error {
 							rs, ok := s.RootModule().Resources[resourceName]
@@ -302,7 +313,10 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 						testAppAgentCredResourceDataExists(
 							resourceName,
 							appAgentPEMCredResp,
-							fmt.Sprintf(appAgentConfig, "", appAgentID),
+							Keys{
+								"public_key_pem": ContainSubstring("-----BEGIN PUBLIC KEY-----"),
+								"agent_config":   MatchJSON(fmt.Sprintf(appAgentConfig, "", appAgentID)),
+							},
 						),
 					),
 				},
@@ -314,7 +328,7 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 func testAppAgentCredResourceDataExists(
 	n string,
 	data *configpb.ApplicationAgentCredential,
-	agentConfig string,
+	extraKeys Keys,
 ) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
@@ -323,29 +337,31 @@ func testAppAgentCredResourceDataExists(
 		}
 
 		if rs.Primary.ID != data.Id {
-			return fmt.Errorf("ID does not match")
-		}
-		if v, has := rs.Primary.Attributes["customer_id"]; !has || v != data.CustomerId {
-			return fmt.Errorf("invalid customer_id: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["app_space_id"]; !has || v != data.AppSpaceId {
-			return fmt.Errorf("invalid app_space_id: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["application_id"]; !has || v != data.ApplicationId {
-			return fmt.Errorf("invalid application_id: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["app_agent_id"]; !has || v != data.ApplicationAgentId {
-			return fmt.Errorf("invalid app_agent_id: %s", v)
+			return errors.New("ID does not match")
 		}
 
-		if v, has := rs.Primary.Attributes["kid"]; !has || v != data.Kid {
-			return fmt.Errorf("invalid kid: %s", v)
+		keys := Keys{
+			"id": Equal(data.Id),
+			"%":  Not(BeEmpty()), // This is Terraform helper
+
+			"customer_id":    Equal(data.CustomerId),
+			"app_space_id":   Equal(data.AppSpaceId),
+			"application_id": Equal(data.ApplicationId),
+			"app_agent_id":   Equal(data.ApplicationAgentId),
+			"display_name":   Equal(data.DisplayName),
+			"kid":            Equal(data.Kid),
+			"create_time":    Not(BeEmpty()),
+
+			// "expire_time":       Not(BeEmpty()),
+			// "default_tenant_id": Not(BeEmpty()),
+			// "agent_config":   MatchJSON(agentConfig),
+			// "public_key_jwk": ContainSubstring(`"P-256"`), // It is only defined by user, not from response
 		}
 
-		if v, has := rs.Primary.Attributes["agent_config"]; !has || !JSONEquals(v, agentConfig) {
-			return fmt.Errorf("invalid agent_config: %s", v)
+		for k, v := range extraKeys {
+			keys[k] = v
 		}
 
-		return nil
+		return convertOmegaMatcherToError(MatchAllKeys(keys), rs.Primary.Attributes)
 	}
 }

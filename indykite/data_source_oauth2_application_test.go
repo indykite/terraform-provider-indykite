@@ -16,6 +16,7 @@ package indykite_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 
@@ -147,98 +148,62 @@ func testOAuth2ApplicationDataExists(n string, data *configpb.OAuth2Application)
 		}
 
 		if rs.Primary.ID != data.Id {
-			return fmt.Errorf("ID does not match")
+			return errors.New("ID does not match")
 		}
-		if v, has := rs.Primary.Attributes["customer_id"]; !has || v != data.CustomerId {
-			return fmt.Errorf("invalid customer_id: %s", v)
+
+		keys := Keys{
+			"id": Equal(data.Id),
+			"%":  Not(BeEmpty()), // This is Terraform helper
+
+			"customer_id":  Equal(data.CustomerId),
+			"app_space_id": Equal(data.AppSpaceId),
+			"name":         Equal(data.Name),
+			"display_name": Equal(data.DisplayName),
+			"description":  Equal(data.Description.GetValue()),
+			"create_time":  Not(BeEmpty()),
+			"update_time":  Not(BeEmpty()),
+
+			"oauth2_application_id":           Equal(data.Id),
+			"oauth2_provider_id":              Equal(data.Oauth2ProviderId),
+			"oauth2_application_display_name": Equal(data.Config.DisplayName),
+			"oauth2_application_description":  Equal(data.Config.Description),
+
+			"client_id":                       Equal(data.Config.ClientId),
+			"owner":                           Equal(data.Config.Owner),
+			"policy_uri":                      Equal(data.Config.PolicyUri),
+			"terms_of_service_uri":            Equal(data.Config.TermsOfServiceUri),
+			"client_uri":                      Equal(data.Config.ClientUri),
+			"logo_uri":                        Equal(data.Config.LogoUri),
+			"user_support_email_address":      Equal(data.Config.UserSupportEmailAddress),
+			"sector_identifier_uri":           Equal(data.Config.SectorIdentifierUri),
+			"token_endpoint_auth_signing_alg": Equal(data.Config.TokenEndpointAuthSigningAlg),
+			"userinfo_signed_response_alg":    Equal(data.Config.UserinfoSignedResponseAlg),
+			"subject_type":                    Equal(indykite.OAuth2ClientSubjectTypesReverse[data.Config.SubjectType]),
+			"token_endpoint_auth_method": Equal(
+				indykite.OAuth2TokenEndpointAuthMethodsReverse[data.Config.TokenEndpointAuthMethod],
+			),
 		}
-		if v, has := rs.Primary.Attributes["name"]; !has || v != data.Name {
-			return fmt.Errorf("invalid name: %s", v)
+
+		addStringArrayToKeys(keys, "redirect_uris", data.GetConfig().RedirectUris)
+		addStringArrayToKeys(keys, "allowed_cors_origins", data.GetConfig().AllowedCorsOrigins)
+		addStringArrayToKeys(keys, "additional_contacts", data.GetConfig().AdditionalContacts)
+		addStringArrayToKeys(keys, "scopes", data.GetConfig().Scopes)
+		addStringArrayToKeys(keys, "audiences", data.GetConfig().Audiences)
+
+		strGrantTypes := []string{}
+		oauth2GrantTypesReverse := indykite.ReverseProtoEnumMap(indykite.OAuth2GrantTypes)
+		for _, v := range data.Config.GrantTypes {
+			strGrantTypes = append(strGrantTypes, oauth2GrantTypesReverse[v])
 		}
-		if v, has := rs.Primary.Attributes["app_space_id"]; !has || v != data.AppSpaceId {
-			return fmt.Errorf("invalid issuer_id: %s", v)
+		addStringArrayToKeys(keys, "grant_types", strGrantTypes)
+
+		strResponseTypes := []string{}
+		oauth2ResponseTypesReverse := indykite.ReverseProtoEnumMap(indykite.OAuth2ResponseTypes)
+		for _, v := range data.Config.ResponseTypes {
+			strResponseTypes = append(strResponseTypes, oauth2ResponseTypesReverse[v])
 		}
-		if v, has := rs.Primary.Attributes["oauth2_provider_id"]; !has || v != data.Oauth2ProviderId {
-			return fmt.Errorf("invalid oauth2_provider_id: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["display_name"]; !has || v != data.DisplayName {
-			return fmt.Errorf("invalid display name: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["description"]; !has || v != data.Description.GetValue() {
-			return fmt.Errorf("invalid description: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["client_id"]; !has || v != data.Config.ClientId {
-			return fmt.Errorf("invalid client_id: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["oauth2_application_display_name"]; !has || v != data.Config.DisplayName {
-			return fmt.Errorf("invalid oauth2_application_display_name: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["oauth2_application_description"]; !has || v != data.Config.Description {
-			return fmt.Errorf("invalid oauth2_application_description: %s", v)
-		}
-		if err := testStringArray(rs.Primary.Attributes,
-			data.GetConfig().RedirectUris, "redirect_uris"); err != nil {
-			return err
-		}
-		if v, has := rs.Primary.Attributes["owner"]; !has || v != data.Config.Owner {
-			return fmt.Errorf("invalid owner: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["policy_uri"]; !has || v != data.Config.PolicyUri {
-			return fmt.Errorf("invalid policy_uri: %s", v)
-		}
-		if err := testStringArray(rs.Primary.Attributes,
-			data.GetConfig().AllowedCorsOrigins, "allowed_cors_origins"); err != nil {
-			return err
-		}
-		if v, has := rs.Primary.Attributes["terms_of_service_uri"]; !has || v != data.Config.TermsOfServiceUri {
-			return fmt.Errorf("invalid terms_of_service_uri: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["client_uri"]; !has || v != data.Config.ClientUri {
-			return fmt.Errorf("invalid client_uri: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["logo_uri"]; !has || v != data.Config.LogoUri {
-			return fmt.Errorf("invalid logo_uri: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["user_support_email_address"]; !has ||
-			v != data.Config.UserSupportEmailAddress {
-			return fmt.Errorf("invalid user_support_email_address: %s", v)
-		}
-		if err := testStringArray(rs.Primary.Attributes,
-			data.GetConfig().AdditionalContacts, "additional_contacts"); err != nil {
-			return err
-		}
-		if err := testSubjectType(rs.Primary.Attributes,
-			data.GetConfig().SubjectType); err != nil {
-			return err
-		}
-		if v, has := rs.Primary.Attributes["sector_identifier_uri"]; !has || v != data.Config.SectorIdentifierUri {
-			return fmt.Errorf("invalid sector_identifier_uri: %s", v)
-		}
-		if err := testGrantTypes(rs.Primary.Attributes, data.GetConfig().GrantTypes); err != nil {
-			return err
-		}
-		if err := testResponseTypes(rs.Primary.Attributes, data.GetConfig().ResponseTypes); err != nil {
-			return err
-		}
-		if err := testStringArray(rs.Primary.Attributes, data.GetConfig().Scopes, "scopes"); err != nil {
-			return err
-		}
-		if err := testStringArray(rs.Primary.Attributes,
-			data.GetConfig().Audiences, "audiences"); err != nil {
-			return err
-		}
-		if err := testTokenEndpointAuthMethod(rs.Primary.Attributes,
-			data.GetConfig().TokenEndpointAuthMethod); err != nil {
-			return err
-		}
-		if v, has := rs.Primary.Attributes["token_endpoint_auth_signing_alg"]; !has ||
-			v != data.Config.TokenEndpointAuthSigningAlg {
-			return fmt.Errorf("invalid token_endpoint_auth_signing_alg: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["userinfo_signed_response_alg"]; !has ||
-			v != data.Config.UserinfoSignedResponseAlg {
-			return fmt.Errorf("invalid userinfo_signed_response_alg: %s", v)
-		}
-		return nil
+		addStringArrayToKeys(keys, "response_types", strResponseTypes)
+
+		return convertOmegaMatcherToError(MatchAllKeys(keys), rs.Primary.Attributes)
 	}
 }

@@ -17,7 +17,6 @@ package indykite_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"regexp"
 
 	"github.com/golang/mock/gomock"
@@ -136,13 +135,13 @@ var _ = Describe("Data Source customer", func() {
 
 				// Success cases
 				{
-					Check: resource.ComposeTestCheckFunc(testDataSourceWonkaCustomer(wonka)),
+					Check: resource.ComposeTestCheckFunc(testDataSourceWonkaCustomer(wonka.Customer, customerID)),
 					Config: `data "indykite_customer" "wonka" {
 						customer_id = "` + customerID + `"
 					}`,
 				},
 				{
-					Check: resource.ComposeTestCheckFunc(testDataSourceWonkaCustomer(wonka)),
+					Check: resource.ComposeTestCheckFunc(testDataSourceWonkaCustomer(wonka.Customer, "")),
 					Config: `data "indykite_customer" "wonka" {
 						name = "wonka"
 					}`,
@@ -152,26 +151,31 @@ var _ = Describe("Data Source customer", func() {
 	})
 })
 
-func testDataSourceWonkaCustomer(data *configpb.ReadCustomerResponse) resource.TestCheckFunc {
+func testDataSourceWonkaCustomer(data *configpb.Customer, customerID string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources["data.indykite_customer.wonka"]
 		if !ok {
 			return errors.New("not found: `indykite_customer.wonka`")
 		}
 
-		if rs.Primary.ID != data.Customer.Id {
-			return fmt.Errorf("ID does not match")
-		}
-		if v, has := rs.Primary.Attributes["name"]; !has || v != data.Customer.Name {
-			return fmt.Errorf("invalid name: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["display_name"]; !has || v != data.Customer.DisplayName {
-			return fmt.Errorf("invalid display name: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["description"]; !has || v != data.Customer.Description.GetValue() {
-			return fmt.Errorf("invalid description: %s", v)
+		if rs.Primary.ID != data.Id {
+			return errors.New("ID does not match")
 		}
 
-		return nil
+		keys := Keys{
+			"id": Equal(data.Id),
+			"%":  Not(BeEmpty()), // This is Terraform helper
+
+			"name":         Equal(data.Name),
+			"display_name": Equal(data.DisplayName),
+			"description":  Equal(data.Description.GetValue()),
+			"create_time":  Not(BeEmpty()),
+			"update_time":  Not(BeEmpty()),
+		}
+		if customerID != "" {
+			keys["customer_id"] = Equal(customerID)
+		}
+
+		return convertOmegaMatcherToError(MatchAllKeys(keys), rs.Primary.Attributes)
 	}
 }

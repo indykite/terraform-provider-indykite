@@ -53,13 +53,13 @@ func resTenantCreate(ctx context.Context, data *schema.ResourceData, meta interf
 	}
 
 	name := data.Get(nameKey).(string)
-	resp, err := client.Client().CreateTenant(ctx, &config.CreateTenantRequest{
+	resp, err := client.getClient().CreateTenant(ctx, &config.CreateTenantRequest{
 		IssuerId:    data.Get(issuerIDKey).(string),
 		Name:        name,
 		DisplayName: optionalString(data, displayNameKey),
 		Description: optionalString(data, descriptionKey),
 	})
-	if hasFailed(&d, err, "error creating Tenant for %q", name) {
+	if hasFailed(&d, err) {
 		return d
 	}
 	data.SetId(resp.Id)
@@ -72,32 +72,35 @@ func resTenantRead(ctx context.Context, data *schema.ResourceData, meta interfac
 	if client == nil {
 		return d
 	}
-	resp, err := client.Client().ReadTenant(ctx, &config.ReadTenantRequest{
+	resp, err := client.getClient().ReadTenant(ctx, &config.ReadTenantRequest{
 		Identifier: &config.ReadTenantRequest_Id{
 			Id: data.Id(),
 		}})
-	if err != nil {
-		return diag.FromErr(err)
+	if hasFailed(&d, err) {
+		return d
 	}
 
-	if resp == nil {
-		return diag.Errorf("empty Tenant response")
+	if resp.GetTenant() == nil {
+		return diag.Diagnostics{buildPluginError("empty Tenant response")}
 	}
 
 	data.SetId(resp.Tenant.Id)
-	Set(&d, data, customerIDKey, resp.Tenant.CustomerId)
-	Set(&d, data, appSpaceIDKey, resp.Tenant.AppSpaceId)
-	Set(&d, data, issuerIDKey, resp.Tenant.IssuerId)
-	Set(&d, data, nameKey, resp.Tenant.Name)
-	Set(&d, data, displayNameKey, resp.Tenant.DisplayName)
-	Set(&d, data, descriptionKey, resp.Tenant.Description)
-	Set(&d, data, createTimeKey, resp.Tenant.CreateTime)
-	Set(&d, data, updateTimeKey, resp.Tenant.UpdateTime)
+	setData(&d, data, customerIDKey, resp.Tenant.CustomerId)
+	setData(&d, data, appSpaceIDKey, resp.Tenant.AppSpaceId)
+	setData(&d, data, issuerIDKey, resp.Tenant.IssuerId)
+	setData(&d, data, nameKey, resp.Tenant.Name)
+	setData(&d, data, displayNameKey, resp.Tenant.DisplayName)
+	setData(&d, data, descriptionKey, resp.Tenant.Description)
+	setData(&d, data, createTimeKey, resp.Tenant.CreateTime)
+	setData(&d, data, updateTimeKey, resp.Tenant.UpdateTime)
 	return d
 }
 
 func resTenantUpdate(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
 	client := fromMeta(&d, meta)
+	if client == nil {
+		return d
+	}
 
 	// If only change in plan is delete_protection, just ignore the request
 	if !data.HasChangeExcept(deletionProtectionKey) {
@@ -110,11 +113,8 @@ func resTenantUpdate(ctx context.Context, data *schema.ResourceData, meta interf
 		Description: updateOptionalString(data, descriptionKey),
 	}
 
-	if client == nil {
-		return d
-	}
-	_, err := client.Client().UpdateTenant(ctx, req)
-	if hasFailed(&d, err, "Error while updating Tenant #%s", data.Id()) {
+	_, err := client.getClient().UpdateTenant(ctx, req)
+	if hasFailed(&d, err) {
 		return d
 	}
 	return resTenantRead(ctx, data, meta)
@@ -128,11 +128,9 @@ func resTenantDelete(ctx context.Context, data *schema.ResourceData, meta interf
 	if hasDeleteProtection(&d, data) {
 		return d
 	}
-	_, err := client.Client().DeleteTenant(ctx, &config.DeleteTenantRequest{
+	_, err := client.getClient().DeleteTenant(ctx, &config.DeleteTenantRequest{
 		Id: data.Id(),
 	})
-	if hasFailed(&d, err, "Error while deleting Tenant #%s", data.Id()) {
-		return d
-	}
+	hasFailed(&d, err)
 	return d
 }

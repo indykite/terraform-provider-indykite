@@ -40,7 +40,7 @@ var (
 	// nolint:lll
 	emailRegex = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
-	// pemRegex defines regex to match PEM Private key format
+	// pemRegex defines regex to match PEM Private key format.
 	pemRegex = regexp.MustCompile(`^-----BEGIN PRIVATE KEY-----(?:(?s).*)-----END PRIVATE KEY-----(?:\n)?$`)
 )
 
@@ -49,16 +49,14 @@ var supportedSigningAlgs = []string{
 	"ES512", "ES256K", "HS256", "HS384", "HS512", "EdDSA",
 }
 
+// ValidateName is Terraform validation helper to verify value is valid name.
 func ValidateName(i interface{}, path cty.Path) (ret diag.Diagnostics) {
 	v, ok := i.(string)
 	if !ok {
-		return diag.Diagnostics{
-			diag.Diagnostic{
-				Severity:      diag.Error,
-				Summary:       "expected type to be string",
-				AttributePath: path,
-			},
-		}
+		return append(ret, buildPluginErrorWithPath(
+			fmt.Sprintf("validateName failed, expected string, got %T", i),
+			path,
+		))
 	}
 	if l := len(v); l < 2 || l > 254 {
 		ret = append(ret, diag.Diagnostic{
@@ -78,16 +76,14 @@ func ValidateName(i interface{}, path cty.Path) (ret diag.Diagnostics) {
 	return ret
 }
 
+// ValidateEmail is Terraform validation helper to verify value is valid email.
 func ValidateEmail(i interface{}, path cty.Path) (ret diag.Diagnostics) {
 	v, ok := i.(string)
 	if !ok {
-		return diag.Diagnostics{
-			diag.Diagnostic{
-				Severity:      diag.Error,
-				Summary:       "expected type to be string",
-				AttributePath: path,
-			},
-		}
+		return append(ret, buildPluginErrorWithPath(
+			fmt.Sprintf("validateEmail failed, expected string, got %T", i),
+			path,
+		))
 	}
 
 	if l := len(v); l < 2 || l > 254 {
@@ -108,6 +104,7 @@ func ValidateEmail(i interface{}, path cty.Path) (ret diag.Diagnostics) {
 	return ret
 }
 
+// ValidateGID is Terraform validation helper to verify value is valid gid.
 func ValidateGID(i interface{}, path cty.Path) (ret diag.Diagnostics) {
 	v, ok := i.(string)
 	var errSummary string
@@ -135,30 +132,27 @@ func ValidateGID(i interface{}, path cty.Path) (ret diag.Diagnostics) {
 	return nil
 }
 
+// ValidateYaml is Terraform validation helper to verify value is valid YAML.
 func ValidateYaml(i interface{}, path cty.Path) (ret diag.Diagnostics) {
 	v, ok := i.(string)
 	if !ok {
-		return diag.Diagnostics{
-			diag.Diagnostic{
-				Severity:      diag.Error,
-				Summary:       "expected type to be string",
-				AttributePath: path,
-			},
-		}
+		return append(ret, buildPluginErrorWithPath(
+			fmt.Sprintf("validateYaml failed, expected string, got %T", i),
+			path,
+		))
 	}
 	var y interface{}
 	if err := yaml.Unmarshal([]byte(v), &y); err != nil {
-		return diag.Diagnostics{
-			diag.Diagnostic{
-				Severity:      diag.Error,
-				Summary:       err.Error(),
-				AttributePath: path,
-			},
-		}
+		return diag.Diagnostics{{
+			Severity:      diag.Error,
+			Summary:       err.Error(),
+			AttributePath: path,
+		}}
 	}
 	return nil
 }
 
+// DisplayNameDiffSuppress suppress Terraform changes when it contains name returned from API.
 func DisplayNameDiffSuppress(k, old, new string, d *schema.ResourceData) bool {
 	if k == displayNameKey && old == d.Get(nameKey).(string) && new == "" {
 		return true
@@ -166,6 +160,7 @@ func DisplayNameDiffSuppress(k, old, new string, d *schema.ResourceData) bool {
 	return false
 }
 
+// DisplayNameCredentialDiffSuppress suppress Terraform changes when it contains KID returned from API.
 func DisplayNameCredentialDiffSuppress(k, old, new string, d *schema.ResourceData) bool {
 	if k == displayNameKey && old == d.Get(kidKey).(string) && new == "" {
 		return true
@@ -173,6 +168,7 @@ func DisplayNameCredentialDiffSuppress(k, old, new string, d *schema.ResourceDat
 	return false
 }
 
+// SuppressYamlDiff verify that 2 YAML strings are the same in value and suppress Terraform changes.
 func SuppressYamlDiff(k, old, new string, _ *schema.ResourceData) bool {
 	var oldMap, newMap map[string]interface{}
 
@@ -228,11 +224,16 @@ func updateOptionalString(data *schema.ResourceData, key string) *wrapperspb.Str
 	return wrapperspb.String(v)
 }
 
-func Set(d *diag.Diagnostics, data *schema.ResourceData, attr string, value interface{}) bool {
+func setData(d *diag.Diagnostics, data *schema.ResourceData, attr string, value interface{}) {
 	if valOf := reflect.ValueOf(value); value == nil || (valOf.Kind() == reflect.Ptr && valOf.IsNil()) {
 		if err := data.Set(attr, nil); err != nil {
-			*d = append(*d, ErrorDiagPathF(err, attr, "Could not set attribute"))
-			return false
+			*d = append(*d, diag.Diagnostic{
+				Severity:      diag.Error,
+				Detail:        err.Error(),
+				Summary:       "Cannot add attribute",
+				AttributePath: cty.Path{cty.GetAttrStep{Name: attr}},
+			})
+			return
 		}
 	}
 
@@ -255,34 +256,23 @@ func Set(d *diag.Diagnostics, data *schema.ResourceData, attr string, value inte
 		value = v.GetValue()
 	case *timestamppb.Timestamp:
 		if v == nil {
-			return false
+			return
 		}
 		t := v.AsTime()
 		if t.IsZero() {
-			return false
+			return
 		}
 		value = t.Format(time.RFC3339Nano)
 	}
 
 	if err := data.Set(attr, value); err != nil {
-		*d = append(*d, ErrorDiagPathF(err, attr, "Could not set attribute"))
-		return false
+		*d = append(*d, diag.Diagnostic{
+			Severity:      diag.Error,
+			Detail:        err.Error(),
+			Summary:       "Cannot add attribute",
+			AttributePath: cty.Path{cty.GetAttrStep{Name: attr}},
+		})
 	}
-	return true
-}
-
-func ErrorDiagPathF(err error, attr string, summary string, a ...interface{}) diag.Diagnostic {
-	d := diag.Diagnostic{
-		Severity: diag.Error,
-		Summary:  fmt.Sprintf(summary, a...),
-	}
-	if err != nil {
-		d.Detail = err.Error()
-	}
-	if attr != "" {
-		d.AttributePath = cty.Path{cty.GetAttrStep{Name: attr}}
-	}
-	return d
 }
 
 // hasDeleteProtection returns true if resource is protected from deletion.
@@ -298,39 +288,24 @@ func hasDeleteProtection(d *diag.Diagnostics, data *schema.ResourceData) bool {
 	return false
 }
 
-func hasFailed(d *diag.Diagnostics, err error, detail string, args ...interface{}) bool {
+func hasFailed(d *diag.Diagnostics, err error) bool {
 	if err != nil {
-		var se *sdkerrors.StatusError
-		if errors.As(err, &se) {
+		if sdkerrors.IsServiceError(err) {
 			*d = append(*d, diag.Diagnostic{
 				Severity: diag.Error,
-				Summary:  se.Message(),
-				Detail:   fmt.Sprintf(detail, args...),
+				Summary:  "Communication with IndyKite failed, please try again later",
+				Detail:   err.Error(),
 			})
-			return true
+		} else {
+			*d = append(*d, buildPluginError(err.Error()))
 		}
 
-		var ce *sdkerrors.ClientError
-		if errors.As(err, &ce) {
-			*d = append(*d, diag.Diagnostic{
-				Severity: diag.Error,
-				Summary:  ce.Message(),
-				Detail:   fmt.Sprintf(detail, args...),
-			})
-			return true
-		}
-
-		*d = append(*d, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  err.Error(),
-			Detail:   fmt.Sprintf(detail, args...),
-		})
 		return true
 	}
 	return false
 }
 
-// rawArrayToStringArray casts raw data to []interface{} and next to to []string
+// rawArrayToStringArray casts raw data to []interface{} and next to []string.
 func rawArrayToStringArray(rawData interface{}) []string {
 	strArr := make([]string, len(rawData.([]interface{})))
 	if len(strArr) == 0 {
@@ -342,7 +317,7 @@ func rawArrayToStringArray(rawData interface{}) []string {
 	return strArr
 }
 
-// rawMapToStringMap casts raw data to map[string]interface{} and next convert to map[string]string
+// rawMapToStringMap casts raw data to map[string]interface{} and next convert to map[string]string.
 func rawMapToStringMap(rawData interface{}) map[string]string {
 	out := make(map[string]string)
 	for i, el := range rawData.(map[string]interface{}) {
@@ -352,27 +327,6 @@ func rawMapToStringMap(rawData interface{}) map[string]string {
 		return nil
 	}
 	return out
-}
-
-// rawSetToStringArray casts raw data to schema.Set and next to to []string
-func rawSetToStringArray(rawData interface{}) []string {
-	dataSet, ok := rawData.(*schema.Set)
-
-	if !ok {
-		return nil
-	}
-
-	dataList := dataSet.List()
-
-	strArr := make([]string, len(dataList))
-	if len(strArr) == 0 {
-		return nil
-	}
-	for i, el := range dataList {
-		strArr[i] = el.(string)
-	}
-
-	return strArr
 }
 
 func stringToOptionalStringWrapper(in string) *wrapperspb.StringValue {
@@ -390,9 +344,15 @@ func buildPluginError(summary string) diag.Diagnostic {
 	}
 }
 
-func buildPluginErrorWithPath(summary, attr string) diag.Diagnostic {
+func buildPluginErrorWithAttrName(summary, attr string) diag.Diagnostic {
 	d := buildPluginError(summary)
 	d.AttributePath = cty.Path{cty.GetAttrStep{Name: attr}}
+	return d
+}
+
+func buildPluginErrorWithPath(summary string, path cty.Path) diag.Diagnostic {
+	d := buildPluginError(summary)
+	d.AttributePath = path
 	return d
 }
 
@@ -404,7 +364,8 @@ func getMapStringKeys[V any](in map[string]V) []string {
 	return keys
 }
 
-func reverseProtoEnumMap[Key, Value comparable](in map[Key]Value) map[Value]Key {
+// ReverseProtoEnumMap create reverse map, where value is key and key is value of Proto Enum.
+func ReverseProtoEnumMap[Key, Value comparable](in map[Key]Value) map[Value]Key {
 	reversed := make(map[Value]Key)
 	for k, v := range in {
 		reversed[v] = k
@@ -412,6 +373,7 @@ func reverseProtoEnumMap[Key, Value comparable](in map[Key]Value) map[Value]Key 
 	return reversed
 }
 
+// OAuth2GrantTypes defines all supported GrantTypes and its mapping.
 var OAuth2GrantTypes = map[string]configpb.GrantType{
 	"authorization_code": configpb.GrantType_GRANT_TYPE_AUTHORIZATION_CODE,
 	"implicit":           configpb.GrantType_GRANT_TYPE_IMPLICIT,
@@ -420,28 +382,35 @@ var OAuth2GrantTypes = map[string]configpb.GrantType{
 	"refresh_token":      configpb.GrantType_GRANT_TYPE_REFRESH_TOKEN,
 }
 
+// OAuth2ResponseTypes defines all supported ResponseTypes and its mapping.
 var OAuth2ResponseTypes = map[string]configpb.ResponseType{
 	"token":    configpb.ResponseType_RESPONSE_TYPE_TOKEN,
 	"code":     configpb.ResponseType_RESPONSE_TYPE_CODE,
 	"id_token": configpb.ResponseType_RESPONSE_TYPE_ID_TOKEN,
 }
 
+// OAuth2TokenEndpointAuthMethods defines all supported Token Endpoint Auth Methods and its mapping.
 var OAuth2TokenEndpointAuthMethods = map[string]configpb.TokenEndpointAuthMethod{
 	"client_secret_basic": configpb.TokenEndpointAuthMethod_TOKEN_ENDPOINT_AUTH_METHOD_CLIENT_SECRET_BASIC,
 	"client_secret_post":  configpb.TokenEndpointAuthMethod_TOKEN_ENDPOINT_AUTH_METHOD_CLIENT_SECRET_POST,
 	"private_key_jwt":     configpb.TokenEndpointAuthMethod_TOKEN_ENDPOINT_AUTH_METHOD_PRIVATE_KEY_JWT,
 	"none":                configpb.TokenEndpointAuthMethod_TOKEN_ENDPOINT_AUTH_METHOD_NONE,
 }
-var oauth2TokenEndpointAuthMethodsReverse = reverseProtoEnumMap(OAuth2TokenEndpointAuthMethods)
 
+// OAuth2TokenEndpointAuthMethodsReverse defines all supported Token Endpoint Auth Methods and its reversed mapping.
+var OAuth2TokenEndpointAuthMethodsReverse = ReverseProtoEnumMap(OAuth2TokenEndpointAuthMethods)
+
+// OAuth2ClientSubjectTypes defines all supported Client Subjects and its mapping.
 var OAuth2ClientSubjectTypes = map[string]configpb.ClientSubjectType{
 	"public":   configpb.ClientSubjectType_CLIENT_SUBJECT_TYPE_PUBLIC,
 	"pairwise": configpb.ClientSubjectType_CLIENT_SUBJECT_TYPE_PAIRWISE,
 }
-var oauth2ClientSubjectTypesReverse = reverseProtoEnumMap(OAuth2ClientSubjectTypes)
 
-// ProtoValidateError tries to define interface for all Proto Validation errors
-// so we can generate better errors back to GraphQL
+// OAuth2ClientSubjectTypesReverse defines all supported Client Subjects and its reversed mapping.
+var OAuth2ClientSubjectTypesReverse = ReverseProtoEnumMap(OAuth2ClientSubjectTypes)
+
+// ProtoValidateError tries to define interface for all Proto Validation errors,
+// so we can generate better errors back to user.
 type ProtoValidateError interface {
 	Field() string
 	Reason() string
@@ -450,15 +419,7 @@ type ProtoValidateError interface {
 	ErrorName() string
 }
 
-func BetterValidationError(err error) error {
-	var protoValidErr ProtoValidateError
-	if errors.As(err, &protoValidErr) {
-		err = handleProtoValidationError(protoValidErr, false)
-	}
-	return err
-}
-
-func BetterValidationErrorWithPath(err error) error {
+func betterValidationErrorWithPath(err error) error {
 	var protoValidErr ProtoValidateError
 	if errors.As(err, &protoValidErr) {
 		err = handleProtoValidationError(protoValidErr, true)

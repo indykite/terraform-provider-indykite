@@ -88,23 +88,23 @@ func dataApplicationReadContext(ctx context.Context, data *schema.ResourceData, 
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.Client().ReadApplication(ctx, req)
-	if hasFailed(&d, err, "") {
+	resp, err := client.getClient().ReadApplication(ctx, req)
+	if hasFailed(&d, err) {
 		return d
 	}
 
-	if resp == nil {
-		return diag.Errorf("empty Application response")
+	if resp.GetApplication() == nil {
+		return diag.Diagnostics{buildPluginError("empty Application response")}
 	}
 
 	data.SetId(resp.Application.Id)
-	Set(&d, data, customerIDKey, resp.Application.CustomerId)
-	Set(&d, data, appSpaceIDKey, resp.Application.AppSpaceId)
-	Set(&d, data, nameKey, resp.Application.Name)
-	Set(&d, data, displayNameKey, resp.Application.DisplayName)
-	Set(&d, data, descriptionKey, resp.Application.Description)
-	Set(&d, data, createTimeKey, resp.Application.CreateTime)
-	Set(&d, data, updateTimeKey, resp.Application.UpdateTime)
+	setData(&d, data, customerIDKey, resp.Application.CustomerId)
+	setData(&d, data, appSpaceIDKey, resp.Application.AppSpaceId)
+	setData(&d, data, nameKey, resp.Application.Name)
+	setData(&d, data, displayNameKey, resp.Application.DisplayName)
+	setData(&d, data, descriptionKey, resp.Application.Description)
+	setData(&d, data, createTimeKey, resp.Application.CreateTime)
+	setData(&d, data, updateTimeKey, resp.Application.UpdateTime)
 	return d
 }
 
@@ -121,11 +121,11 @@ func dataApplicationListContext(ctx context.Context, data *schema.ResourceData, 
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.Client().ListApplications(ctx, &configpb.ListApplicationsRequest{
+	resp, err := client.getClient().ListApplications(ctx, &configpb.ListApplicationsRequest{
 		AppSpaceId: data.Get(appSpaceIDKey).(string),
 		Match:      match,
 	})
-	if hasFailed(&d, err, "") {
+	if hasFailed(&d, err) {
 		return d
 	}
 
@@ -136,7 +136,8 @@ func dataApplicationListContext(ctx context.Context, data *schema.ResourceData, 
 			if err == io.EOF {
 				break
 			}
-			return append(d, diag.FromErr(err)...)
+			hasFailed(&d, err)
+			return d
 		}
 		allApplications = append(allApplications, map[string]interface{}{
 			customerIDKey:  app.GetApplication().GetCustomerId(),
@@ -147,7 +148,7 @@ func dataApplicationListContext(ctx context.Context, data *schema.ResourceData, 
 			descriptionKey: flattenOptionalString(app.GetApplication().GetDescription()),
 		})
 	}
-	Set(&d, data, "applications", allApplications)
+	setData(&d, data, "applications", allApplications)
 
 	id := data.Get(appSpaceIDKey).(string) + "/apps/" + strings.Join(match, ",")
 	data.SetId(id)

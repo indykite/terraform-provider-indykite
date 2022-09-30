@@ -16,6 +16,7 @@ package indykite_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 
@@ -403,7 +404,7 @@ func testIngestMappingResourceDataExists(
 			return fmt.Errorf("not found: %s", n)
 		}
 		if rs.Primary.ID != data.ConfigNode.Id {
-			return fmt.Errorf("ID does not match")
+			return errors.New("ID does not match")
 		}
 		attrs := rs.Primary.Attributes
 

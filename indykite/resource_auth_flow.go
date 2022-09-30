@@ -78,28 +78,33 @@ func resourceAuthFlowFlatten(
 	data *schema.ResourceData,
 	resp *configpb.ReadConfigNodeResponse,
 ) (d diag.Diagnostics) {
-	if resp == nil {
-		return diag.Errorf("empty Auth Flow config")
-	}
-	authFlowNodeConfig := resp.ConfigNode.GetAuthFlowConfig()
+	authFlowNodeConfig := resp.GetConfigNode().GetAuthFlowConfig()
 	if authFlowNodeConfig == nil {
-		return diag.Errorf("config in the response is not valid AuthFlowNodeConfig")
+		return diag.Diagnostics{buildPluginError("config in the response is not valid AuthFlowNodeConfig")}
 	}
 
+	hasUIFlow := false
+	jsonData, yamlData := "", ""
 	switch authFlowNodeConfig.SourceFormat {
 	case configpb.AuthFlowConfig_FORMAT_BARE_JSON:
-		Set(&d, data, authFlowJSONKey, string(authFlowNodeConfig.Source))
+		jsonData = string(authFlowNodeConfig.Source)
 	case configpb.AuthFlowConfig_FORMAT_BARE_YAML:
-		Set(&d, data, authFlowYamlKey, string(authFlowNodeConfig.Source))
+		yamlData = string(authFlowNodeConfig.Source)
 	case configpb.AuthFlowConfig_FORMAT_RICH_JSON:
-		Set(&d, data, authFlowHasUIJson, true)
-	default:
+		hasUIFlow = true
+	case configpb.AuthFlowConfig_FORMAT_INVALID:
 		d = append(d, diag.Diagnostic{
 			Severity: diag.Warning,
-			Summary:  "unsupported AuthFlow node config",
-			Detail:   fmt.Sprintf("%T is not supported yet", authFlowNodeConfig.SourceFormat),
+			Summary:  "invalid auth flow was saved before, create auth flow again",
 		})
+	default:
+		d = append(d,
+			buildPluginError(fmt.Sprintf("Auth Flow type %T is not supported yet", authFlowNodeConfig.SourceFormat)),
+		)
 	}
+	setData(&d, data, authFlowHasUIJson, hasUIFlow)
+	setData(&d, data, authFlowJSONKey, jsonData)
+	setData(&d, data, authFlowYamlKey, yamlData)
 
 	return d
 }
@@ -107,28 +112,17 @@ func resourceAuthFlowFlatten(
 func resourceAuthFlowBuild(
 	d *diag.Diagnostics,
 	data *schema.ResourceData,
-	meta *MetaContext,
+	meta *metaContext,
 	builder *config.NodeRequest,
 ) {
 	cfg := new(configpb.AuthFlowConfig)
 
-	if data.HasChange(authFlowHasUIJson) {
-		*d = append(*d, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary: fmt.Sprintf(
-				"property %s is readonly and cannot be changed in the config", authFlowHasUIJson),
-			AttributePath: cty.IndexStringPath(authFlowHasUIJson),
-		})
-		return
-	}
-
 	if data.Get(authFlowHasUIJson).(bool) {
 		*d = append(*d, diag.Diagnostic{
-			Severity:      diag.Error,
-			Summary:       "Auth flow is managed by the Console UI and cannot be changed with Terraform",
+			Severity:      diag.Warning,
+			Summary:       "Auth flow was managed by the Console UI. This change will discard Console Diagram.",
 			AttributePath: cty.IndexStringPath(authFlowHasUIJson),
 		})
-		return
 	}
 
 	if val, ok := data.GetOk(authFlowJSONKey); ok {

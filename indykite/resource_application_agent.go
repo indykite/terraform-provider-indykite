@@ -53,13 +53,13 @@ func resAppAgentCreate(ctx context.Context, data *schema.ResourceData, meta inte
 	}
 
 	name := data.Get(nameKey).(string)
-	resp, err := client.Client().CreateApplicationAgent(ctx, &config.CreateApplicationAgentRequest{
+	resp, err := client.getClient().CreateApplicationAgent(ctx, &config.CreateApplicationAgentRequest{
 		ApplicationId: data.Get(applicationIDKey).(string),
 		Name:          name,
 		DisplayName:   optionalString(data, displayNameKey),
 		Description:   optionalString(data, descriptionKey),
 	})
-	if hasFailed(&d, err, "error creating ApplicationAgent for %q", name) {
+	if hasFailed(&d, err) {
 		return d
 	}
 	data.SetId(resp.Id)
@@ -72,32 +72,35 @@ func resAppAgentRead(ctx context.Context, data *schema.ResourceData, meta interf
 	if client == nil {
 		return d
 	}
-	resp, err := client.Client().ReadApplicationAgent(ctx, &config.ReadApplicationAgentRequest{
+	resp, err := client.getClient().ReadApplicationAgent(ctx, &config.ReadApplicationAgentRequest{
 		Identifier: &config.ReadApplicationAgentRequest_Id{
 			Id: data.Id(),
 		}})
-	if err != nil {
-		return diag.FromErr(err)
+	if hasFailed(&d, err) {
+		return d
 	}
 
-	if resp == nil {
-		return diag.Errorf("empty ApplicationAgent response")
+	if resp.GetApplicationAgent() == nil {
+		return diag.Diagnostics{buildPluginError("empty ApplicationAgent response")}
 	}
 
 	data.SetId(resp.ApplicationAgent.Id)
-	Set(&d, data, customerIDKey, resp.ApplicationAgent.CustomerId)
-	Set(&d, data, appSpaceIDKey, resp.ApplicationAgent.AppSpaceId)
-	Set(&d, data, applicationIDKey, resp.ApplicationAgent.ApplicationId)
-	Set(&d, data, nameKey, resp.ApplicationAgent.Name)
-	Set(&d, data, displayNameKey, resp.ApplicationAgent.DisplayName)
-	Set(&d, data, descriptionKey, resp.ApplicationAgent.Description)
-	Set(&d, data, createTimeKey, resp.ApplicationAgent.CreateTime)
-	Set(&d, data, updateTimeKey, resp.ApplicationAgent.UpdateTime)
+	setData(&d, data, customerIDKey, resp.ApplicationAgent.CustomerId)
+	setData(&d, data, appSpaceIDKey, resp.ApplicationAgent.AppSpaceId)
+	setData(&d, data, applicationIDKey, resp.ApplicationAgent.ApplicationId)
+	setData(&d, data, nameKey, resp.ApplicationAgent.Name)
+	setData(&d, data, displayNameKey, resp.ApplicationAgent.DisplayName)
+	setData(&d, data, descriptionKey, resp.ApplicationAgent.Description)
+	setData(&d, data, createTimeKey, resp.ApplicationAgent.CreateTime)
+	setData(&d, data, updateTimeKey, resp.ApplicationAgent.UpdateTime)
 	return d
 }
 
 func resAppAgentUpdate(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
 	client := fromMeta(&d, meta)
+	if client == nil {
+		return d
+	}
 
 	// If only change in plan is delete_protection, just ignore the request
 	if !data.HasChangeExcept(deletionProtectionKey) {
@@ -110,11 +113,8 @@ func resAppAgentUpdate(ctx context.Context, data *schema.ResourceData, meta inte
 		Description: updateOptionalString(data, descriptionKey),
 	}
 
-	if client == nil {
-		return d
-	}
-	_, err := client.Client().UpdateApplicationAgent(ctx, req)
-	if hasFailed(&d, err, "Error while updating ApplicationAgent #%s", data.Id()) {
+	_, err := client.getClient().UpdateApplicationAgent(ctx, req)
+	if hasFailed(&d, err) {
 		return d
 	}
 	return resAppAgentRead(ctx, data, meta)
@@ -128,11 +128,9 @@ func resAppAgentDelete(ctx context.Context, data *schema.ResourceData, meta inte
 	if hasDeleteProtection(&d, data) {
 		return d
 	}
-	_, err := client.Client().DeleteApplicationAgent(ctx, &config.DeleteApplicationAgentRequest{
+	_, err := client.getClient().DeleteApplicationAgent(ctx, &config.DeleteApplicationAgentRequest{
 		Id: data.Id(),
 	})
-	if hasFailed(&d, err, "Error while deleting ApplicationAgent #%s", data.Id()) {
-		return d
-	}
+	hasFailed(&d, err)
 	return d
 }

@@ -16,6 +16,7 @@ package indykite_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 
@@ -248,31 +249,24 @@ func testAppAgentResourceDataExists(n string, data *configpb.ApplicationAgent) r
 		}
 
 		if rs.Primary.ID != data.Id {
-			return fmt.Errorf("ID does not match")
-		}
-		if v, has := rs.Primary.Attributes["customer_id"]; !has || v != data.CustomerId {
-			return fmt.Errorf("invalid customer_id: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["app_space_id"]; !has || v != data.AppSpaceId {
-			return fmt.Errorf("invalid app_space_id: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["application_id"]; !has || v != data.ApplicationId {
-			return fmt.Errorf("invalid application_id: %s", v)
+			return errors.New("ID does not match")
 		}
 
-		if v, has := rs.Primary.Attributes["name"]; !has || v != data.Name {
-			return fmt.Errorf("invalid name: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["display_name"]; !has || v != data.DisplayName {
-			//
-			if data.DisplayName != data.Name {
-				return fmt.Errorf("invalid display name: %s", v)
-			}
-		}
-		if v, has := rs.Primary.Attributes["description"]; !has || v != data.Description.GetValue() {
-			return fmt.Errorf("invalid description: %s", v)
+		keys := Keys{
+			"id": Equal(data.Id),
+			"%":  Not(BeEmpty()), // This is Terraform helper
+
+			"customer_id":         Equal(data.CustomerId),
+			"app_space_id":        Equal(data.AppSpaceId),
+			"application_id":      Equal(data.ApplicationId),
+			"name":                Equal(data.Name),
+			"display_name":        Equal(data.DisplayName),
+			"description":         Equal(data.Description.GetValue()),
+			"create_time":         Not(BeEmpty()),
+			"update_time":         Not(BeEmpty()),
+			"deletion_protection": Not(BeEmpty()),
 		}
 
-		return nil
+		return convertOmegaMatcherToError(MatchAllKeys(keys), rs.Primary.Attributes)
 	}
 }

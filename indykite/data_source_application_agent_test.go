@@ -16,6 +16,7 @@ package indykite_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"regexp"
@@ -166,13 +167,16 @@ var _ = Describe("DataSource ApplicationAgent", func() {
 
 				// Success test cases
 				{
-					Check: resource.ComposeTestCheckFunc(testApplicationAgentDataExists(resourceName, appAgentResp)),
+					Check: resource.ComposeTestCheckFunc(
+						testApplicationAgentDataExists(resourceName, appAgentResp, appAgentID),
+					),
 					Config: `data "indykite_application_agent" "development" {
 						app_agent_id = "` + appAgentID + `"
 					}`,
 				},
 				{
-					Check: resource.ComposeTestCheckFunc(testApplicationAgentDataExists(resourceName, appAgentResp)),
+					Check: resource.ComposeTestCheckFunc(
+						testApplicationAgentDataExists(resourceName, appAgentResp, "")),
 					Config: `data "indykite_application_agent" "development" {
 						app_space_id = "` + appSpaceID + `"
 						name = "acme"
@@ -290,36 +294,38 @@ var _ = Describe("DataSource ApplicationAgent", func() {
 	})
 })
 
-func testApplicationAgentDataExists(n string, data *configpb.ApplicationAgent) resource.TestCheckFunc {
+func testApplicationAgentDataExists(
+	n string,
+	data *configpb.ApplicationAgent,
+	appAgentID string,
+) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 		if !ok {
 			return fmt.Errorf("not found: %s", n)
 		}
-
 		if rs.Primary.ID != data.Id {
-			return fmt.Errorf("ID does not match")
-		}
-		if v, has := rs.Primary.Attributes["customer_id"]; !has || v != data.CustomerId {
-			return fmt.Errorf("invalid customer_id: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["app_space_id"]; !has || v != data.AppSpaceId {
-			return fmt.Errorf("invalid app_space_id: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["application_id"]; !has || v != data.ApplicationId {
-			return fmt.Errorf("invalid application_id: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["name"]; !has || v != data.Name {
-			return fmt.Errorf("invalid name: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["display_name"]; !has || v != data.DisplayName {
-			return fmt.Errorf("invalid display name: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["description"]; !has || v != data.Description.GetValue() {
-			return fmt.Errorf("invalid description: %s", v)
+			return errors.New("ID does not match")
 		}
 
-		return nil
+		keys := Keys{
+			"id": Equal(data.Id),
+			"%":  Not(BeEmpty()), // This is Terraform helper
+
+			"customer_id":    Equal(data.CustomerId),
+			"app_space_id":   Equal(data.AppSpaceId),
+			"application_id": Equal(data.ApplicationId),
+			"name":           Equal(data.Name),
+			"display_name":   Equal(data.DisplayName),
+			"description":    Equal(data.Description.GetValue()),
+			"create_time":    Not(BeEmpty()),
+			"update_time":    Not(BeEmpty()),
+		}
+		if appAgentID != "" {
+			keys["app_agent_id"] = Equal(appAgentID)
+		}
+
+		return convertOmegaMatcherToError(MatchAllKeys(keys), rs.Primary.Attributes)
 	}
 }
 
@@ -329,42 +335,38 @@ func testApplicationAgentListDataExists(n string, data ...*configpb.ApplicationA
 		if !ok {
 			return fmt.Errorf("not found: %s", n)
 		}
-		attrs := rs.Primary.Attributes
 
 		expectedID := "gid:AAAAAmluZHlraURlgAABDwAAAAA/app_agents/loompaland,some-another-name,wonka-opa-agent"
 		if rs.Primary.ID != expectedID {
 			return fmt.Errorf("expected ID to be '%s' got '%s'", expectedID, rs.Primary.ID)
 		}
 
-		if attrs["app_agents.#"] != strconv.Itoa(len(data)) {
-			return fmt.Errorf("expected %d app_agents, but got %s", len(data), attrs["app_agents.#"])
+		keys := Keys{
+			"id": Equal(expectedID),
+			"%":  Not(BeEmpty()), // This is Terraform helper
+
+			"app_space_id": Equal(appSpaceID),
+
+			"app_agents.#": Equal(strconv.Itoa(len(data))), // This is Terraform helper
+			"filter.#":     Equal("3"),
+			"filter.0":     Equal("loompaland"),
+			"filter.1":     Equal("some-another-name"),
+			"filter.2":     Equal("wonka-opa-agent"),
 		}
+
 		for i, d := range data {
 			k := "app_agents." + strconv.Itoa(i) + "."
-			if v, has := attrs[k+"id"]; !has || v != d.Id {
-				return fmt.Errorf("%d. entry for 'id' expected '%s', got '%s'", i, d.Id, v)
-			}
+			keys[k+"%"] = Not(BeEmpty()) // This is Terraform helper
 
-			if v, has := attrs[k+"customer_id"]; !has || v != d.CustomerId {
-				return fmt.Errorf("%d. entry for 'customer_id' expected '%s', got '%s'", i, d.CustomerId, v)
-			}
-			if v, has := attrs[k+"app_space_id"]; !has || v != d.AppSpaceId {
-				return fmt.Errorf("%d. entry for 'app_space_id' expected '%s', got '%s'", i, d.AppSpaceId, v)
-			}
-			if v, has := attrs[k+"application_id"]; !has || v != d.ApplicationId {
-				return fmt.Errorf("%d. entry for 'application_id' expected '%s', got '%s'", i, d.ApplicationId, v)
-			}
-
-			if v, has := attrs[k+"name"]; !has || v != d.Name {
-				return fmt.Errorf("%d. entry for 'name' expected '%s', got '%s'", i, d.Name, v)
-			}
-			if v, has := attrs[k+"display_name"]; !has || v != d.DisplayName {
-				return fmt.Errorf("%d. entry for 'display_name' expected '%s', got '%s'", i, d.DisplayName, v)
-			}
-			if v, has := attrs[k+"description"]; !has || v != d.Description.GetValue() {
-				return fmt.Errorf("%d. entry for 'description' expected '%s', got '%s'", i, d.Description.GetValue(), v)
-			}
+			keys[k+"id"] = Equal(d.Id)
+			keys[k+"customer_id"] = Equal(d.CustomerId)
+			keys[k+"app_space_id"] = Equal(d.AppSpaceId)
+			keys[k+"application_id"] = Equal(d.ApplicationId)
+			keys[k+"name"] = Equal(d.Name)
+			keys[k+"display_name"] = Equal(d.GetDisplayName())
+			keys[k+"description"] = Equal(d.GetDescription().GetValue())
 		}
-		return nil
+
+		return convertOmegaMatcherToError(MatchAllKeys(keys), rs.Primary.Attributes)
 	}
 }

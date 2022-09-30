@@ -90,24 +90,24 @@ func dataAppAgentReadContext(ctx context.Context, data *schema.ResourceData, met
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.Client().ReadApplicationAgent(ctx, req)
-	if hasFailed(&d, err, "") {
+	resp, err := client.getClient().ReadApplicationAgent(ctx, req)
+	if hasFailed(&d, err) {
 		return d
 	}
 
-	if resp == nil {
-		return diag.Errorf("empty ApplicationAgent response")
+	if resp.GetApplicationAgent() == nil {
+		return diag.Diagnostics{buildPluginError("empty ApplicationAgent response")}
 	}
 
 	data.SetId(resp.ApplicationAgent.Id)
-	Set(&d, data, customerIDKey, resp.ApplicationAgent.CustomerId)
-	Set(&d, data, appSpaceIDKey, resp.ApplicationAgent.AppSpaceId)
-	Set(&d, data, applicationIDKey, resp.ApplicationAgent.ApplicationId)
-	Set(&d, data, nameKey, resp.ApplicationAgent.Name)
-	Set(&d, data, displayNameKey, resp.ApplicationAgent.DisplayName)
-	Set(&d, data, descriptionKey, resp.ApplicationAgent.Description)
-	Set(&d, data, createTimeKey, resp.ApplicationAgent.CreateTime)
-	Set(&d, data, updateTimeKey, resp.ApplicationAgent.UpdateTime)
+	setData(&d, data, customerIDKey, resp.ApplicationAgent.CustomerId)
+	setData(&d, data, appSpaceIDKey, resp.ApplicationAgent.AppSpaceId)
+	setData(&d, data, applicationIDKey, resp.ApplicationAgent.ApplicationId)
+	setData(&d, data, nameKey, resp.ApplicationAgent.Name)
+	setData(&d, data, displayNameKey, resp.ApplicationAgent.DisplayName)
+	setData(&d, data, descriptionKey, resp.ApplicationAgent.Description)
+	setData(&d, data, createTimeKey, resp.ApplicationAgent.CreateTime)
+	setData(&d, data, updateTimeKey, resp.ApplicationAgent.UpdateTime)
 	return d
 }
 
@@ -124,11 +124,11 @@ func dataAppAgentListContext(ctx context.Context, data *schema.ResourceData, met
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.Client().ListApplicationAgents(ctx, &configpb.ListApplicationAgentsRequest{
+	resp, err := client.getClient().ListApplicationAgents(ctx, &configpb.ListApplicationAgentsRequest{
 		AppSpaceId: data.Get(appSpaceIDKey).(string),
 		Match:      match,
 	})
-	if hasFailed(&d, err, "") {
+	if hasFailed(&d, err) {
 		return d
 	}
 
@@ -139,7 +139,8 @@ func dataAppAgentListContext(ctx context.Context, data *schema.ResourceData, met
 			if err == io.EOF {
 				break
 			}
-			return append(d, diag.FromErr(err)...)
+			hasFailed(&d, err)
+			return d
 		}
 		allApplicationAgents = append(allApplicationAgents, map[string]interface{}{
 			customerIDKey:    app.GetApplicationAgent().GetCustomerId(),
@@ -151,7 +152,7 @@ func dataAppAgentListContext(ctx context.Context, data *schema.ResourceData, met
 			descriptionKey:   flattenOptionalString(app.GetApplicationAgent().GetDescription()),
 		})
 	}
-	Set(&d, data, "app_agents", allApplicationAgents)
+	setData(&d, data, "app_agents", allApplicationAgents)
 
 	id := data.Get(appSpaceIDKey).(string) + "/app_agents/" + strings.Join(match, ",")
 	data.SetId(id)

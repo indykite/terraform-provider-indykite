@@ -16,9 +16,9 @@ package indykite_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
-	"strconv"
 
 	"github.com/golang/mock/gomock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -404,224 +404,51 @@ func testOAuth2ProviderResourceDataExists(n string, data *configpb.OAuth2Provide
 		}
 
 		if rs.Primary.ID != data.Id {
-			return fmt.Errorf("ID does not match")
+			return errors.New("ID does not match")
 		}
-		if v, has := rs.Primary.Attributes["customer_id"]; !has || v != data.CustomerId {
-			return fmt.Errorf("invalid customer_id: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["app_space_id"]; !has || v != data.AppSpaceId {
-			return fmt.Errorf("invalid appspaceID: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["name"]; !has || v != data.Name {
-			return fmt.Errorf("invalid name: %s", v)
-		}
-		if v, has := rs.Primary.Attributes["display_name"]; !has || v != data.DisplayName {
-			//
-			if data.DisplayName != data.Name {
-				return fmt.Errorf("invalid display name: %s", v)
-			}
-		}
-		if v, has := rs.Primary.Attributes["description"]; !has || v != data.Description.GetValue() {
-			return fmt.Errorf("invalid description: %s", v)
-		}
+		keys := Keys{
+			"id": Equal(data.Id),
+			"%":  Not(BeEmpty()), // This is Terraform helper
 
-		if err := testGrantTypes(rs.Primary.Attributes, data.GetConfig().GrantTypes); err != nil {
-			return err
-		}
+			"customer_id":  Equal(data.CustomerId),
+			"app_space_id": Equal(data.AppSpaceId),
+			"name":         Equal(data.Name),
+			"display_name": Equal(data.DisplayName),
+			"description":  Equal(data.Description.GetValue()),
+			"create_time":  Not(BeEmpty()),
+			"update_time":  Not(BeEmpty()),
 
-		if err := testResponseTypes(rs.Primary.Attributes, data.GetConfig().ResponseTypes); err != nil {
-			return err
+			"request_object_signing_alg": Equal(data.Config.RequestObjectSigningAlg),
 		}
+		addStringMapMatcherToKeys(keys, "front_channel_login_uri", data.GetConfig().FrontChannelLoginUri)
+		addStringMapMatcherToKeys(keys, "front_channel_consent_uri", data.GetConfig().FrontChannelConsentUri)
 
-		if err := testStringArray(rs.Primary.Attributes, data.GetConfig().Scopes, "scopes"); err != nil {
-			return err
-		}
+		addStringArrayToKeys(keys, "scopes", data.GetConfig().Scopes)
+		addStringArrayToKeys(keys, "token_endpoint_auth_signing_alg", data.GetConfig().TokenEndpointAuthSigningAlg)
+		addStringArrayToKeys(keys, "request_uris", data.GetConfig().RequestUris)
 
-		if err := testTokenEndpointAuthMethods(rs.Primary.Attributes,
-			data.GetConfig().TokenEndpointAuthMethod); err != nil {
-			return err
+		strGrantTypes := []string{}
+		oauth2GrantTypesReverse := indykite.ReverseProtoEnumMap(indykite.OAuth2GrantTypes)
+		for _, v := range data.Config.GrantTypes {
+			strGrantTypes = append(strGrantTypes, oauth2GrantTypesReverse[v])
 		}
-		if err := testStringArray(rs.Primary.Attributes,
-			data.GetConfig().TokenEndpointAuthSigningAlg, "token_endpoint_auth_signing_alg"); err != nil {
-			return err
-		}
+		addStringArrayToKeys(keys, "grant_types", strGrantTypes)
 
-		if err := testStringArray(rs.Primary.Attributes,
-			data.GetConfig().RequestUris, "request_uris"); err != nil {
-			return err
+		strResponseTypes := []string{}
+		oauth2ResponseTypesReverse := indykite.ReverseProtoEnumMap(indykite.OAuth2ResponseTypes)
+		for _, v := range data.Config.ResponseTypes {
+			strResponseTypes = append(strResponseTypes, oauth2ResponseTypesReverse[v])
 		}
+		addStringArrayToKeys(keys, "response_types", strResponseTypes)
 
-		if v, has := rs.Primary.Attributes["request_object_signing_alg"]; !has ||
-			v != data.Config.RequestObjectSigningAlg {
-			return fmt.Errorf("invalid request_object_signing_alg: %s", v)
+		strTokenEndpointAuthMethod := []string{}
+		for _, v := range data.Config.TokenEndpointAuthMethod {
+			strTokenEndpointAuthMethod = append(
+				strTokenEndpointAuthMethod,
+				indykite.OAuth2TokenEndpointAuthMethodsReverse[v])
 		}
+		addStringArrayToKeys(keys, "token_endpoint_auth_method", strTokenEndpointAuthMethod)
 
-		if err := testStringMap(rs.Primary.Attributes,
-			data.GetConfig().FrontChannelLoginUri, "front_channel_login_uri"); err != nil {
-			return err
-		}
-
-		if err := testStringMap(rs.Primary.Attributes,
-			data.GetConfig().FrontChannelConsentUri, "front_channel_consent_uri"); err != nil {
-			return err
-		}
-
-		return nil
+		return convertOmegaMatcherToError(MatchKeys(IgnoreExtras, keys), rs.Primary.Attributes)
 	}
-}
-
-func testGrantTypes(attrs map[string]string, grantTypes []configpb.GrantType) error {
-	if grantTypes == nil {
-		return nil
-	}
-	key := "grant_types"
-	cnt, _ := strconv.Atoi(attrs[key+".#"])
-	if cnt != len(grantTypes) {
-		return fmt.Errorf("expected %d grant_types, got %d, ", cnt, len(grantTypes))
-	}
-
-	for i := 0; i < cnt; i++ {
-		curKey := fmt.Sprintf("%s.%d", key, i)
-		v, has := attrs[curKey]
-		if !has {
-			return fmt.Errorf("invalid %s: %s", curKey, v)
-		}
-		grantType, found := indykite.OAuth2GrantTypes[v]
-		if !found {
-			return fmt.Errorf("invalid %s: %s", curKey, v)
-		}
-		if !containsGrantType(grantTypes, grantType) {
-			return fmt.Errorf("invalid %s: %s", curKey, v)
-		}
-	}
-	return nil
-}
-
-func testResponseTypes(attrs map[string]string, responseTypes []configpb.ResponseType) error {
-	if responseTypes == nil {
-		return nil
-	}
-	key := "response_types"
-	cnt, _ := strconv.Atoi(attrs[key+".#"])
-	if cnt != len(responseTypes) {
-		return fmt.Errorf("expected %d response_types, got %d, ", cnt, len(responseTypes))
-	}
-
-	for i := 0; i < cnt; i++ {
-		curKey := fmt.Sprintf("%s.%d", key, i)
-		v, has := attrs[curKey]
-		if !has {
-			return fmt.Errorf("invalid %s: %s", curKey, v)
-		}
-		responseType, found := indykite.OAuth2ResponseTypes[v]
-		if !found {
-			return fmt.Errorf("invalid %s: %s", curKey, v)
-		}
-		if !containsResponseType(responseTypes, responseType) {
-			return fmt.Errorf("invalid %s: %s", curKey, v)
-		}
-	}
-	return nil
-}
-
-func testTokenEndpointAuthMethods(attrs map[string]string,
-	endpointAuthMethods []configpb.TokenEndpointAuthMethod) error {
-	if endpointAuthMethods == nil {
-		return nil
-	}
-	key := "token_endpoint_auth_method"
-	cnt, _ := strconv.Atoi(attrs[key+".#"])
-	if cnt != len(endpointAuthMethods) {
-		return fmt.Errorf("expected %d grant_types, got %d, ", cnt, len(endpointAuthMethods))
-	}
-
-	for i := 0; i < cnt; i++ {
-		curKey := fmt.Sprintf("%s.%d", key, i)
-		v, has := attrs[curKey]
-		if !has {
-			return fmt.Errorf("invalid %s: %s", curKey, v)
-		}
-		tokenEndpointAuthMethod, found := indykite.OAuth2TokenEndpointAuthMethods[v]
-		if !found {
-			return fmt.Errorf("invalid %s: %s", curKey, v)
-		}
-		if !containsEndpointAuthMethod(endpointAuthMethods, tokenEndpointAuthMethod) {
-			return fmt.Errorf("invalid %s: %s", curKey, v)
-		}
-	}
-	return nil
-}
-
-func testStringArray(attrs map[string]string, array []string, key string) error {
-	if array == nil {
-		return nil
-	}
-	cnt, _ := strconv.Atoi(attrs[key+".#"])
-	if cnt != len(array) {
-		return fmt.Errorf("expected %d %s, got %d, ", cnt, key, len(array))
-	}
-
-	for i := 0; i < cnt; i++ {
-		curKey := fmt.Sprintf("%s.%d", key, i)
-		if v, has := attrs[curKey]; !has || !contains(array, v) {
-			return fmt.Errorf("invalid %s: %s", curKey, v)
-		}
-	}
-	return nil
-}
-
-func testStringMap(attrs map[string]string, dataMap map[string]string, key string) error {
-	if dataMap == nil {
-		return nil
-	}
-	cnt, _ := strconv.Atoi(attrs[key+".%"])
-
-	if cnt != len(dataMap) {
-		return fmt.Errorf("expected %d %s, got %d, ", cnt, key, len(dataMap))
-	}
-
-	for k, val := range dataMap {
-		if v, has := attrs[key+"."+k]; !has || v != val {
-			return fmt.Errorf("invalid key: %s", v)
-		}
-	}
-	return nil
-}
-
-func containsGrantType(s []configpb.GrantType, grantType configpb.GrantType) bool {
-	for _, v := range s {
-		if v == grantType {
-			return true
-		}
-	}
-	return false
-}
-
-func containsResponseType(s []configpb.ResponseType, responseType configpb.ResponseType) bool {
-	for _, v := range s {
-		if v == responseType {
-			return true
-		}
-	}
-	return false
-}
-
-func containsEndpointAuthMethod(s []configpb.TokenEndpointAuthMethod,
-	endpointAuthMethod configpb.TokenEndpointAuthMethod) bool {
-	for _, v := range s {
-		if v == endpointAuthMethod {
-			return true
-		}
-	}
-	return false
-}
-
-func contains(s []string, str string) bool {
-	for _, v := range s {
-		if v == str {
-			return true
-		}
-	}
-
-	return false
 }

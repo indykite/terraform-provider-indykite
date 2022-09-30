@@ -82,7 +82,7 @@ func resourceAuthorizationPolicyFlatten(
 		return append(d, buildPluginError("failed to marshall message into JSON: "+err.Error()))
 	}
 
-	Set(&d, data, authorizationPolicyJSONConfigKey, string(jsonVal))
+	setData(&d, data, authorizationPolicyJSONConfigKey, string(jsonVal))
 
 	return d
 }
@@ -96,12 +96,12 @@ func authorizationPolicyConfigUnamrshalJSON(jsonVal string) (*configpb.Authoriza
 func resourceAuthorizationPolicyBuild(
 	d *diag.Diagnostics,
 	data *schema.ResourceData,
-	_ *MetaContext,
+	_ *metaContext,
 	builder *config.NodeRequest,
 ) {
 	cfg, err := authorizationPolicyConfigUnamrshalJSON(data.Get(authorizationPolicyJSONConfigKey).(string))
 	if err != nil {
-		*d = append(*d, buildPluginErrorWithPath(
+		*d = append(*d, buildPluginErrorWithAttrName(
 			"Failed to Unmarshal AuthorizationPolicy config JSON into Proto message",
 			authorizationPolicyJSONConfigKey,
 		))
@@ -123,7 +123,7 @@ func authorizationPolicyValidateJSON(val interface{}, key string) (warnings []st
 		return warnings, errors
 	}
 
-	err = BetterValidationErrorWithPath(cfg.Validate())
+	err = betterValidationErrorWithPath(cfg.Validate())
 	if err != nil {
 		errors = append(errors, fmt.Errorf("%q has %s", key, err.Error()))
 	}

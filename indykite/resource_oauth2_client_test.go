@@ -16,6 +16,7 @@ package indykite_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -452,7 +453,7 @@ func testOAuth2ClientResourceDataExists(
 			return fmt.Errorf("not found: %s", n)
 		}
 		if rs.Primary.ID != data.ConfigNode.Id {
-			return fmt.Errorf("ID does not match")
+			return errors.New("ID does not match")
 		}
 		attrs := rs.Primary.Attributes
 
@@ -489,15 +490,9 @@ func testOAuth2ClientResourceDataExists(
 			"team_id":                Equal(oauth2Cfg.TeamId),
 		}
 
-		for k, v := range testStringArrayInDataMatchers("redirect_uri", oauth2Cfg.RedirectUri) {
-			keys[k] = v
-		}
-		for k, v := range testStringArrayInDataMatchers("default_scopes", oauth2Cfg.DefaultScopes) {
-			keys[k] = v
-		}
-		for k, v := range testStringArrayInDataMatchers("allowed_scopes", oauth2Cfg.AllowedScopes) {
-			keys[k] = v
-		}
+		addStringArrayToKeys(keys, "redirect_uri", oauth2Cfg.RedirectUri)
+		addStringArrayToKeys(keys, "default_scopes", oauth2Cfg.DefaultScopes)
+		addStringArrayToKeys(keys, "allowed_scopes", oauth2Cfg.AllowedScopes)
 
 		for k, v := range extraMatch {
 			keys[k] = v

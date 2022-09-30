@@ -88,26 +88,26 @@ func dataAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, met
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.Client().ReadApplicationSpace(ctx, req)
-	if hasFailed(&d, err, "") {
+	resp, err := client.getClient().ReadApplicationSpace(ctx, req)
+	if hasFailed(&d, err) {
 		return d
 	}
 
-	return dataAppSpaceFlatten(data, resp.AppSpace)
+	return dataAppSpaceFlatten(data, resp.GetAppSpace())
 }
 
 func dataAppSpaceFlatten(data *schema.ResourceData, resp *configpb.ApplicationSpace) (d diag.Diagnostics) {
 	if resp == nil {
-		return diag.Errorf("empty ApplicationSpace response")
+		return diag.Diagnostics{buildPluginError("empty ApplicationSpace response")}
 	}
 	data.SetId(resp.Id)
-	Set(&d, data, customerIDKey, resp.CustomerId)
-	Set(&d, data, nameKey, resp.Name)
-	Set(&d, data, displayNameKey, resp.DisplayName)
-	Set(&d, data, descriptionKey, resp.Description)
-	Set(&d, data, issuerIDKey, resp.IssuerId)
-	Set(&d, data, createTimeKey, resp.CreateTime)
-	Set(&d, data, updateTimeKey, resp.UpdateTime)
+	setData(&d, data, customerIDKey, resp.CustomerId)
+	setData(&d, data, nameKey, resp.Name)
+	setData(&d, data, displayNameKey, resp.DisplayName)
+	setData(&d, data, descriptionKey, resp.Description)
+	setData(&d, data, issuerIDKey, resp.IssuerId)
+	setData(&d, data, createTimeKey, resp.CreateTime)
+	setData(&d, data, updateTimeKey, resp.UpdateTime)
 	return d
 }
 
@@ -124,11 +124,11 @@ func dataAppSpaceListContext(ctx context.Context, data *schema.ResourceData, met
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.Client().ListApplicationSpaces(ctx, &configpb.ListApplicationSpacesRequest{
+	resp, err := client.getClient().ListApplicationSpaces(ctx, &configpb.ListApplicationSpacesRequest{
 		CustomerId: data.Get(customerIDKey).(string),
 		Match:      match,
 	})
-	if hasFailed(&d, err, "") {
+	if hasFailed(&d, err) {
 		return d
 	}
 
@@ -139,7 +139,8 @@ func dataAppSpaceListContext(ctx context.Context, data *schema.ResourceData, met
 			if err == io.EOF {
 				break
 			}
-			return append(d, diag.FromErr(err)...)
+			hasFailed(&d, err)
+			return d
 		}
 		allAppSpaces = append(allAppSpaces, map[string]interface{}{
 			customerIDKey:  appSpace.GetAppSpace().GetCustomerId(),
@@ -150,7 +151,7 @@ func dataAppSpaceListContext(ctx context.Context, data *schema.ResourceData, met
 			issuerIDKey:    appSpace.GetAppSpace().GetIssuerId(),
 		})
 	}
-	Set(&d, data, "app_spaces", allAppSpaces)
+	setData(&d, data, "app_spaces", allAppSpaces)
 
 	id := data.Get(customerIDKey).(string) + "/appSpaces/" + strings.Join(match, ",")
 	data.SetId(id)
