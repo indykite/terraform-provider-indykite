@@ -17,10 +17,5 @@
     "**/vendor/**",
     "**/examples/**",
     "**/testdata/**"
-  ],
-  "force": {
-    "constraints": {
-      "go": "1.19"
-    }
-  }
+  ]
 }

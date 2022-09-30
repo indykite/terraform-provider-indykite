@@ -153,40 +153,40 @@ func resourceOAuth2ClientFlatten(
 ) (d diag.Diagnostics) {
 	clientConf := resp.GetConfigNode().GetOauth2ClientConfig()
 	if clientConf == nil {
-		return diag.Errorf("config in the response is not valid OAuth2ClientConfig")
+		return diag.Diagnostics{buildPluginError("config in the response is not valid OAuth2ClientConfig")}
 	}
 
-	providerType, exist := reverseProtoEnumMap(oauth2AppProviderTypes)[clientConf.ProviderType]
+	providerType, exist := ReverseProtoEnumMap(oauth2AppProviderTypes)[clientConf.ProviderType]
 	if !exist {
 		d = append(d, buildPluginError("BE send unsupported OAuth2 Provider Type: "+clientConf.ProviderType.String()))
 	}
-	Set(&d, data, providerTypeKey, providerType)
+	setData(&d, data, providerTypeKey, providerType)
 
-	Set(&d, data, clientIDKey, clientConf.ClientId)
+	setData(&d, data, clientIDKey, clientConf.ClientId)
 	// Never set ClientSecret as it is never sent back
-	Set(&d, data, redirectURIKey, clientConf.RedirectUri)
-	Set(&d, data, defaultScopesKey, clientConf.DefaultScopes)
-	Set(&d, data, allowedScopesKey, clientConf.AllowedScopes)
-	Set(&d, data, allowSignupKey, clientConf.AllowSignup)
-	Set(&d, data, issuerKey, clientConf.Issuer)
-	Set(&d, data, authorizationEndpointKey, clientConf.AuthorizationEndpoint)
-	Set(&d, data, tokenEndpointKey, clientConf.TokenEndpoint)
-	Set(&d, data, discoveryURLKey, clientConf.DiscoveryUrl)
-	Set(&d, data, userinfoEndpointKey, clientConf.UserinfoEndpoint)
-	Set(&d, data, jwksURIKey, clientConf.JwksUri)
-	Set(&d, data, imageURLKey, clientConf.ImageUrl)
-	Set(&d, data, tenantKey, clientConf.Tenant)
-	Set(&d, data, hostedDomainKey, clientConf.HostedDomain)
+	setData(&d, data, redirectURIKey, clientConf.RedirectUri)
+	setData(&d, data, defaultScopesKey, clientConf.DefaultScopes)
+	setData(&d, data, allowedScopesKey, clientConf.AllowedScopes)
+	setData(&d, data, allowSignupKey, clientConf.AllowSignup)
+	setData(&d, data, issuerKey, clientConf.Issuer)
+	setData(&d, data, authorizationEndpointKey, clientConf.AuthorizationEndpoint)
+	setData(&d, data, tokenEndpointKey, clientConf.TokenEndpoint)
+	setData(&d, data, discoveryURLKey, clientConf.DiscoveryUrl)
+	setData(&d, data, userinfoEndpointKey, clientConf.UserinfoEndpoint)
+	setData(&d, data, jwksURIKey, clientConf.JwksUri)
+	setData(&d, data, imageURLKey, clientConf.ImageUrl)
+	setData(&d, data, tenantKey, clientConf.Tenant)
+	setData(&d, data, hostedDomainKey, clientConf.HostedDomain)
 
-	authStyle, exist := reverseProtoEnumMap(oauth2AppAuthStyles)[clientConf.AuthStyle]
+	authStyle, exist := ReverseProtoEnumMap(oauth2AppAuthStyles)[clientConf.AuthStyle]
 	if !exist {
 		d = append(d, buildPluginError("BE send unsupported OAuth2 AuthStyle: "+clientConf.AuthStyle.String()))
 	}
-	Set(&d, data, authStyleKey, authStyle)
+	setData(&d, data, authStyleKey, authStyle)
 
 	// Don't set PrivateKeyPEM as it is never sent back
-	Set(&d, data, privateKeyIDKey, clientConf.PrivateKeyId)
-	Set(&d, data, teamIDKey, clientConf.TeamId)
+	setData(&d, data, privateKeyIDKey, clientConf.PrivateKeyId)
+	setData(&d, data, teamIDKey, clientConf.TeamId)
 
 	return d
 }
@@ -194,7 +194,7 @@ func resourceOAuth2ClientFlatten(
 func resourceOAuth2ClientBuild(
 	d *diag.Diagnostics,
 	data *schema.ResourceData,
-	_ *MetaContext,
+	_ *metaContext,
 	builder *config.NodeRequest,
 ) {
 	configNode := &configpb.OAuth2ClientConfig{

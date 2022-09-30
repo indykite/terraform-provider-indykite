@@ -52,13 +52,13 @@ func resApplicationCreate(ctx context.Context, data *schema.ResourceData, meta i
 	}
 
 	name := data.Get(nameKey).(string)
-	resp, err := client.Client().CreateApplication(ctx, &config.CreateApplicationRequest{
+	resp, err := client.getClient().CreateApplication(ctx, &config.CreateApplicationRequest{
 		AppSpaceId:  data.Get(appSpaceIDKey).(string),
 		Name:        name,
 		DisplayName: optionalString(data, displayNameKey),
 		Description: optionalString(data, descriptionKey),
 	})
-	if hasFailed(&d, err, "error creating application for %q", name) {
+	if hasFailed(&d, err) {
 		return d
 	}
 	data.SetId(resp.Id)
@@ -71,31 +71,34 @@ func resApplicationRead(ctx context.Context, data *schema.ResourceData, meta int
 	if client == nil {
 		return d
 	}
-	resp, err := client.Client().ReadApplication(ctx, &config.ReadApplicationRequest{
+	resp, err := client.getClient().ReadApplication(ctx, &config.ReadApplicationRequest{
 		Identifier: &config.ReadApplicationRequest_Id{
 			Id: data.Id(),
 		}})
-	if err != nil {
-		return diag.FromErr(err)
+	if hasFailed(&d, err) {
+		return d
 	}
 
-	if resp == nil {
-		return diag.Errorf("empty Application response")
+	if resp.GetApplication() == nil {
+		return diag.Diagnostics{buildPluginError("empty Application response")}
 	}
 
 	data.SetId(resp.Application.Id)
-	Set(&d, data, customerIDKey, resp.Application.CustomerId)
-	Set(&d, data, appSpaceIDKey, resp.Application.AppSpaceId)
-	Set(&d, data, nameKey, resp.Application.Name)
-	Set(&d, data, displayNameKey, resp.Application.DisplayName)
-	Set(&d, data, descriptionKey, resp.Application.Description)
-	Set(&d, data, createTimeKey, resp.Application.CreateTime)
-	Set(&d, data, updateTimeKey, resp.Application.UpdateTime)
+	setData(&d, data, customerIDKey, resp.Application.CustomerId)
+	setData(&d, data, appSpaceIDKey, resp.Application.AppSpaceId)
+	setData(&d, data, nameKey, resp.Application.Name)
+	setData(&d, data, displayNameKey, resp.Application.DisplayName)
+	setData(&d, data, descriptionKey, resp.Application.Description)
+	setData(&d, data, createTimeKey, resp.Application.CreateTime)
+	setData(&d, data, updateTimeKey, resp.Application.UpdateTime)
 	return d
 }
 
 func resApplicationUpdate(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
 	client := fromMeta(&d, meta)
+	if client == nil {
+		return d
+	}
 
 	// If only change in plan is delete_protection, just ignore the request
 	if !data.HasChangeExcept(deletionProtectionKey) {
@@ -108,11 +111,8 @@ func resApplicationUpdate(ctx context.Context, data *schema.ResourceData, meta i
 		Description: updateOptionalString(data, descriptionKey),
 	}
 
-	if client == nil {
-		return d
-	}
-	_, err := client.Client().UpdateApplication(ctx, req)
-	if hasFailed(&d, err, "Error while updating application #%s", data.Id()) {
+	_, err := client.getClient().UpdateApplication(ctx, req)
+	if hasFailed(&d, err) {
 		return d
 	}
 	return resApplicationRead(ctx, data, meta)
@@ -126,11 +126,9 @@ func resApplicationDelete(ctx context.Context, data *schema.ResourceData, meta i
 	if hasDeleteProtection(&d, data) {
 		return d
 	}
-	_, err := client.Client().DeleteApplication(ctx, &config.DeleteApplicationRequest{
+	_, err := client.getClient().DeleteApplication(ctx, &config.DeleteApplicationRequest{
 		Id: data.Id(),
 	})
-	if hasFailed(&d, err, "Error while deleting application #%s", data.Id()) {
-		return d
-	}
+	hasFailed(&d, err)
 	return d
 }

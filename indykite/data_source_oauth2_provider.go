@@ -58,38 +58,38 @@ func dataOAuth2ProviderReadContext(ctx context.Context,
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.Client().ReadOAuth2Provider(ctx, &configpb.ReadOAuth2ProviderRequest{
+	resp, err := client.getClient().ReadOAuth2Provider(ctx, &configpb.ReadOAuth2ProviderRequest{
 		Id: data.Get(oauth2ProviderIDKey).(string),
 	})
-	if hasFailed(&d, err, "") {
+	if hasFailed(&d, err) {
 		return d
 	}
 
-	return dataOAuth2ProviderFlatten(data, resp.Oauth2Provider)
+	return dataOAuth2ProviderFlatten(data, resp.GetOauth2Provider())
 }
 
 func dataOAuth2ProviderFlatten(data *schema.ResourceData, resp *configpb.OAuth2Provider) (d diag.Diagnostics) {
-	if resp == nil {
-		return diag.Errorf("empty OAuth2Provider response")
+	if resp.GetConfig() == nil {
+		return diag.Diagnostics{buildPluginError("empty OAuth2Provider response")}
 	}
 
 	data.SetId(resp.Id)
-	Set(&d, data, nameKey, resp.Name)
-	Set(&d, data, displayNameKey, resp.DisplayName)
-	Set(&d, data, descriptionKey, resp.Description)
-	Set(&d, data, createTimeKey, resp.CreateTime)
-	Set(&d, data, updateTimeKey, resp.UpdateTime)
-	Set(&d, data, customerIDKey, resp.CustomerId)
-	Set(&d, data, appSpaceIDKey, resp.AppSpaceId)
-	Set(&d, data, oauth2GrantTypeKey, grantTypeArrayToRawArray(resp.Config.GrantTypes))
-	Set(&d, data, oauth2ResponseTypeKey, responseTypeArrayToRawArray(resp.Config.ResponseTypes))
-	Set(&d, data, oauth2ScopesKey, resp.Config.Scopes)
-	Set(&d, data, oauth2ProviderTokenEndpointAuthMethodKey,
-		tokenEndpointAuthMethodArrayToRawArray(resp.Config.TokenEndpointAuthMethod))
-	Set(&d, data, oauth2ProviderTokenEndpointAuthSigningAlgKey, resp.Config.TokenEndpointAuthSigningAlg)
-	Set(&d, data, oauth2ProviderRequestUrisKey, resp.Config.RequestUris)
-	Set(&d, data, oauth2ProviderRequestObjectSigningAlgKey, resp.Config.RequestObjectSigningAlg)
-	Set(&d, data, oauth2ProviderFrontChannelLoginURIKey, resp.Config.FrontChannelLoginUri)
-	Set(&d, data, oauth2ProviderFrontChannelConsentURIKey, resp.Config.FrontChannelConsentUri)
+	setData(&d, data, nameKey, resp.Name)
+	setData(&d, data, displayNameKey, resp.DisplayName)
+	setData(&d, data, descriptionKey, resp.Description)
+	setData(&d, data, createTimeKey, resp.CreateTime)
+	setData(&d, data, updateTimeKey, resp.UpdateTime)
+	setData(&d, data, customerIDKey, resp.CustomerId)
+	setData(&d, data, appSpaceIDKey, resp.AppSpaceId)
+	setData(&d, data, oauth2GrantTypeKey, grantTypeArrayToRawArray(&d, resp.Config.GrantTypes))
+	setData(&d, data, oauth2ResponseTypeKey, responseTypeArrayToRawArray(&d, resp.Config.ResponseTypes))
+	setData(&d, data, oauth2ScopesKey, resp.Config.Scopes)
+	setData(&d, data, oauth2ProviderTokenEndpointAuthMethodKey,
+		tokenEndpointAuthMethodArrayToRawArray(&d, resp.Config.TokenEndpointAuthMethod))
+	setData(&d, data, oauth2ProviderTokenEndpointAuthSigningAlgKey, resp.Config.TokenEndpointAuthSigningAlg)
+	setData(&d, data, oauth2ProviderRequestUrisKey, resp.Config.RequestUris)
+	setData(&d, data, oauth2ProviderRequestObjectSigningAlgKey, resp.Config.RequestObjectSigningAlg)
+	setData(&d, data, oauth2ProviderFrontChannelLoginURIKey, resp.Config.FrontChannelLoginUri)
+	setData(&d, data, oauth2ProviderFrontChannelConsentURIKey, resp.Config.FrontChannelConsentUri)
 	return d
 }

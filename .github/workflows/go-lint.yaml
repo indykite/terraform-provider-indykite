@@ -26,7 +26,7 @@ jobs:
               uses: golangci/golangci-lint-action@v3
               with:
                   # Required: the version of golangci-lint is required and must be specified without patch version.
-                  version: v1.49
+                  version: v1.50
 
                   # Optional: golangci-lint command line arguments.
                   args: --timeout 2m00s

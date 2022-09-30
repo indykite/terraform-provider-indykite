@@ -71,52 +71,64 @@ func dataOAuth2ApplicationReadContext(ctx context.Context,
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.Client().ReadOAuth2Application(ctx, &configpb.ReadOAuth2ApplicationRequest{
+	resp, err := client.getClient().ReadOAuth2Application(ctx, &configpb.ReadOAuth2ApplicationRequest{
 		Id: data.Get(oauth2ApplicationIDKey).(string),
 	})
-	if hasFailed(&d, err, "") {
+	if hasFailed(&d, err) {
 		return d
 	}
 
-	return dataOAuth2ApplicationFlatten(data, resp.Oauth2Application)
+	return dataOAuth2ApplicationFlatten(data, resp.GetOauth2Application())
 }
 
 func dataOAuth2ApplicationFlatten(data *schema.ResourceData, resp *configpb.OAuth2Application) (d diag.Diagnostics) {
-	if resp == nil {
-		return diag.Errorf("empty OAuth2Application response")
+	if resp.GetConfig() == nil {
+		return diag.Diagnostics{buildPluginError("empty OAuth2Application response")}
 	}
 
 	data.SetId(resp.Id)
-	Set(&d, data, nameKey, resp.Name)
-	Set(&d, data, displayNameKey, resp.DisplayName)
-	Set(&d, data, descriptionKey, resp.Description)
-	Set(&d, data, createTimeKey, resp.CreateTime)
-	Set(&d, data, updateTimeKey, resp.UpdateTime)
-	Set(&d, data, customerIDKey, resp.CustomerId)
-	Set(&d, data, appSpaceIDKey, resp.AppSpaceId)
-	Set(&d, data, oauth2ProviderIDKey, resp.Oauth2ProviderId)
+	setData(&d, data, nameKey, resp.Name)
+	setData(&d, data, displayNameKey, resp.DisplayName)
+	setData(&d, data, descriptionKey, resp.Description)
+	setData(&d, data, createTimeKey, resp.CreateTime)
+	setData(&d, data, updateTimeKey, resp.UpdateTime)
+	setData(&d, data, customerIDKey, resp.CustomerId)
+	setData(&d, data, appSpaceIDKey, resp.AppSpaceId)
+	setData(&d, data, oauth2ProviderIDKey, resp.Oauth2ProviderId)
 
-	Set(&d, data, oauth2ApplicationClientIDKey, resp.Config.ClientId)
-	Set(&d, data, oauth2ApplicationDisplayNameKey, resp.Config.DisplayName)
-	Set(&d, data, oauth2ApplicationDescriptionKey, resp.Config.Description)
-	Set(&d, data, oauth2ApplicationRedirectUrisKey, resp.Config.RedirectUris)
-	Set(&d, data, oauth2ApplicationOwnerKey, resp.Config.Owner)
-	Set(&d, data, oauth2ApplicationPolicyURIKey, resp.Config.PolicyUri)
-	Set(&d, data, oauth2ApplicationAllowedCorsOriginsKey, resp.Config.AllowedCorsOrigins)
-	Set(&d, data, oauth2ApplicationTermsOfServiceURIKey, resp.Config.TermsOfServiceUri)
-	Set(&d, data, oauth2ApplicationClientURIKey, resp.Config.ClientUri)
-	Set(&d, data, oauth2ApplicationLogoURIKey, resp.Config.LogoUri)
-	Set(&d, data, oauth2ApplicationUserSupportEmailAddressKey, resp.Config.UserSupportEmailAddress)
-	Set(&d, data, oauth2ApplicationAdditionalContactsKey, resp.Config.AdditionalContacts)
-	Set(&d, data, oauth2ClientSubjectTypeKey, oauth2ClientSubjectTypesReverse[resp.Config.SubjectType])
-	Set(&d, data, oauth2ApplicationSectorIdentifierURIKey, resp.Config.SectorIdentifierUri)
-	Set(&d, data, oauth2GrantTypeKey, grantTypeArrayToRawArray(resp.Config.GrantTypes))
-	Set(&d, data, oauth2ResponseTypeKey, responseTypeArrayToRawArray(resp.Config.ResponseTypes))
-	Set(&d, data, oauth2ScopesKey, resp.Config.Scopes)
-	Set(&d, data, oauth2ApplicationAudiencesKey, resp.Config.Audiences)
-	Set(&d, data, oauth2ApplicationTokenEndpointAuthMethodKey,
-		oauth2TokenEndpointAuthMethodsReverse[resp.Config.TokenEndpointAuthMethod])
-	Set(&d, data, oauth2ApplicationTokenEndpointAuthSigningAlgKey, resp.Config.TokenEndpointAuthSigningAlg)
-	Set(&d, data, oauth2ApplicationUserinfoSignedResponseAlgKey, resp.Config.UserinfoSignedResponseAlg)
+	setData(&d, data, oauth2ApplicationClientIDKey, resp.Config.ClientId)
+	setData(&d, data, oauth2ApplicationDisplayNameKey, resp.Config.DisplayName)
+	setData(&d, data, oauth2ApplicationDescriptionKey, resp.Config.Description)
+	setData(&d, data, oauth2ApplicationRedirectUrisKey, resp.Config.RedirectUris)
+	setData(&d, data, oauth2ApplicationOwnerKey, resp.Config.Owner)
+	setData(&d, data, oauth2ApplicationPolicyURIKey, resp.Config.PolicyUri)
+	setData(&d, data, oauth2ApplicationAllowedCorsOriginsKey, resp.Config.AllowedCorsOrigins)
+	setData(&d, data, oauth2ApplicationTermsOfServiceURIKey, resp.Config.TermsOfServiceUri)
+	setData(&d, data, oauth2ApplicationClientURIKey, resp.Config.ClientUri)
+	setData(&d, data, oauth2ApplicationLogoURIKey, resp.Config.LogoUri)
+	setData(&d, data, oauth2ApplicationUserSupportEmailAddressKey, resp.Config.UserSupportEmailAddress)
+	setData(&d, data, oauth2ApplicationAdditionalContactsKey, resp.Config.AdditionalContacts)
+
+	subjectType, exists := OAuth2ClientSubjectTypesReverse[resp.Config.SubjectType]
+	if !exists {
+		d = append(d, buildPluginError("BE send unsupported OAuth2 SubjectType: "+resp.Config.SubjectType.String()))
+	}
+	setData(&d, data, oauth2ClientSubjectTypeKey, subjectType)
+	setData(&d, data, oauth2ApplicationSectorIdentifierURIKey, resp.Config.SectorIdentifierUri)
+	setData(&d, data, oauth2GrantTypeKey, grantTypeArrayToRawArray(&d, resp.Config.GrantTypes))
+	setData(&d, data, oauth2ResponseTypeKey, responseTypeArrayToRawArray(&d, resp.Config.ResponseTypes))
+	setData(&d, data, oauth2ScopesKey, resp.Config.Scopes)
+	setData(&d, data, oauth2ApplicationAudiencesKey, resp.Config.Audiences)
+
+	tokenEPAuthMethod, exists := OAuth2TokenEndpointAuthMethodsReverse[resp.Config.TokenEndpointAuthMethod]
+	if !exists {
+		d = append(d, buildPluginError(
+			"BE send unsupported OAuth2 TokenEndpointAuthMethod: "+resp.Config.TokenEndpointAuthMethod.String(),
+		))
+	}
+	setData(&d, data, oauth2ApplicationTokenEndpointAuthMethodKey, tokenEPAuthMethod)
+
+	setData(&d, data, oauth2ApplicationTokenEndpointAuthSigningAlgKey, resp.Config.TokenEndpointAuthSigningAlg)
+	setData(&d, data, oauth2ApplicationUserinfoSignedResponseAlgKey, resp.Config.UserinfoSignedResponseAlg)
 	return d
 }

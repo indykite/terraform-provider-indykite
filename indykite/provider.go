@@ -26,13 +26,13 @@ import (
 )
 
 type (
-	Config struct {
+	tfConfig struct {
 		terraformVersion string
 	}
 
-	MetaContext struct {
+	metaContext struct {
 		client *config.Client
-		config *Config
+		config *tfConfig
 	}
 
 	contextKey int
@@ -86,32 +86,28 @@ func Provider() *schema.Provider {
 }
 
 func providerConfigure(ctx context.Context, _ *schema.ResourceData, version string) (interface{}, diag.Diagnostics) {
-	cfg := &Config{terraformVersion: version}
-	c, err := cfg.Client(ctx)
+	cfg := &tfConfig{terraformVersion: version}
+	c, err := cfg.getClient(ctx)
 	if err.HasError() {
 		return nil, err
 	}
-	return &MetaContext{client: c, config: cfg}, nil
+	return &metaContext{client: c, config: cfg}, nil
 }
 
-func fromMeta(d *diag.Diagnostics, meta interface{}) *MetaContext {
-	client, ok := meta.(*MetaContext)
+func fromMeta(d *diag.Diagnostics, meta interface{}) *metaContext {
+	client, ok := meta.(*metaContext)
 	if !ok || client == nil {
-		*d = append(*d, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Unable retrieve IndyKite client",
-			Detail:   "Unable retrieve IndyKite client from meta",
-		})
+		*d = append(*d, buildPluginError("Unable retrieve IndyKite client from meta"))
 	}
 	return client
 }
 
-func (x *MetaContext) Client() *config.Client {
+func (x *metaContext) getClient() *config.Client {
 	return x.client
 }
 
-// Client configures and returns a fully initialized Client
-func (c *Config) Client(ctx context.Context) (*config.Client, diag.Diagnostics) {
+// getClient configures and returns a fully initialized getClient.
+func (c *tfConfig) getClient(ctx context.Context) (*config.Client, diag.Diagnostics) {
 	if client, ok := ctx.Value(ClientContext).(*config.Client); ok {
 		return client, nil
 	}

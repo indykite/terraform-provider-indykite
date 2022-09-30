@@ -46,15 +46,15 @@ const (
 )
 
 const (
-	locationDescription            = ``
-	customerIDDescription          = ``
-	appSpaceIDDescription          = ``
-	issuerIDDescription            = ``
-	applicationIDDescription       = ``
-	tenantIDDescription            = ``
-	appAgentIDDescription          = ``
-	oauth2ProviderIDDescription    = ``
-	oauth2ApplicationIDDescription = ``
+	locationDescription            = `identifier of Location, where to create resource`
+	customerIDDescription          = `identifier of Customer`
+	appSpaceIDDescription          = `identifier of Application Space`
+	issuerIDDescription            = `identifier of Issuer`
+	applicationIDDescription       = `identifier of Application`
+	tenantIDDescription            = `identifier of Tenant`
+	appAgentIDDescription          = `identifier of Application Agent`
+	oauth2ProviderIDDescription    = `identifier of OAuth2 Provider`
+	oauth2ApplicationIDDescription = `identifier of OAuth Application`
 
 	nameDescription = `Unique client assigned immutable identifier. Can not be updated without creating a new resource.`
 )
@@ -76,14 +76,14 @@ func keysWithoutCurrent(currentKey string, allKeys []string) []string {
 }
 
 func setExactlyOneOf(base *schema.Schema, currentKey string, oneOfKeys []string) *schema.Schema {
-	convertToOptional(base)
+	base = convertToOptional(base)
 	base.ConflictsWith = keysWithoutCurrent(currentKey, oneOfKeys)
 	base.ExactlyOneOf = oneOfKeys
 	return base
 }
 
 func setRequiredWith(base *schema.Schema, requiredWith ...string) *schema.Schema {
-	convertToOptional(base)
+	base = convertToOptional(base)
 	base.RequiredWith = requiredWith
 	return base
 }
@@ -202,7 +202,7 @@ func oauth2ApplicationIDSchema() *schema.Schema {
 
 func oauth2ScopesSchema() *schema.Schema {
 	return &schema.Schema{
-		Type:     schema.TypeSet,
+		Type:     schema.TypeList,
 		Required: true,
 		MinItems: 1,
 		Elem: &schema.Schema{

@@ -30,11 +30,14 @@ import (
 )
 
 const (
-	invitationMessageKey    = "invitation_message"
-	resetPasswordMessageKey = "reset_password_message"
-	verificationMessageKey  = "email_verification_message"
-	mailTemplateKey         = "template"
-	defaultFromAddressKey   = "default_from_address"
+	authenticationMessageKey  = "authentication_message"
+	invitationMessageKey      = "invitation_message"
+	resetPasswordMessageKey   = "reset_password_message"
+	verificationMessageKey    = "email_verification_message"
+	oneTimePasswordMessageKey = "one_time_password_message"
+
+	mailTemplateKey       = "template"
+	defaultFromAddressKey = "default_from_address"
 
 	emailAddressKey = "address"
 	emailNameKey    = "name"
@@ -54,11 +57,8 @@ const (
 	templateEventPayloadKey  = "event_payload"
 	templateSESArnKey        = "ses_arn"
 
-	// Providers
 	providerSESKey      = "amazon_ses"
 	providerSendgridKey = "sendgrid"
-	// providerMailjetKey  = "mailjet"
-	// providerMailgunKey  = "mailgun"
 
 	sesAccessKey       = "access_key_id"
 	sesSecretAccessKey = "secret_access_key"
@@ -98,25 +98,29 @@ func resourceEmailNotification() *schema.Resource {
 			createTimeKey:  createTimeSchema(),
 			updateTimeKey:  updateTimeSchema(),
 			// config common schema ends here
-			defaultFromAddressKey: emailAddressSchema(false, 1),
+			defaultFromAddressKey: emailAddressSchema(1),
+
 			// Providers
 			providerSESKey:      setExactlyOneOf(providerSESSchema(), providerSESKey, oneOfProvider),
 			providerSendgridKey: setExactlyOneOf(providerSendgridSchema(), providerSendgridKey, oneOfProvider),
 			// providerMailjetKey:  buildExactlyOneOf(nameSchema(), providerMailjetKey, oneOfProvider),
 			// providerMailgunKey:  buildExactlyOneOf(nameSchema(), providerMailgunKey, oneOfProvider),
+
 			// Email templates
-			invitationMessageKey:    emailDefinitionSchema(),
-			resetPasswordMessageKey: emailDefinitionSchema(),
-			verificationMessageKey:  emailDefinitionSchema(),
+			authenticationMessageKey:  emailDefinitionSchema(),
+			invitationMessageKey:      emailDefinitionSchema(),
+			resetPasswordMessageKey:   emailDefinitionSchema(),
+			verificationMessageKey:    emailDefinitionSchema(),
+			oneTimePasswordMessageKey: emailDefinitionSchema(),
 		},
 	}
 }
 
-func emailAddressSchema(required bool, maxItem int) *schema.Schema {
+func emailAddressSchema(maxItem int) *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeList,
-		Required: required,
-		Optional: !required,
+		Required: false,
+		Optional: true,
 		MaxItems: maxItem,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
@@ -165,7 +169,7 @@ func providerSESSchema() *schema.Schema {
 					Optional:     true,
 					ValidateFunc: validation.StringLenBetween(0, 254),
 				},
-				defaultFromAddressKey: emailAddressSchema(false, 1),
+				defaultFromAddressKey: emailAddressSchema(1),
 				sesFeedbackAddrKey: {
 					Type:             schema.TypeString,
 					Optional:         true,
@@ -221,11 +225,11 @@ func emailDefinitionSchema() *schema.Schema {
 		MaxItems: 1,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				fromMailKey:    emailAddressSchema(false, 1),
-				replyToMailKey: emailAddressSchema(false, 1),
-				toMailKey:      emailAddressSchema(false, 0),
-				ccMailKey:      emailAddressSchema(false, 0),
-				bccMailKey:     emailAddressSchema(false, 0),
+				fromMailKey:    emailAddressSchema(1),
+				replyToMailKey: emailAddressSchema(1),
+				toMailKey:      emailAddressSchema(0),
+				ccMailKey:      emailAddressSchema(0),
+				bccMailKey:     emailAddressSchema(0),
 				subjectMailKey: {
 					Type:         schema.TypeString,
 					Optional:     true,
@@ -240,7 +244,7 @@ func emailDefinitionSchema() *schema.Schema {
 func emailTemplateSchema() *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeList,
-		Required: true,
+		Optional: true,
 		MaxItems: 1,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
@@ -293,21 +297,18 @@ func resourceEmailNotificationFlatten(
 	data *schema.ResourceData,
 	resp *configpb.ReadConfigNodeResponse,
 ) (d diag.Diagnostics) {
-	if resp == nil {
-		return diag.Errorf("empty EmailNotification")
-	}
-	mailConf := resp.ConfigNode.GetEmailServiceConfig()
+	mailConf := resp.GetConfigNode().GetEmailServiceConfig()
 	if mailConf == nil {
-		return diag.Errorf("config in the response is not valid EmailNotificationConfig")
+		return diag.Diagnostics{buildPluginError("config in the response is not valid EmailNotificationConfig")}
 	}
 
 	if mailConf.DefaultFromAddress != nil {
-		Set(&d, data, defaultFromAddressKey, flattenEmailAddrList([]*configpb.Email{mailConf.DefaultFromAddress}))
+		setData(&d, data, defaultFromAddressKey, flattenEmailAddrList([]*configpb.Email{mailConf.DefaultFromAddress}))
 	}
 
 	switch provider := mailConf.Provider.(type) {
 	case *configpb.EmailServiceConfig_Amazon:
-		Set(&d, data, providerSESKey, []map[string]interface{}{{
+		setData(&d, data, providerSESKey, []map[string]interface{}{{
 			sesAccessKey:          provider.Amazon.AccessKeyId,
 			sesSecretAccessKey:    provider.Amazon.SecretAccessKey,
 			sesRegionKey:          provider.Amazon.Region,
@@ -317,45 +318,59 @@ func resourceEmailNotificationFlatten(
 			sesFeedbackAddrKey:    provider.Amazon.FeedbackForwardingEmailAddress,
 		}})
 	case *configpb.EmailServiceConfig_Sendgrid:
-		Set(&d, data, providerSendgridKey, []map[string]interface{}{{
+		setData(&d, data, providerSendgridKey, []map[string]interface{}{{
 			sendgridAPIKey:     provider.Sendgrid.ApiKey,
 			sendgridSandboxKey: provider.Sendgrid.SandboxMode,
 			sendgridIPPoolKey:  flattenOptionalString(provider.Sendgrid.IpPoolName),
 			sendgridHostKey:    flattenOptionalString(provider.Sendgrid.Host),
 		}})
 	default:
-		return append(d, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "unsupported email provider",
-			Detail:   fmt.Sprintf("Provider %T is not supported yet", provider),
-		})
+		return append(d, buildPluginError(fmt.Sprintf("Email provider %T is not supported yet", provider)))
 	}
 
 	if val, err := flattenMessageDefinition(mailConf.InvitationMessage); err != nil {
-		d = append(d, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Invalid InvitationMessage response",
-			Detail:   err.Error()})
+		return append(d, buildPluginErrorWithAttrName(
+			"Invalid InvitationMessage response"+err.Error(),
+			invitationMessageKey,
+		))
 	} else if val != nil {
-		Set(&d, data, invitationMessageKey, []map[string]interface{}{val})
+		setData(&d, data, invitationMessageKey, []map[string]interface{}{val})
+	}
+
+	if val, err := flattenMessageDefinition(mailConf.AuthenticationMessage); err != nil {
+		return append(d, buildPluginErrorWithAttrName(
+			"Invalid AuthenticationMessage response"+err.Error(),
+			authenticationMessageKey,
+		))
+	} else if val != nil {
+		setData(&d, data, authenticationMessageKey, []map[string]interface{}{val})
 	}
 
 	if val, err := flattenMessageDefinition(mailConf.ResetPasswordMessage); err != nil {
-		d = append(d, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Invalid ResetPasswordMessage response",
-			Detail:   err.Error()})
+		return append(d, buildPluginErrorWithAttrName(
+			"Invalid ResetPasswordMessage response"+err.Error(),
+			resetPasswordMessageKey,
+		))
 	} else if val != nil {
-		Set(&d, data, resetPasswordMessageKey, []map[string]interface{}{val})
+		setData(&d, data, resetPasswordMessageKey, []map[string]interface{}{val})
 	}
 
 	if val, err := flattenMessageDefinition(mailConf.VerificationMessage); err != nil {
-		d = append(d, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Invalid EmailVerificationMessage response",
-			Detail:   err.Error()})
+		return append(d, buildPluginErrorWithAttrName(
+			"Invalid VerificationMessage response"+err.Error(),
+			verificationMessageKey,
+		))
 	} else if val != nil {
-		Set(&d, data, verificationMessageKey, []map[string]interface{}{val})
+		setData(&d, data, verificationMessageKey, []map[string]interface{}{val})
+	}
+
+	if val, err := flattenMessageDefinition(mailConf.OneTimePasswordMessage); err != nil {
+		return append(d, buildPluginErrorWithAttrName(
+			"Invalid OneTimePasswordMessage response"+err.Error(),
+			oneTimePasswordMessageKey,
+		))
+	} else if val != nil {
+		setData(&d, data, oneTimePasswordMessageKey, []map[string]interface{}{val})
 	}
 
 	return d
@@ -418,7 +433,7 @@ func flattenMessageDefinition(resp *configpb.EmailDefinition) (map[string]interf
 func resourceEmailNotificationBuild(
 	d *diag.Diagnostics,
 	data *schema.ResourceData,
-	_ *MetaContext,
+	_ *metaContext,
 	builder *config.NodeRequest,
 ) {
 	configNode := &configpb.EmailServiceConfig{}
@@ -454,6 +469,11 @@ func resourceEmailNotificationBuild(
 		}}
 	}
 
+	if val, ok := data.GetOk(authenticationMessageKey); ok {
+		configNode.AuthenticationMessage = buildEmailDefinition(val, d,
+			cty.GetAttrPath(authenticationMessageKey).IndexInt(0).GetAttr(mailTemplateKey),
+		)
+	}
 	if val, ok := data.GetOk(verificationMessageKey); ok {
 		configNode.VerificationMessage = buildEmailDefinition(val, d,
 			cty.GetAttrPath(verificationMessageKey).IndexInt(0).GetAttr(mailTemplateKey),
@@ -469,10 +489,15 @@ func resourceEmailNotificationBuild(
 			cty.GetAttrPath(resetPasswordMessageKey).IndexInt(0).GetAttr(mailTemplateKey),
 		)
 	}
+	if val, ok := data.GetOk(oneTimePasswordMessageKey); ok {
+		configNode.OneTimePasswordMessage = buildEmailDefinition(val, d,
+			cty.GetAttrPath(oneTimePasswordMessageKey).IndexInt(0).GetAttr(mailTemplateKey),
+		)
+	}
 	builder.WithEmailNotificationConfig(configNode)
 }
 
-// buildEmailAddrList will cast step-by-step to []map[string]string
+// buildEmailAddrList will cast step-by-step to []map[string]string.
 func buildEmailAddrList(rawData interface{}) []*configpb.Email {
 	emails := make([]*configpb.Email, len(rawData.([]interface{})))
 	for i, v := range rawData.([]interface{}) {
@@ -487,7 +512,7 @@ func buildEmailAddrList(rawData interface{}) []*configpb.Email {
 	return emails
 }
 
-// buildEmailAddress uses buildEmailAddrList and returns first element or nil
+// buildEmailAddress uses buildEmailAddrList and returns first element or nil.
 func buildEmailAddress(rawData interface{}) *configpb.Email {
 	if arr := buildEmailAddrList(rawData); len(arr) > 0 {
 		return arr[0]
@@ -495,7 +520,7 @@ func buildEmailAddress(rawData interface{}) *configpb.Email {
 	return nil
 }
 
-// buildEmailDefinition casts immediately to []interface{} and first element to map[string]interface{} without checks
+// buildEmailDefinition casts immediately to []interface{} and first element to map[string]interface{} without checks.
 func buildEmailDefinition(rawData interface{}, d *diag.Diagnostics, path cty.Path) *configpb.EmailDefinition {
 	data := rawData.([]interface{})[0].(map[string]interface{})
 	if len(data[mailTemplateKey].([]interface{})) == 0 {
@@ -529,12 +554,10 @@ func buildEmailDefinition(rawData interface{}, d *diag.Diagnostics, path cty.Pat
 	var err error
 	templateDef.DynamicTemplateValues, err = buildDynamicTemplateValues(templateData[templateDynamicValuesKey].(string))
 	if err != nil {
-		*d = append(*d, diag.Diagnostic{
-			Severity:      diag.Error,
-			Summary:       "cannot build dynamic template values from JSON",
-			AttributePath: path.GetAttr(templateDynamicValuesKey),
-			Detail:        err.Error(),
-		})
+		*d = append(*d, buildPluginErrorWithAttrName(
+			"cannot build dynamic template values from JSON: "+err.Error(),
+			err.Error(),
+		))
 		return nil
 	}
 	// Currently, only template is supported.

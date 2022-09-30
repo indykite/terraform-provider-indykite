@@ -16,20 +16,15 @@
 package test
 
 import (
-	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/format"
 	"github.com/onsi/gomega/types"
-	"github.com/stretchr/testify/mock"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/anypb"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type matcherWrapper struct {
@@ -39,6 +34,7 @@ type matcherWrapper struct {
 	actual interface{}
 }
 
+// WrapMatcher wraps Omega matcher into Gomock Matcher.
 func WrapMatcher(matcher types.GomegaMatcher) gomock.Matcher {
 	return &matcherWrapper{matcher: matcher}
 }
@@ -56,93 +52,26 @@ func (m *matcherWrapper) String() string {
 	return fmt.Sprintf("Wrapped Gomega fail message: %s", m.matcher.FailureMessage(m.actual))
 }
 
-func WrapTestifyMatcher(matcher types.GomegaMatcher) interface{} {
-	return mock.MatchedBy(func(param interface{}) bool {
-		result, _ := matcher.Match(param)
-		return result
-	})
-}
-
-func Base58(min ...int) types.GomegaMatcher {
-	if len(min) == 1 && min[0] > 0 {
-		return gomega.MatchRegexp(fmt.Sprintf("^.[1-9a-zABCDEFGHJKLMNPQRSTUVWXYZ]{%d,}$", min[0]))
-	}
-	return gomega.MatchRegexp("^.[1-9a-zABCDEFGHJKLMNPQRSTUVWXYZ]$")
-}
-
-// BeTemporally compares time.Time's like BeNumerically
-// Actual and expected must be time.Time. The comparators are the same as for BeNumerically
-//
-//	Expect(time.Now()).Should(BeTemporally(">", time.Time{}))
-//	Expect(timestamppb.Now()).Should(BeTemporally("~", time.Now(), time.Second))
-func BeTemporally(comparator string, compareTo time.Time, threshold ...time.Duration) types.GomegaMatcher {
-	return &BeTemporallyMatcher{
-		OmegaMatcher: gomega.BeTemporally(comparator, compareTo, threshold...),
-	}
-}
-
-type BeTemporallyMatcher struct {
-	gomega.OmegaMatcher
-}
-
-func (matcher *BeTemporallyMatcher) Match(actual interface{}) (bool, error) {
-	switch t := actual.(type) {
-	case *timestamppb.Timestamp:
-		return matcher.OmegaMatcher.Match(t.AsTime())
-	default:
-		return matcher.OmegaMatcher.Match(actual)
-	}
-}
-
-type IsJSONMatcher struct{}
-
-func IsJSON() types.GomegaMatcher {
-	return &IsJSONMatcher{}
-}
-
-func (matcher *IsJSONMatcher) Match(actual interface{}) (success bool, err error) {
-	var jsonByteArray []byte
-	switch val := actual.(type) {
-	case string:
-		jsonByteArray = []byte(val)
-	case []byte:
-		jsonByteArray = val
-	default:
-		return false, fmt.Errorf("IsJSONString matcher expects a string/[]byte.  Got:\n%s", format.Object(actual, 1))
-	}
-
-	var jsonObj interface{}
-	return json.Unmarshal(jsonByteArray, &jsonObj) == nil, nil
-}
-
-func (matcher *IsJSONMatcher) FailureMessage(actual interface{}) (message string) {
-	return fmt.Sprintf("Expected\n%s\nto be JSON", format.Object(actual, 1))
-}
-
-func (matcher *IsJSONMatcher) NegatedFailureMessage(actual interface{}) (message string) {
-	return fmt.Sprintf("Expected\n%s\nnot to be JSON", format.Object(actual, 1))
-}
-
 // EqualProto uses proto.Equal to compare actual with expected.  Equal is strict about
 // types when performing comparisons.
 // It is an error for both actual and expected to be nil.  Use BeNil() instead.
 func EqualProto(expected protoreflect.ProtoMessage) types.GomegaMatcher {
-	return &EqualProtoMatcher{
+	return &equalProtoMatcher{
 		Expected: expected,
 	}
 }
 
-type EqualProtoMatcher struct {
+type equalProtoMatcher struct {
 	Expected proto.Message
 }
 
-func (matcher *EqualProtoMatcher) GomegaString() string {
+func (matcher *equalProtoMatcher) GomegaString() string {
 	op := protojson.MarshalOptions{AllowPartial: true, Indent: "  "}
 	ex, _ := op.Marshal(matcher.Expected)
 	return string(ex)
 }
 
-func (matcher *EqualProtoMatcher) Match(actual interface{}) (success bool, err error) {
+func (matcher *equalProtoMatcher) Match(actual interface{}) (success bool, err error) {
 	if actual == nil && matcher.Expected == nil {
 		// nolint
 		return false, fmt.Errorf("Refusing to compare <nil> to <nil>.\nBe explicit and use BeNil() instead.  This is to avoid mistakes where both sides of an assertion are erroneously uninitialized.")
@@ -164,7 +93,7 @@ func (matcher *EqualProtoMatcher) Match(actual interface{}) (success bool, err e
 	return proto.Equal(pa, matcher.Expected), nil
 }
 
-func (matcher *EqualProtoMatcher) FailureMessage(actual interface{}) (message string) {
+func (matcher *equalProtoMatcher) FailureMessage(actual interface{}) (message string) {
 	actualMessage, actualOK := actual.(proto.Message)
 	if actualOK {
 		op := protojson.MarshalOptions{AllowPartial: true}
@@ -176,7 +105,7 @@ func (matcher *EqualProtoMatcher) FailureMessage(actual interface{}) (message st
 	return format.Message(actual, "to equal", matcher.Expected)
 }
 
-func (matcher *EqualProtoMatcher) NegatedFailureMessage(actual interface{}) (message string) {
+func (matcher *equalProtoMatcher) NegatedFailureMessage(actual interface{}) (message string) {
 	actualMessage, actualOK := actual.(proto.Message)
 	if actualOK {
 		op := protojson.MarshalOptions{AllowPartial: true}

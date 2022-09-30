@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 
 	"github.com/golang/mock/gomock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -28,6 +29,7 @@ import (
 	"github.com/indykite/jarvis-sdk-go/config"
 	configpb "github.com/indykite/jarvis-sdk-go/gen/indykite/config/v1beta1"
 	configm "github.com/indykite/jarvis-sdk-go/test/config/v1beta1"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
@@ -84,30 +86,23 @@ var _ = Describe("Resource Auth Flow", func() {
 				Config: &configpb.ConfigNode_AuthFlowConfig{
 					AuthFlowConfig: &configpb.AuthFlowConfig{
 						SourceFormat: configpb.AuthFlowConfig_FORMAT_BARE_JSON,
-						Source:       []byte(`{ "key2": 456, "key": "Never send to BE, valid JSON is enough" }`),
+						Source:       []byte(`{ "key2": 456, "key": "For testing this valid JSON is enough" }`),
 					},
 				},
 			},
 		}
 
-		authFlowManagedInUIResp := &configpb.ReadConfigNodeResponse{
-			ConfigNode: &configpb.ConfigNode{
-				Id:          jsonAuthFlowConfigResp.ConfigNode.Id,
-				Name:        jsonAuthFlowConfigResp.ConfigNode.Name,
-				DisplayName: jsonAuthFlowConfigResp.ConfigNode.DisplayName,
-				CustomerId:  jsonAuthFlowConfigResp.ConfigNode.CustomerId,
-				AppSpaceId:  jsonAuthFlowConfigResp.ConfigNode.AppSpaceId,
-				TenantId:    jsonAuthFlowConfigResp.ConfigNode.TenantId,
-				CreateTime:  timestamppb.Now(),
-				UpdateTime:  timestamppb.Now(),
-				Config: &configpb.ConfigNode_AuthFlowConfig{
-					AuthFlowConfig: &configpb.AuthFlowConfig{
-						SourceFormat: configpb.AuthFlowConfig_FORMAT_RICH_JSON,
-						Source:       []byte(`{"content": "json from console UI"}`),
-					},
-				},
-			},
-		}
+		authFlowUIResp := proto.Clone(jsonAuthFlowConfigResp).(*configpb.ReadConfigNodeResponse)
+		authCfg := authFlowUIResp.GetConfigNode().GetAuthFlowConfig()
+		authCfg.Source = []byte("whatever UI here")
+		authCfg.SourceFormat = configpb.AuthFlowConfig_FORMAT_RICH_JSON
+
+		jsonAuthFlowAfterUpdateResp := proto.Clone(jsonAuthFlowConfigResp).(*configpb.ReadConfigNodeResponse)
+		jsonAuthFlowAfterUpdateResp.GetConfigNode().DisplayName = jsonAuthFlowAfterUpdateResp.GetConfigNode().Name
+		jsonAuthFlowAfterUpdateResp.GetConfigNode().Description = nil
+		authCfg = jsonAuthFlowAfterUpdateResp.GetConfigNode().GetAuthFlowConfig()
+		authCfg.Source = []byte("some: yaml after update")
+		authCfg.SourceFormat = configpb.AuthFlowConfig_FORMAT_BARE_YAML
 
 		yamlAuthFlowConfigResp := &configpb.ReadConfigNodeResponse{
 			ConfigNode: &configpb.ConfigNode{
@@ -122,18 +117,11 @@ var _ = Describe("Resource Auth Flow", func() {
 				Config: &configpb.ConfigNode_AuthFlowConfig{
 					AuthFlowConfig: &configpb.AuthFlowConfig{
 						SourceFormat: configpb.AuthFlowConfig_FORMAT_BARE_YAML,
-						Source:       []byte("---\nanother_key: 789987\nkey: Never send to BE, valid Yaml is enough"),
+						Source:       []byte("---\nanother_key: 789987\nkey: For testing this valid Yaml is enough"),
 					},
 				},
 			},
 		}
-
-		// MOCKS
-		// There are 3 test steps
-		// 1. step call: Create + Read
-		// 2. step call: Read, Update, Read
-		// 3. step call is recreate: Read, Delete, Create and Read
-		// after steps Delete is called
 
 		// Create
 		mockConfigClient.EXPECT().
@@ -150,7 +138,7 @@ var _ = Describe("Resource Auth Flow", func() {
 					"AuthFlowConfig": PointTo(MatchFields(IgnoreExtras, Fields{
 						"SourceFormat": Equal(configpb.AuthFlowConfig_FORMAT_BARE_JSON),
 						"Source": BeEquivalentTo(
-							`{ "key": "Never send to BE, valid JSON is enough", "key2": 456 }`),
+							`{ "key": "For testing this valid JSON is enough", "key2": 456 }`),
 					}))},
 				)),
 			})))).
@@ -167,14 +155,12 @@ var _ = Describe("Resource Auth Flow", func() {
 				"Config": PointTo(MatchFields(IgnoreExtras, Fields{
 					"AuthFlowConfig": PointTo(MatchFields(IgnoreExtras, Fields{
 						"SourceFormat": Equal(configpb.AuthFlowConfig_FORMAT_BARE_YAML),
-						"Source":       ContainSubstring("key: Never send to BE, valid Yaml is enough"),
+						"Source":       ContainSubstring("key: For testing this valid Yaml is enough"),
 					}))},
 				)),
 			})))).
 			Return(&configpb.CreateConfigNodeResponse{
-				Id: yamlAuthFlowConfigResp.ConfigNode.Id,
-				// Name:       yamlAuthFlowConfigResp.Name,
-				// CustomerId: customerID,
+				Id:         yamlAuthFlowConfigResp.ConfigNode.Id,
 				CreateTime: timestamppb.Now(),
 				UpdateTime: timestamppb.Now(),
 			}, nil)
@@ -182,8 +168,8 @@ var _ = Describe("Resource Auth Flow", func() {
 		// update
 		mockConfigClient.EXPECT().
 			UpdateConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id":          Equal(authFlowManagedInUIResp.ConfigNode.Id),
-				"DisplayName": BeNil(),
+				"Id":          Equal(jsonAuthFlowAfterUpdateResp.ConfigNode.Id),
+				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{"Value": BeEmpty()})),
 				"Description": PointTo(MatchFields(IgnoreExtras, Fields{"Value": BeEmpty()})),
 				"Config": PointTo(MatchFields(IgnoreExtras, Fields{
 					"AuthFlowConfig": PointTo(MatchFields(IgnoreExtras, Fields{
@@ -192,7 +178,7 @@ var _ = Describe("Resource Auth Flow", func() {
 					})),
 				})),
 			})))).
-			Return(&configpb.UpdateConfigNodeResponse{Id: authFlowManagedInUIResp.ConfigNode.Id}, nil)
+			Return(&configpb.UpdateConfigNodeResponse{Id: jsonAuthFlowAfterUpdateResp.ConfigNode.Id}, nil)
 
 		// Read in given order
 		gomock.InOrder(
@@ -200,15 +186,22 @@ var _ = Describe("Resource Auth Flow", func() {
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Id": Equal(jsonAuthFlowConfigResp.ConfigNode.Id),
 				})))).
-				Times(4).
+				Times(2).
 				Return(jsonAuthFlowConfigResp, nil),
 
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(jsonAuthFlowConfigResp.ConfigNode.Id),
+					"Id": Equal(authFlowUIResp.ConfigNode.Id),
 				})))).
-				Times(4).
-				Return(authFlowManagedInUIResp, nil),
+				Times(2).
+				Return(authFlowUIResp, nil),
+
+			mockConfigClient.EXPECT().
+				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Id": Equal(jsonAuthFlowAfterUpdateResp.ConfigNode.Id),
+				})))).
+				Times(3).
+				Return(jsonAuthFlowAfterUpdateResp, nil),
 
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
@@ -310,43 +303,49 @@ var _ = Describe("Resource Auth Flow", func() {
 						name = "wonka-auth-flow"
 						display_name = "Wonka ChocoFlow"
 						description = "Description of the best ChocoFlow by Wonka inc."
-						json = "{ \"key\": \"Never send to BE, valid JSON is enough\", \"key2\": 456 }"
+						json = "{ \"key\": \"For testing this valid JSON is enough\", \"key2\": 456 }"
 					}
 					`,
-					Check: resource.ComposeTestCheckFunc(
-						testAuthFlowResourceDataExists(resourceName, jsonAuthFlowConfigResp),
-					),
+					Check: resource.ComposeTestCheckFunc(testAuthFlowResourceDataExists(
+						resourceName,
+						jsonAuthFlowConfigResp,
+						string(jsonAuthFlowConfigResp.ConfigNode.GetAuthFlowConfig().Source),
+						"",
+						false,
+					)),
 				},
 				{
-					// Performs 1 read (jsonAuthFlowConfigResp)
+					// Performs 1 read (authFlowUIResp)
 					ResourceName:  resourceName,
 					ImportState:   true,
-					ImportStateId: jsonAuthFlowConfigResp.ConfigNode.Id,
+					ImportStateId: authFlowUIResp.ConfigNode.Id,
+					ImportStateCheck: func(is []*terraform.InstanceState) error {
+						if is[0].ID != authFlowUIResp.ConfigNode.Id {
+							return errors.New("ID does not match")
+						}
+						keys := getAuthFlowDataMatcherKeys(authFlowUIResp, "", "", true)
+						keys["timeouts.%"] = Not(BeEmpty()) // added in ImportStateCheck for unknown reason
+						return convertOmegaMatcherToError(
+							MatchAllKeys(keys),
+							is[0].Attributes,
+						)
+					},
 				},
 				{
-					// Checking Read(jsonAuthFlowConfigResp), Update and Read(afterUpdateAuthFlowResp)
+					// Checking Read(jsonAuthFlowConfigResp), Update and Read(jsonAuthFlowAfterUpdateResp)
 					Config: `resource "indykite_auth_flow" "wonka" {
 						location = "` + tenantID + `"
 						name = "wonka-auth-flow"
-						display_name = "Wonka ChocoFlow"
 						yaml = "some: yaml after update"
 					}
 					`,
-					Check: resource.ComposeTestCheckFunc(
-						testAuthFlowResourceDataExists(resourceName, authFlowManagedInUIResp),
-					),
-				},
-				{
-					// Checking Read(jsonAuthFlowConfigResp) and failing before update
-					Config: `resource "indykite_auth_flow" "wonka" {
-						location = "` + tenantID + `"
-						name = "wonka-auth-flow"
-						display_name = "Wonka ChocoFlow"
-						yaml = "msg: Try to update Flow managed by Console UI, which should fail"
-					}
-					`,
-					ExpectError: regexp.MustCompile(
-						"Auth flow is managed by the Console UI and cannot be changed with Terraform"),
+					Check: resource.ComposeTestCheckFunc(testAuthFlowResourceDataExists(
+						resourceName,
+						jsonAuthFlowAfterUpdateResp,
+						"",
+						string(jsonAuthFlowAfterUpdateResp.ConfigNode.GetAuthFlowConfig().Source),
+						false,
+					)),
 				},
 				{
 					// Checking ForceNew on name change
@@ -358,64 +357,65 @@ var _ = Describe("Resource Auth Flow", func() {
 						description = "Description of the YAML ChocoFlow by Wonka inc."
 						yaml = <<-EOT
 							another_key: 789987
-							key: Never send to BE, valid Yaml is enough
+							key: For testing this valid Yaml is enough
 						EOT
 					}`,
-					Check: resource.ComposeTestCheckFunc(
-						testAuthFlowResourceDataExists(resourceName, yamlAuthFlowConfigResp),
-					),
+					Check: resource.ComposeTestCheckFunc(testAuthFlowResourceDataExists(
+						resourceName,
+						yamlAuthFlowConfigResp,
+						"",
+						string(yamlAuthFlowConfigResp.ConfigNode.GetAuthFlowConfig().Source),
+						false,
+					)),
 				},
 			},
 		})
 	})
 })
 
-func testAuthFlowResourceDataExists(n string, data *configpb.ReadConfigNodeResponse) resource.TestCheckFunc {
+func testAuthFlowResourceDataExists(
+	n string,
+	data *configpb.ReadConfigNodeResponse,
+	json, yaml string,
+	hasUI bool,
+) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 		if !ok {
 			return fmt.Errorf("not found: %s", n)
 		}
 		if rs.Primary.ID != data.ConfigNode.Id {
-			return fmt.Errorf("ID does not match")
-		}
-		attrs := rs.Primary.Attributes
-		if v, has := attrs["name"]; !has || v != data.ConfigNode.Name {
-			return fmt.Errorf("invalid name: %s", v)
-		}
-		if v, has := attrs["display_name"]; !has || v != data.ConfigNode.DisplayName {
-			return fmt.Errorf("invalid display name: %s", v)
-		}
-		if v, has := attrs["description"]; !has || v != data.ConfigNode.Description.GetValue() {
-			return fmt.Errorf("invalid description: %s", v)
+			return errors.New("ID does not match")
 		}
 
-		if v, has := attrs["customer_id"]; !has || v != data.ConfigNode.CustomerId {
-			return fmt.Errorf("invalid customer_id: %s", v)
-		}
-		if v, has := attrs["app_space_id"]; !has || v != data.ConfigNode.AppSpaceId {
-			return fmt.Errorf("invalid app_space_id: %s", v)
-		}
-		if v, has := attrs["tenant_id"]; !has || v != data.ConfigNode.TenantId {
-			return fmt.Errorf("invalid tenant_id: %s", v)
-		}
+		return convertOmegaMatcherToError(
+			MatchAllKeys(getAuthFlowDataMatcherKeys(data, json, yaml, hasUI)),
+			rs.Primary.Attributes,
+		)
+	}
+}
 
-		authFlowConf := data.ConfigNode.GetAuthFlowConfig()
+func getAuthFlowDataMatcherKeys(
+	data *configpb.ReadConfigNodeResponse,
+	json, yaml string,
+	hasUI bool,
+) Keys {
+	return Keys{
+		"id": Equal(data.ConfigNode.Id),
+		"%":  Not(BeEmpty()), // This is Terraform helper
 
-		switch authFlowConf.SourceFormat {
-		case configpb.AuthFlowConfig_FORMAT_BARE_JSON:
-			if _, has := attrs["json"]; !has {
-				return errors.New("expected the `json` will be set")
-			}
-		case configpb.AuthFlowConfig_FORMAT_BARE_YAML:
-			if _, has := attrs["yaml"]; !has {
-				return errors.New("expected the `yaml` will be set")
-			}
-		case configpb.AuthFlowConfig_FORMAT_RICH_JSON:
-			if v, has := attrs["has_ui"]; !has || v != "true" {
-				return fmt.Errorf("invalid has_ui: %s", v)
-			}
-		}
-		return nil
+		"location":     Not(BeEmpty()), // not in response
+		"name":         Equal(data.ConfigNode.Name),
+		"display_name": Equal(data.ConfigNode.DisplayName),
+		"description":  Equal(data.ConfigNode.Description.GetValue()),
+		"customer_id":  Equal(data.ConfigNode.CustomerId),
+		"app_space_id": Equal(data.ConfigNode.AppSpaceId),
+		"tenant_id":    Equal(data.ConfigNode.TenantId),
+		"create_time":  Not(BeEmpty()),
+		"update_time":  Not(BeEmpty()),
+
+		"json":   Equal(json),
+		"yaml":   Equal(yaml),
+		"has_ui": Equal(strconv.FormatBool(hasUI)),
 	}
 }
