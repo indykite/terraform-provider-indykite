@@ -124,12 +124,25 @@ func (c *tfConfig) getClient(ctx context.Context) (*config.Client, diag.Diagnost
 	return conn, nil
 }
 
-func defaultTimeouts() *schema.ResourceTimeout {
-	return &schema.ResourceTimeout{
-		Create:  schema.DefaultTimeout(4 * time.Minute),
-		Read:    schema.DefaultTimeout(4 * time.Minute),
-		Update:  schema.DefaultTimeout(4 * time.Minute),
-		Delete:  schema.DefaultTimeout(4 * time.Minute),
+func defaultDataTimeouts() *schema.ResourceTimeout {
+	return defaultTimeouts("create", "update", "delete")
+}
+
+func defaultTimeouts(exclude ...string) *schema.ResourceTimeout {
+	rs := &schema.ResourceTimeout{
 		Default: schema.DefaultTimeout(4 * time.Minute),
 	}
+	if !contains(exclude, "create") {
+		rs.Create = schema.DefaultTimeout(4 * time.Minute)
+	}
+	if !contains(exclude, "read") {
+		rs.Read = schema.DefaultTimeout(4 * time.Minute)
+	}
+	if !contains(exclude, "update") {
+		rs.Update = schema.DefaultTimeout(4 * time.Minute)
+	}
+	if !contains(exclude, "delete") {
+		rs.Delete = schema.DefaultTimeout(4 * time.Minute)
+	}
+	return rs
 }

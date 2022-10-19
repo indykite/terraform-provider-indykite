@@ -50,6 +50,8 @@ func resAppSpaceCreateContext(ctx context.Context, data *schema.ResourceData, me
 	if client == nil {
 		return d
 	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
+	defer cancel()
 
 	name := data.Get(nameKey).(string)
 	resp, err := client.getClient().CreateApplicationSpace(ctx, &config.CreateApplicationSpaceRequest{
@@ -71,6 +73,8 @@ func resAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta
 	if client == nil {
 		return d
 	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
+	defer cancel()
 	resp, err := client.getClient().ReadApplicationSpace(ctx, &config.ReadApplicationSpaceRequest{
 		Identifier: &config.ReadApplicationSpaceRequest_Id{
 			Id: data.Id(),
@@ -98,6 +102,8 @@ func resAppSpaceUpdateContext(ctx context.Context, data *schema.ResourceData, me
 	if client == nil {
 		return d
 	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
+	defer cancel()
 
 	// If only change in plan is delete_protection, just ignore the request
 	if !data.HasChangeExcept(deletionProtectionKey) {
@@ -122,6 +128,8 @@ func resAppSpaceDeleteContext(ctx context.Context, data *schema.ResourceData, me
 	if client == nil {
 		return d
 	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutDelete))
+	defer cancel()
 	if hasDeleteProtection(&d, data) {
 		return d
 	}

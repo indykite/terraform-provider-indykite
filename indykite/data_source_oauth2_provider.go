@@ -46,7 +46,7 @@ func dataSourceOAuth2Provider() *schema.Resource {
 			oauth2ProviderRequestObjectSigningAlgKey: setComputed(requestObjectSigningAlgSchema()),
 			deletionProtectionKey:                    deletionProtectionSchema(),
 		},
-		Timeouts: defaultTimeouts(),
+		Timeouts: defaultDataTimeouts(),
 	}
 }
 

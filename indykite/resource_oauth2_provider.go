@@ -72,6 +72,8 @@ func resOAuth2ProviderCreateContext(ctx context.Context,
 	if client == nil {
 		return d
 	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
+	defer cancel()
 
 	name := data.Get(nameKey).(string)
 	request := &configpb.CreateOAuth2ProviderRequest{
@@ -108,6 +110,8 @@ func resOAuth2ProviderReadContext(ctx context.Context,
 	if client == nil {
 		return d
 	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
+	defer cancel()
 	resp, err := client.getClient().ReadOAuth2Provider(ctx, &configpb.ReadOAuth2ProviderRequest{
 		Id: data.Id(),
 	})
@@ -146,6 +150,8 @@ func resOAuth2ProviderUpdateContext(ctx context.Context,
 	if client == nil {
 		return d
 	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
+	defer cancel()
 
 	// If only change in plan is delete_protection, just ignore the request
 	if !data.HasChangeExcept(deletionProtectionKey) {
@@ -183,6 +189,8 @@ func resOAuth2ProviderDeleteContext(ctx context.Context,
 	if client == nil {
 		return d
 	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutDelete))
+	defer cancel()
 	if hasDeleteProtection(&d, data) {
 		return d
 	}

@@ -39,7 +39,7 @@ func dataSourceTenant() *schema.Resource {
 			createTimeKey:  createTimeSchema(),
 			updateTimeKey:  updateTimeSchema(),
 		},
-		Timeouts: defaultTimeouts(),
+		Timeouts: defaultDataTimeouts(),
 	}
 }
 
@@ -65,7 +65,7 @@ func dataSourceTenantList() *schema.Resource {
 				},
 			},
 		},
-		Timeouts: defaultTimeouts(),
+		Timeouts: defaultDataTimeouts(),
 	}
 }
 

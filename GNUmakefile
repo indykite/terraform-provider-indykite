@@ -1,14 +1,6 @@
 GO111MODULE=on
 
-default: reload
-
-reload:
-	@echo Build and replace terraform-provider-indykite
-	@go build -o terraform-provider-indykite$$(go env GOEXE)
-	@mkdir -p ./example/terraform.d/plugins/terraform.indykite.com/indykite/indykite/0.1.0/$$(go env GOHOSTOS)_$$(go env GOHOSTARCH)/
-	@cp terraform-provider-indykite$$(go env GOEXE) ./example/terraform.d/plugins/terraform.indykite.com/indykite/indykite/0.1.0/$$(go env GOHOSTOS)_$$(go env GOHOSTARCH)
-	@rm -f ./example/.terraform.lock.hcl
-	@cd ./example/ && terraform init -backend=false
+default:
 
 fmt:
 	@echo "==> Fixing source code with gofmt..."
@@ -44,3 +36,6 @@ upgrade:
 
 tidy:
 	@GO111MODULE=on go mod tidy
+
+tfdocs_generate:
+	tfplugindocs generate --rendered-provider-name "IndyKite"

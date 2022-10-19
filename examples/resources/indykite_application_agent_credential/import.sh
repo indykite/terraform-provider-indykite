@@ -1,0 +1,1 @@
+terraform import indykite_application_agent_credential.id gid:AAABBBCCC_000111222333
