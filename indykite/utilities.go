@@ -454,3 +454,12 @@ func handleProtoValidationError(err ProtoValidateError, withPath bool) error {
 
 	return fmt.Errorf("invalid %s: %s%s", attribute, err.Reason(), cause)
 }
+
+func contains[E comparable](arr []E, el E) bool {
+	for _, v := range arr {
+		if v == el {
+			return true
+		}
+	}
+	return false
+}

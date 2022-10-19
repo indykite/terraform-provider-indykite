@@ -51,6 +51,8 @@ func resAppAgentCreate(ctx context.Context, data *schema.ResourceData, meta inte
 	if client == nil {
 		return d
 	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
+	defer cancel()
 
 	name := data.Get(nameKey).(string)
 	resp, err := client.getClient().CreateApplicationAgent(ctx, &config.CreateApplicationAgentRequest{
@@ -72,6 +74,8 @@ func resAppAgentRead(ctx context.Context, data *schema.ResourceData, meta interf
 	if client == nil {
 		return d
 	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
+	defer cancel()
 	resp, err := client.getClient().ReadApplicationAgent(ctx, &config.ReadApplicationAgentRequest{
 		Identifier: &config.ReadApplicationAgentRequest_Id{
 			Id: data.Id(),
@@ -101,6 +105,8 @@ func resAppAgentUpdate(ctx context.Context, data *schema.ResourceData, meta inte
 	if client == nil {
 		return d
 	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
+	defer cancel()
 
 	// If only change in plan is delete_protection, just ignore the request
 	if !data.HasChangeExcept(deletionProtectionKey) {
@@ -125,6 +131,8 @@ func resAppAgentDelete(ctx context.Context, data *schema.ResourceData, meta inte
 	if client == nil {
 		return d
 	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutDelete))
+	defer cancel()
 	if hasDeleteProtection(&d, data) {
 		return d
 	}

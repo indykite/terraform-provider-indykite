@@ -1,0 +1,22 @@
+---
+name: Changelog
+concurrency: jarvis-changelog
+on:
+    push:
+        branches:
+            - master
+
+permissions:
+    contents: write
+    pull-requests: write
+    id-token: write
+
+jobs:
+    release-please:
+        name: Prepare Release notes
+        runs-on: ubuntu-latest
+        steps:
+            - id: release-please
+              uses: maprokes/release-please-action@main
+              with:
+                  package-name: terraform-provider-indykite

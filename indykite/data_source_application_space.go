@@ -38,7 +38,7 @@ func dataSourceAppSpace() *schema.Resource {
 			createTimeKey:  createTimeSchema(),
 			updateTimeKey:  updateTimeSchema(),
 		},
-		Timeouts: defaultTimeouts(),
+		Timeouts: defaultDataTimeouts(),
 	}
 }
 
@@ -63,7 +63,7 @@ func dataSourceAppSpaceList() *schema.Resource {
 				},
 			},
 		},
-		Timeouts: defaultTimeouts(),
+		Timeouts: defaultDataTimeouts(),
 	}
 }
 

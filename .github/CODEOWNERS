@@ -1,0 +1,13 @@
+# Each line is a file pattern followed by one or more owners.
+# Later match takes precedence over earlier rule.
+
+# Global rule set for everything, and special cases exclude later
+* @indykite/be-code-reviewers
+
+# Pipeline files
+.github/workflows/ @maprokes @arxeiss
+release-please-config.json @maprokes
+
+# Dependencies and build files
+go.mod @marvinkite
+go.sum @marvinkite

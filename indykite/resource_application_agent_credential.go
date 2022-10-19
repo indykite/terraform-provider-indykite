@@ -47,7 +47,7 @@ func resourceApplicationAgentCredential() *schema.Resource {
 		Importer: &schema.ResourceImporter{
 			StateContext: basicStateImporter,
 		},
-		Timeouts: defaultTimeouts(),
+		Timeouts: defaultTimeouts("update"),
 		Schema: map[string]*schema.Schema{
 			customerIDKey:    setComputed(customerIDSchema()),
 			appSpaceIDKey:    setComputed(appSpaceIDSchema()),
@@ -109,6 +109,8 @@ func resAppAgentCredCreate(ctx context.Context, data *schema.ResourceData, meta 
 	if client == nil {
 		return d
 	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
+	defer cancel()
 
 	req := &config.RegisterApplicationAgentCredentialRequest{
 		ApplicationAgentId: data.Get(appAgentIDKey).(string),
@@ -179,6 +181,8 @@ func resAppAgentCredRead(ctx context.Context, data *schema.ResourceData, meta in
 	if client == nil {
 		return d
 	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
+	defer cancel()
 	resp, err := client.getClient().ReadApplicationAgentCredential(ctx, &config.ReadApplicationAgentCredentialRequest{
 		Id: data.Id(),
 	})
@@ -211,6 +215,8 @@ func resAppAgentCredDelete(ctx context.Context, data *schema.ResourceData, meta 
 	if hasDeleteProtection(&d, data) {
 		return d
 	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutDelete))
+	defer cancel()
 	_, err := client.getClient().DeleteApplicationAgentCredential(ctx, &config.DeleteApplicationAgentCredentialRequest{
 		Id: data.Id(),
 	})

@@ -59,7 +59,7 @@ func dataSourceOAuth2Application() *schema.Resource {
 			oauth2ApplicationUserinfoSignedResponseAlgKey: setComputed(
 				oauth2ApplicationUserinfoSignedResponseAlgSchema()),
 		},
-		Timeouts: defaultTimeouts(),
+		Timeouts: defaultDataTimeouts(),
 	}
 }
 

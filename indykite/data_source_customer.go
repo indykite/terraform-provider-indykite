@@ -34,7 +34,7 @@ func dataSourceCustomer() *schema.Resource {
 			createTimeKey:  createTimeSchema(),
 			updateTimeKey:  updateTimeSchema(),
 		},
-		Timeouts: defaultTimeouts(),
+		Timeouts: defaultDataTimeouts(),
 	}
 }
 
