@@ -50,5 +50,8 @@
       "hidden": true
     }
   ],
-  "release-type": "go"
+  "release-type": "go",
+  "packages": {
+    ".": {}
+  }
 }
