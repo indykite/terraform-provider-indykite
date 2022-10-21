@@ -30,7 +30,7 @@ module.exports = {
     "scope-enum": [
       2,
       "always",
-      ["logging", "sdk", "docs", "dependencies", "auth", "deps", "build", "test", "ci"],
+      ["logging", "sdk", "docs", "dependencies", "auth", "deps", "build", "test", "ci", "master"],
     ],
   },
 };
