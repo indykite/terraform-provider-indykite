@@ -20,3 +20,4 @@ jobs:
               uses: maprokes/release-please-action@main
               with:
                   package-name: terraform-provider-indykite
+                  token: ${{ secrets.INDYKITEONE_PAT }}
