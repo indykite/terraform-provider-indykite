@@ -77,7 +77,7 @@ func resourceAuthorizationPolicyFlatten(
 		return append(d, buildPluginError("config in the response is not valid AuthorizationPolicyConfig"))
 	}
 
-	jsonVal, err := protojson.MarshalOptions{EmitUnpopulated: true}.Marshal(clientConf)
+	jsonVal, err := protojson.MarshalOptions{EmitUnpopulated: true, UseEnumNumbers: true}.Marshal(clientConf)
 	if err != nil {
 		return append(d, buildPluginError("failed to marshall message into JSON: "+err.Error()))
 	}

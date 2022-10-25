@@ -411,7 +411,7 @@ var _ = Describe("Resource Authorization Policy config", func() {
 										"identityProperties":[{
 											"property": "email",
 											"value": "wonka@indykite.com",
-											"minimumAssuranceLevel": "ASSURANCE_LEVEL_LOW",
+											"minimumAssuranceLevel": 1,
 											"allowedIssuers": ["google.com"],
 											"allowedVerifiers": ["google.com"],
 											"mustBePrimary": true,
@@ -460,7 +460,7 @@ func testAuthorizationPolicyResourceDataExists(
 		}
 		attrs := rs.Primary.Attributes
 
-		expectedJSON, err := protojson.MarshalOptions{EmitUnpopulated: true}.
+		expectedJSON, err := protojson.MarshalOptions{EmitUnpopulated: true, UseEnumNumbers: true}.
 			Marshal(data.ConfigNode.GetAuthorizationPolicyConfig())
 		if err != nil {
 			return err
