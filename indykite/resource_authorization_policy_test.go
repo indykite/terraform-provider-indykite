@@ -27,7 +27,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/indykite/jarvis-sdk-go/config"
 	configpb "github.com/indykite/jarvis-sdk-go/gen/indykite/config/v1beta1"
-	identityv1beta1 "github.com/indykite/jarvis-sdk-go/gen/indykite/identity/v1beta1"
+	identityv1beta2 "github.com/indykite/jarvis-sdk-go/gen/indykite/identity/v1beta2"
 	knowledge_graphpb "github.com/indykite/jarvis-sdk-go/gen/indykite/knowledge_graph/v1beta1"
 	configm "github.com/indykite/jarvis-sdk-go/test/config/v1beta1"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -128,7 +128,7 @@ var _ = Describe("Resource Authorization Policy config", func() {
 										IdentityProperties: []*knowledge_graphpb.Path_Entity_IdentityProperty{{
 											Property:              "email",
 											Value:                 "wonka@indykite.com",
-											MinimumAssuranceLevel: identityv1beta1.AssuranceLevel_ASSURANCE_LEVEL_LOW,
+											MinimumAssuranceLevel: identityv1beta2.AssuranceLevel_ASSURANCE_LEVEL_LOW,
 											AllowedIssuers:        []string{"google.com"},
 											MustBePrimary:         true,
 											AllowedVerifiers:      []string{"google.com"},
