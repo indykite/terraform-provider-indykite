@@ -98,7 +98,7 @@ func resourceApplicationAgentCredential() *schema.Resource {
 				Description:      "Default TenantID is only returned in generated agent_config",
 			},
 			kidKey:         {Type: schema.TypeString, Computed: true},
-			agentConfigKey: {Type: schema.TypeString, Computed: true},
+			agentConfigKey: {Type: schema.TypeString, Computed: true, Sensitive: true},
 			createTimeKey:  createTimeSchema(),
 		},
 	}

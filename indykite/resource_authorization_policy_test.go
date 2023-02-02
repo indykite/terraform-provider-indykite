@@ -339,7 +339,7 @@ var _ = Describe("Resource Authorization Policy config", func() {
 						location = "` + customerID + `"
 						name = "wonka-authorization-policy-config"
 
-						json_config = "{\"policy\": {\"path\": {}}}"
+						json_config = "{\"path\": {}}"
 					}
 					`,
 					ExpectError: regexp.MustCompile(`"json_config" has invalid Policy.Path.SubjectId: ` +
@@ -355,7 +355,7 @@ var _ = Describe("Resource Authorization Policy config", func() {
 						name = "wonka-authorization-policy-config"
 						display_name = "Wonka Authorization for chocolate receipts"
 
-						json_config = jsonencode({ "policy": {
+						json_config = jsonencode({
 							"active": false,
 							"path": {
 								"subjectId": "sub",
@@ -369,7 +369,7 @@ var _ = Describe("Resource Authorization Policy config", func() {
 								]
 							},
 							"actions": ["READ", "LIST"]
-						}})
+						})
 					}
 					`,
 					Check: resource.ComposeTestCheckFunc(testAuthorizationPolicyResourceDataExists(
@@ -399,7 +399,7 @@ var _ = Describe("Resource Authorization Policy config", func() {
 						name = "wonka-authorization-policy-config"
 						description = "Description of the best Authz Policies by Wonka inc."
 
-						json_config = jsonencode({ "policy": {
+						json_config = jsonencode({
 							"active": true,
 							"path": {
 								"subjectId": "sub",
@@ -433,7 +433,7 @@ var _ = Describe("Resource Authorization Policy config", func() {
 								]
 							},
 							"actions": ["READ", "WRITE", "UPDATE"]
-						}})
+						})
 					}
 					`,
 					Check: resource.ComposeTestCheckFunc(testAuthorizationPolicyResourceDataExists(
@@ -461,7 +461,7 @@ func testAuthorizationPolicyResourceDataExists(
 		attrs := rs.Primary.Attributes
 
 		expectedJSON, err := protojson.MarshalOptions{EmitUnpopulated: true, UseEnumNumbers: true}.
-			Marshal(data.ConfigNode.GetAuthorizationPolicyConfig())
+			Marshal(data.ConfigNode.GetAuthorizationPolicyConfig().GetPolicy())
 		if err != nil {
 			return err
 		}
