@@ -252,6 +252,7 @@ func emailTemplateSchema() *schema.Schema {
 					Type:         schema.TypeString,
 					Required:     true,
 					ValidateFunc: validation.StringLenBetween(1, 254),
+					Description:  "ID of the template taken from selected email provider",
 				},
 				templateVersionKey: {
 					Type:         schema.TypeString,
@@ -308,9 +309,14 @@ func resourceEmailNotificationFlatten(
 
 	switch provider := mailConf.Provider.(type) {
 	case *configpb.EmailServiceConfig_Amazon:
+		var oldAccessKey interface{}
+		if val, ok := data.Get(providerSESKey).([]interface{}); ok && len(val) > 0 {
+			dataMap, _ := val[0].(map[string]interface{})
+			oldAccessKey = dataMap[sesSecretAccessKey]
+		}
 		setData(&d, data, providerSESKey, []map[string]interface{}{{
 			sesAccessKey:          provider.Amazon.AccessKeyId,
-			sesSecretAccessKey:    provider.Amazon.SecretAccessKey,
+			sesSecretAccessKey:    oldAccessKey,
 			sesRegionKey:          provider.Amazon.Region,
 			sesConfigSetKey:       provider.Amazon.ConfigurationSetName,
 			defaultFromAddressKey: flattenEmailAddrList([]*configpb.Email{provider.Amazon.DefaultFromAddress}),
@@ -318,8 +324,13 @@ func resourceEmailNotificationFlatten(
 			sesFeedbackAddrKey:    provider.Amazon.FeedbackForwardingEmailAddress,
 		}})
 	case *configpb.EmailServiceConfig_Sendgrid:
+		var oldAPIKey interface{}
+		if val, ok := data.Get(providerSendgridKey).([]interface{}); ok && len(val) > 0 {
+			dataMap, _ := val[0].(map[string]interface{})
+			oldAPIKey = dataMap[sendgridAPIKey]
+		}
 		setData(&d, data, providerSendgridKey, []map[string]interface{}{{
-			sendgridAPIKey:     provider.Sendgrid.ApiKey,
+			sendgridAPIKey:     oldAPIKey,
 			sendgridSandboxKey: provider.Sendgrid.SandboxMode,
 			sendgridIPPoolKey:  flattenOptionalString(provider.Sendgrid.IpPoolName),
 			sendgridHostKey:    flattenOptionalString(provider.Sendgrid.Host),
