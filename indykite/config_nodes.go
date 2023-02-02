@@ -81,7 +81,8 @@ func configCreateContextFunc(configBuilder preBuildConfig, read schema.ReadConte
 		}
 		data.SetId(resp.Id)
 
-		return read(ctx, data, meta)
+		// Join Warning (errors are checked above) with optional errors/warnings from read callback
+		return append(d, read(ctx, data, meta)...)
 	}
 }
 
@@ -122,7 +123,11 @@ func configReadContextFunc(flatten postFlattenConfig) schema.ReadContextFunc {
 		setData(&d, data, updateTimeKey, resp.ConfigNode.UpdateTime)
 
 		// Post-Process
-		return flatten(data, resp)
+		if d.HasError() {
+			return d
+		}
+		// Join Warning (errors are checked above) with optional errors/warnings from read callback
+		return append(d, flatten(data, resp)...)
 	}
 }
 
@@ -155,7 +160,8 @@ func configUpdateContextFunc(configBuilder preBuildConfig, read schema.ReadConte
 			return d
 		}
 		data.SetId(resp.Id)
-		return read(ctx, data, meta)
+		// Join Warning (errors are checked above) with optional errors/warnings from read callback
+		return append(d, read(ctx, data, meta)...)
 	}
 }
 
