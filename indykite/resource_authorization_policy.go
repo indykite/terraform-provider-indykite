@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/indykite/jarvis-sdk-go/config"
 	configpb "github.com/indykite/jarvis-sdk-go/gen/indykite/config/v1beta1"
+	knowledge_graphv1beta1 "github.com/indykite/jarvis-sdk-go/gen/indykite/knowledge_graph/v1beta1"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -72,12 +73,12 @@ func resourceAuthorizationPolicyFlatten(
 	data *schema.ResourceData,
 	resp *configpb.ReadConfigNodeResponse,
 ) (d diag.Diagnostics) {
-	clientConf := resp.GetConfigNode().GetAuthorizationPolicyConfig()
-	if clientConf == nil {
+	policy := resp.GetConfigNode().GetAuthorizationPolicyConfig().GetPolicy()
+	if policy == nil {
 		return append(d, buildPluginError("config in the response is not valid AuthorizationPolicyConfig"))
 	}
 
-	jsonVal, err := protojson.MarshalOptions{EmitUnpopulated: true, UseEnumNumbers: true}.Marshal(clientConf)
+	jsonVal, err := protojson.MarshalOptions{EmitUnpopulated: true, UseEnumNumbers: true}.Marshal(policy)
 	if err != nil {
 		return append(d, buildPluginError("failed to marshall message into JSON: "+err.Error()))
 	}
@@ -88,8 +89,8 @@ func resourceAuthorizationPolicyFlatten(
 }
 
 func authorizationPolicyConfigUnamrshalJSON(jsonVal string) (*configpb.AuthorizationPolicyConfig, error) {
-	cfg := &configpb.AuthorizationPolicyConfig{}
-	err := protojson.Unmarshal([]byte(jsonVal), cfg)
+	cfg := &configpb.AuthorizationPolicyConfig{Policy: &knowledge_graphv1beta1.Policy{}}
+	err := protojson.Unmarshal([]byte(jsonVal), cfg.Policy)
 	return cfg, err
 }
 
