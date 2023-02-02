@@ -117,6 +117,7 @@ func resourceAuthFlowBuild(
 ) {
 	cfg := new(configpb.AuthFlowConfig)
 
+	// This function is executed only during APPLY, seems it is impossible to trigger Warning during PLAN
 	if data.Get(authFlowHasUIJson).(bool) {
 		*d = append(*d, diag.Diagnostic{
 			Severity:      diag.Warning,

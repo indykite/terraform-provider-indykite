@@ -330,6 +330,8 @@ var _ = Describe("Resource Auth Flow", func() {
 							is[0].Attributes,
 						)
 					},
+					// Check warning is raised once the issue is resolved and such ability is added
+					// https://github.com/hashicorp/terraform-plugin-sdk/issues/864
 				},
 				{
 					// Checking Read(jsonAuthFlowConfigResp), Update and Read(jsonAuthFlowAfterUpdateResp)
