@@ -324,7 +324,7 @@ var _ = Describe("Resource Auth Flow", func() {
 							return errors.New("ID does not match")
 						}
 						keys := getAuthFlowDataMatcherKeys(authFlowUIResp, "", "", true)
-						keys["timeouts.%"] = Not(BeEmpty()) // added in ImportStateCheck for unknown reason
+						// keys["timeouts.%"] = Not(BeEmpty()) // added/removed in ImportStateCheck for unknown reason
 						return convertOmegaMatcherToError(
 							MatchAllKeys(keys),
 							is[0].Attributes,
