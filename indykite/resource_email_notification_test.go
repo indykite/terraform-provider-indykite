@@ -129,7 +129,6 @@ var _ = Describe("Resource Email Notification", func() {
 							IpPoolName:  wrapperspb.String("oompa_pool"),
 							Host:        wrapperspb.String("https://wonka.sengrid.com"),
 						}},
-						AuthenticationMessage:  &configpb.EmailDefinition{Email: fullTemplateMsg},
 						InvitationMessage:      &configpb.EmailDefinition{Email: fullTemplateMsg},
 						ResetPasswordMessage:   &configpb.EmailDefinition{Email: fullTemplateMsg},
 						VerificationMessage:    &configpb.EmailDefinition{Email: fullTemplateMsg},
@@ -265,7 +264,6 @@ var _ = Describe("Resource Email Notification", func() {
 								})),
 							})),
 						})),
-						"AuthenticationMessage":  PointTo(MatchFields(IgnoreExtras, Fields{"Email": templateMatch})),
 						"InvitationMessage":      PointTo(MatchFields(IgnoreExtras, Fields{"Email": templateMatch})),
 						"ResetPasswordMessage":   PointTo(MatchFields(IgnoreExtras, Fields{"Email": templateMatch})),
 						"VerificationMessage":    PointTo(MatchFields(IgnoreExtras, Fields{"Email": templateMatch})),
@@ -567,7 +565,6 @@ func testEmailNotificationResourceDataExists(
 		}
 
 		addEmailSchemaToKeys(keys, mailConf.DefaultFromAddress, "default_from_address")
-		addMailMessageDataToKeys(keys, mailConf.AuthenticationMessage, "authentication_message")
 		addMailMessageDataToKeys(keys, mailConf.InvitationMessage, "invitation_message")
 		addMailMessageDataToKeys(keys, mailConf.ResetPasswordMessage, "reset_password_message")
 		addMailMessageDataToKeys(keys, mailConf.VerificationMessage, "email_verification_message")
@@ -742,10 +739,6 @@ func getFullEmailNotificationConfig() string {
 				host = "https://wonka.sengrid.com"
 			}
 
-			authentication_message {
-				%s
-			}
-
 			invitation_message {
 				%s
 			}
@@ -762,7 +755,7 @@ func getFullEmailNotificationConfig() string {
 				%s
 			}
 		}
-	`, messageDef, messageDef, messageDef, messageDef, messageDef)
+	`, messageDef, messageDef, messageDef, messageDef)
 }
 
 func getMinimalEmailNotificationConfig(forTenantAndFullSES bool) string {

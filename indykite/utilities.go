@@ -409,6 +409,12 @@ var OAuth2ClientSubjectTypes = map[string]configpb.ClientSubjectType{
 // OAuth2ClientSubjectTypesReverse defines all supported Client Subjects and its reversed mapping.
 var OAuth2ClientSubjectTypesReverse = ReverseProtoEnumMap(OAuth2ClientSubjectTypes)
 
+// AuthorizationPolicyStatusTypes defines all supported StatusTypes and its mapping.
+var AuthorizationPolicyStatusTypes = map[string]configpb.AuthorizationPolicyConfig_Status{
+	"active":   configpb.AuthorizationPolicyConfig_STATUS_ACTIVE,
+	"inactive": configpb.AuthorizationPolicyConfig_STATUS_INACTIVE,
+}
+
 // ProtoValidateError tries to define interface for all Proto Validation errors,
 // so we can generate better errors back to user.
 type ProtoValidateError interface {

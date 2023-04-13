@@ -23,7 +23,6 @@ description: |-
 ### Optional
 
 - `amazon_ses` (Block List, Max: 1) (see [below for nested schema](#nestedblock--amazon_ses))
-- `authentication_message` (Block List, Max: 1) (see [below for nested schema](#nestedblock--authentication_message))
 - `default_from_address` (Block List, Max: 1) (see [below for nested schema](#nestedblock--default_from_address))
 - `description` (String) Your own description of resource. Must be less than or equal to 256 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
@@ -61,98 +60,6 @@ Optional:
 
 <a id="nestedblock--amazon_ses--default_from_address"></a>
 ### Nested Schema for `amazon_ses.default_from_address`
-
-Required:
-
-- `address` (String) The required email address
-
-Optional:
-
-- `name` (String) Optional email name
-
-
-
-<a id="nestedblock--authentication_message"></a>
-### Nested Schema for `authentication_message`
-
-Optional:
-
-- `bcc` (Block List) (see [below for nested schema](#nestedblock--authentication_message--bcc))
-- `cc` (Block List) (see [below for nested schema](#nestedblock--authentication_message--cc))
-- `from` (Block List, Max: 1) (see [below for nested schema](#nestedblock--authentication_message--from))
-- `reply_to` (Block List, Max: 1) (see [below for nested schema](#nestedblock--authentication_message--reply_to))
-- `subject` (String)
-- `template` (Block List, Max: 1) (see [below for nested schema](#nestedblock--authentication_message--template))
-- `to` (Block List) (see [below for nested schema](#nestedblock--authentication_message--to))
-
-<a id="nestedblock--authentication_message--bcc"></a>
-### Nested Schema for `authentication_message.bcc`
-
-Required:
-
-- `address` (String) The required email address
-
-Optional:
-
-- `name` (String) Optional email name
-
-
-<a id="nestedblock--authentication_message--cc"></a>
-### Nested Schema for `authentication_message.cc`
-
-Required:
-
-- `address` (String) The required email address
-
-Optional:
-
-- `name` (String) Optional email name
-
-
-<a id="nestedblock--authentication_message--from"></a>
-### Nested Schema for `authentication_message.from`
-
-Required:
-
-- `address` (String) The required email address
-
-Optional:
-
-- `name` (String) Optional email name
-
-
-<a id="nestedblock--authentication_message--reply_to"></a>
-### Nested Schema for `authentication_message.reply_to`
-
-Required:
-
-- `address` (String) The required email address
-
-Optional:
-
-- `name` (String) Optional email name
-
-
-<a id="nestedblock--authentication_message--template"></a>
-### Nested Schema for `authentication_message.template`
-
-Optional:
-
-- `categories` (List of String)
-- `custom_arguments` (Map of String)
-- `event_payload` (String)
-- `headers` (Map of String)
-- `ses_arn` (String)
-- `template_dynamic_values` (String) Dynamic template values must be valid JSON string
-- `version` (String)
-
-Read-Only:
-
-- `id` (String) The ID of this resource.
-
-
-<a id="nestedblock--authentication_message--to"></a>
-### Nested Schema for `authentication_message.to`
 
 Required:
 
@@ -240,6 +147,10 @@ Optional:
 <a id="nestedblock--email_verification_message--template"></a>
 ### Nested Schema for `email_verification_message.template`
 
+Required:
+
+- `id` (String) ID of the template taken from selected email provider
+
 Optional:
 
 - `categories` (List of String)
@@ -249,10 +160,6 @@ Optional:
 - `ses_arn` (String)
 - `template_dynamic_values` (String) Dynamic template values must be valid JSON string
 - `version` (String)
-
-Read-Only:
-
-- `id` (String) The ID of this resource.
 
 
 <a id="nestedblock--email_verification_message--to"></a>
@@ -332,6 +239,10 @@ Optional:
 <a id="nestedblock--invitation_message--template"></a>
 ### Nested Schema for `invitation_message.template`
 
+Required:
+
+- `id` (String) ID of the template taken from selected email provider
+
 Optional:
 
 - `categories` (List of String)
@@ -341,10 +252,6 @@ Optional:
 - `ses_arn` (String)
 - `template_dynamic_values` (String) Dynamic template values must be valid JSON string
 - `version` (String)
-
-Read-Only:
-
-- `id` (String) The ID of this resource.
 
 
 <a id="nestedblock--invitation_message--to"></a>
@@ -424,6 +331,10 @@ Optional:
 <a id="nestedblock--one_time_password_message--template"></a>
 ### Nested Schema for `one_time_password_message.template`
 
+Required:
+
+- `id` (String) ID of the template taken from selected email provider
+
 Optional:
 
 - `categories` (List of String)
@@ -433,10 +344,6 @@ Optional:
 - `ses_arn` (String)
 - `template_dynamic_values` (String) Dynamic template values must be valid JSON string
 - `version` (String)
-
-Read-Only:
-
-- `id` (String) The ID of this resource.
 
 
 <a id="nestedblock--one_time_password_message--to"></a>
@@ -516,6 +423,10 @@ Optional:
 <a id="nestedblock--reset_password_message--template"></a>
 ### Nested Schema for `reset_password_message.template`
 
+Required:
+
+- `id` (String) ID of the template taken from selected email provider
+
 Optional:
 
 - `categories` (List of String)
@@ -525,10 +436,6 @@ Optional:
 - `ses_arn` (String)
 - `template_dynamic_values` (String) Dynamic template values must be valid JSON string
 - `version` (String)
-
-Read-Only:
-
-- `id` (String) The ID of this resource.
 
 
 <a id="nestedblock--reset_password_message--to"></a>

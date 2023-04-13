@@ -30,7 +30,6 @@ import (
 )
 
 const (
-	authenticationMessageKey  = "authentication_message"
 	invitationMessageKey      = "invitation_message"
 	resetPasswordMessageKey   = "reset_password_message"
 	verificationMessageKey    = "email_verification_message"
@@ -107,7 +106,6 @@ func resourceEmailNotification() *schema.Resource {
 			// providerMailgunKey:  buildExactlyOneOf(nameSchema(), providerMailgunKey, oneOfProvider),
 
 			// Email templates
-			authenticationMessageKey:  emailDefinitionSchema(),
 			invitationMessageKey:      emailDefinitionSchema(),
 			resetPasswordMessageKey:   emailDefinitionSchema(),
 			verificationMessageKey:    emailDefinitionSchema(),
@@ -348,15 +346,6 @@ func resourceEmailNotificationFlatten(
 		setData(&d, data, invitationMessageKey, []map[string]interface{}{val})
 	}
 
-	if val, err := flattenMessageDefinition(mailConf.AuthenticationMessage); err != nil {
-		return append(d, buildPluginErrorWithAttrName(
-			"Invalid AuthenticationMessage response"+err.Error(),
-			authenticationMessageKey,
-		))
-	} else if val != nil {
-		setData(&d, data, authenticationMessageKey, []map[string]interface{}{val})
-	}
-
 	if val, err := flattenMessageDefinition(mailConf.ResetPasswordMessage); err != nil {
 		return append(d, buildPluginErrorWithAttrName(
 			"Invalid ResetPasswordMessage response"+err.Error(),
@@ -480,11 +469,6 @@ func resourceEmailNotificationBuild(
 		}}
 	}
 
-	if val, ok := data.GetOk(authenticationMessageKey); ok {
-		configNode.AuthenticationMessage = buildEmailDefinition(val, d,
-			cty.GetAttrPath(authenticationMessageKey).IndexInt(0).GetAttr(mailTemplateKey),
-		)
-	}
 	if val, ok := data.GetOk(verificationMessageKey); ok {
 		configNode.VerificationMessage = buildEmailDefinition(val, d,
 			cty.GetAttrPath(verificationMessageKey).IndexInt(0).GetAttr(mailTemplateKey),
