@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 
 	"github.com/golang/mock/gomock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -27,10 +28,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/indykite/jarvis-sdk-go/config"
 	configpb "github.com/indykite/jarvis-sdk-go/gen/indykite/config/v1beta1"
-	identityv1beta2 "github.com/indykite/jarvis-sdk-go/gen/indykite/identity/v1beta2"
-	knowledge_graphpb "github.com/indykite/jarvis-sdk-go/gen/indykite/knowledge_graph/v1beta1"
 	configm "github.com/indykite/jarvis-sdk-go/test/config/v1beta1"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -81,22 +79,10 @@ var _ = Describe("Resource Authorization Policy config", func() {
 				UpdateTime:  timestamppb.Now(),
 				Config: &configpb.ConfigNode_AuthorizationPolicyConfig{
 					AuthorizationPolicyConfig: &configpb.AuthorizationPolicyConfig{
-						Policy: &knowledge_graphpb.Policy{
-							Path: &knowledge_graphpb.Path{
-								SubjectId:  "sub",
-								ResourceId: "res",
-								Entities: []*knowledge_graphpb.Path_Entity{
-									{Id: "sub", Labels: []string{"DigitalTwin"}},
-									{Id: "res", Labels: []string{"Company"}},
-								},
-								Relationships: []*knowledge_graphpb.Path_Relationship{{
-									Source: "sub",
-									Target: "res",
-									Types:  []string{"WORKS_AT"},
-								}},
-							},
-							Actions: []string{"READ", "LIST"},
-						},
+						// nolint:lll
+						Policy: "{\"meta\":{\"policyVersion\":\"1.0-indykite\"},\"subject\":{\"type\":\"Person\"},\"actions\":[\"CAN_DRIVE\",\"CAN_PERFORM_SERVICE\"],\"resource\":{\"type\":\"Car\"},\"condition\":{\"cypher\":\"MATCH (subject:Person)-[:PART_OF]->(:Household)-[:DISPOSES]->(resource:Car)\"}}",
+						Status: configpb.AuthorizationPolicyConfig_STATUS_ACTIVE,
+						Tags:   nil,
 					},
 				},
 			},
@@ -117,41 +103,10 @@ var _ = Describe("Resource Authorization Policy config", func() {
 				UpdateTime:  timestamppb.Now(),
 				Config: &configpb.ConfigNode_AuthorizationPolicyConfig{
 					AuthorizationPolicyConfig: &configpb.AuthorizationPolicyConfig{
-						Policy: &knowledge_graphpb.Policy{
-							Path: &knowledge_graphpb.Path{
-								SubjectId:  "sub",
-								ResourceId: "res",
-								Entities: []*knowledge_graphpb.Path_Entity{
-									{
-										Id:     "sub",
-										Labels: []string{"DigitalTwin"},
-										IdentityProperties: []*knowledge_graphpb.Path_Entity_IdentityProperty{{
-											Property:              "email",
-											Value:                 "wonka@indykite.com",
-											MinimumAssuranceLevel: identityv1beta2.AssuranceLevel_ASSURANCE_LEVEL_LOW,
-											AllowedIssuers:        []string{"google.com"},
-											MustBePrimary:         true,
-											AllowedVerifiers:      []string{"google.com"},
-										}},
-									},
-									{Id: "res", Labels: []string{"Company"}},
-									{
-										Id:     "group",
-										Labels: []string{"Group"},
-										KnowledgeProperties: []*knowledge_graphpb.Path_Entity_KnowledgeProperty{{
-											Property: "name",
-											Value:    "chocolate-factory",
-										}},
-									},
-								},
-								Relationships: []*knowledge_graphpb.Path_Relationship{
-									{Source: "sub", Target: "res", Types: []string{"WORKS_AT"}},
-									{Source: "group", Target: "res", Types: []string{"OWNS"}, NonDirectional: true},
-								},
-							},
-							Active:  true,
-							Actions: []string{"READ", "WRITE", "UPDATE"},
-						},
+						// nolint:lll
+						Policy: "{\"meta\":{\"policyVersion\":\"1.0-indykite\"},\"subject\":{\"type\":\"Person\"},\"actions\":[\"CAN_DRIVE\",\"CAN_PERFORM_SERVICE\"],\"resource\":{\"type\":\"Car\"},\"condition\":{\"cypher\":\"MATCH (subject:Person)-[:PART_OF]->(:Household)-[:DISPOSES]->(resource:Car)\"}}",
+						Status: configpb.AuthorizationPolicyConfig_STATUS_ACTIVE,
+						Tags:   []string{"test", "wonka"},
 					},
 				},
 			},
@@ -254,7 +209,20 @@ var _ = Describe("Resource Authorization Policy config", func() {
 						customer_id = "69857924-098e-4f11-8800-62b10bb188ea"
 						name = "wonka-authorization-policy-config"
 
-						json_config = "{}"
+						json = "{}"
+					}
+					`,
+					ExpectError: regexp.MustCompile(
+						`The argument "status" is required, but no definition was found.`),
+				},
+				{
+					Config: `resource "indykite_authorization_policy" "wonka" {
+						location = "` + customerID + `"
+						customer_id = "69857924-098e-4f11-8800-62b10bb188ea"
+						name = "wonka-authorization-policy-config"
+						status = "active"
+
+						json = "{}"
 					}
 					`,
 					ExpectError: regexp.MustCompile(
@@ -265,8 +233,9 @@ var _ = Describe("Resource Authorization Policy config", func() {
 						location = "` + customerID + `"
 						app_space_id = "69857924-098e-4f11-8800-62b10bb188ea"
 						name = "wonka-authorization-policy-config"
+						status = "active"
 
-						json_config = "{}"
+						json = "{}"
 					}
 					`,
 					ExpectError: regexp.MustCompile(
@@ -277,8 +246,9 @@ var _ = Describe("Resource Authorization Policy config", func() {
 						location = "` + customerID + `"
 						tenant_id = "69857924-098e-4f11-8800-62b10bb188ea"
 						name = "wonka-authorization-policy-config"
+						status = "active"
 
-						json_config = "{}"
+						json = "{}"
 					}
 					`,
 					ExpectError: regexp.MustCompile(
@@ -288,8 +258,9 @@ var _ = Describe("Resource Authorization Policy config", func() {
 					Config: `resource "indykite_authorization_policy" "wonka" {
 						location = "something-invalid"
 						name = "wonka-authorization-policy-config"
+						status = "active"
 
-						json_config = "{}"
+						json = "{}"
 					}
 					`,
 					ExpectError: regexp.MustCompile(`expected to have 'gid:' prefix`),
@@ -298,8 +269,9 @@ var _ = Describe("Resource Authorization Policy config", func() {
 					Config: `resource "indykite_authorization_policy" "wonka" {
 						location = "` + customerID + `"
 						name = "Invalid Name @#$"
+						status = "active"
 
-						json_config = "{}"
+						json = "{}"
 					}
 					`,
 					ExpectError: regexp.MustCompile(`Value can have lowercase letters, digits, or hyphens.`),
@@ -308,42 +280,21 @@ var _ = Describe("Resource Authorization Policy config", func() {
 					Config: `resource "indykite_authorization_policy" "wonka" {
 						location = "` + customerID + `"
 						name = "wonka-authorization-policy-config"
+						status = "active"
 					}
 					`,
-					ExpectError: regexp.MustCompile(`argument "json_config" is required`),
+					ExpectError: regexp.MustCompile(`argument "json" is required`),
 				},
 				{
 					Config: `resource "indykite_authorization_policy" "wonka" {
 						location = "` + customerID + `"
 						name = "wonka-authorization-policy-config"
+						status = "active"
 
-						json_config = "not valid json"
+						json = "not valid json"
 					}
 					`,
-					ExpectError: regexp.MustCompile(`"json_config" contains an invalid JSON`),
-				},
-				{
-					Config: `resource "indykite_authorization_policy" "wonka" {
-						location = "` + customerID + `"
-						name = "wonka-authorization-policy-config"
-
-						json_config = "[]"
-					}
-					`,
-					ExpectError: regexp.MustCompile(
-						`"json_config" cannot be unmarshalled into Proto message: .* unexpected token \[`,
-					),
-				},
-				{
-					Config: `resource "indykite_authorization_policy" "wonka" {
-						location = "` + customerID + `"
-						name = "wonka-authorization-policy-config"
-
-						json_config = "{\"path\": {}}"
-					}
-					`,
-					ExpectError: regexp.MustCompile(`"json_config" has invalid Policy.Path.SubjectId: ` +
-						`value length must be between 2 and 50 runes, inclusive`),
+					ExpectError: regexp.MustCompile(`"json" contains an invalid JSON`),
 				},
 
 				// ---- Run mocked tests here ----
@@ -354,27 +305,15 @@ var _ = Describe("Resource Authorization Policy config", func() {
 						location = "` + tenantID + `"
 						name = "wonka-authorization-policy-config"
 						display_name = "Wonka Authorization for chocolate receipts"
+						status = "active"
 
-						json_config = jsonencode({
-							"active": false,
-							"path": {
-								"subjectId": "sub",
-								"resourceId": "res",
-								"entities": [
-									{"id":"sub","labels":["DigitalTwin"],"identityProperties":[],"knowledgeProperties":[]},
-									{"id": "res", "labels": ["Company"],"identityProperties":[],"knowledgeProperties":[]}
-								],
-								"relationships": [
-									{"source": "sub", "target": "res", "types": ["WORKS_AT"], "nonDirectional" = false}
-								]
-							},
-							"actions": ["READ", "LIST"]
-						})
-					}
-					`,
+						json = "{\"meta\":{\"policyVersion\":\"1.0-indykite\"},\"subject\":{\"type\":\"Person\"},\"actions\":[\"CAN_DRIVE\",\"CAN_PERFORM_SERVICE\"],\"resource\":{\"type\":\"Car\"},\"condition\":{\"cypher\":\"MATCH (subject:Person)-[:PART_OF]->(:Household)-[:DISPOSES]->(resource:Car)\"}}"
+					}`,
+
 					Check: resource.ComposeTestCheckFunc(testAuthorizationPolicyResourceDataExists(
 						resourceName,
 						authzPolicyConfigResp,
+						nil,
 					)),
 				},
 				{
@@ -398,47 +337,24 @@ var _ = Describe("Resource Authorization Policy config", func() {
 						location = "` + tenantID + `"
 						name = "wonka-authorization-policy-config"
 						description = "Description of the best Authz Policies by Wonka inc."
+						status = "active"
+						tags = ["test", "wonka"]
 
-						json_config = jsonencode({
-							"active": true,
-							"path": {
-								"subjectId": "sub",
-								"resourceId": "res",
-								"entities": [
-									{
-										"id":"sub",
-										"labels":["DigitalTwin"],
-										"identityProperties":[{
-											"property": "email",
-											"value": "wonka@indykite.com",
-											"minimumAssuranceLevel": 1,
-											"allowedIssuers": ["google.com"],
-											"allowedVerifiers": ["google.com"],
-											"mustBePrimary": true,
-											"verificationTime": null
-										}],
-										knowledgeProperties:[]
-									},
-									{"id": "res", "labels": ["Company"],"identityProperties":[],"knowledgeProperties":[]},
-									{
-										"id": "group",
-										"labels": ["Group"],
-										"identityProperties":[],
-										"knowledgeProperties":[{"property": "name", "value": "chocolate-factory"}]
-									}
-								],
-								"relationships": [
-									{"source": "sub", "target": "res", "types": ["WORKS_AT"], "nonDirectional" = false},
-									{"source": "group", "target": "res", "types": ["OWNS"], "nonDirectional" = true}
-								]
-							},
-							"actions": ["READ", "WRITE", "UPDATE"]
-						})
+						json = "{\"meta\":{\"policyVersion\":\"1.0-indykite\"},\"subject\":{\"type\":\"Person\"},\"actions\":[\"CAN_DRIVE\",\"CAN_PERFORM_SERVICE\"],\"resource\":{\"type\":\"Car\"},\"condition\":{\"cypher\":\"MATCH (subject:Person)-[:PART_OF]->(:Household)-[:DISPOSES]->(resource:Car)\"}}"
 					}
 					`,
 					Check: resource.ComposeTestCheckFunc(testAuthorizationPolicyResourceDataExists(
 						resourceName,
 						authzPolicyConfigUpdateResp,
+						// nolint:lll
+						Keys{
+							"tags.#": Equal(strconv.Itoa(len(authzPolicyConfigUpdateResp.ConfigNode.
+								GetAuthorizationPolicyConfig().GetTags()))),
+							"tags.0": Equal(authzPolicyConfigUpdateResp.ConfigNode.GetAuthorizationPolicyConfig().
+								GetTags()[0]),
+							"tags.1": Equal(authzPolicyConfigUpdateResp.ConfigNode.GetAuthorizationPolicyConfig().
+								GetTags()[1]),
+						},
 					)),
 				},
 			},
@@ -449,6 +365,7 @@ var _ = Describe("Resource Authorization Policy config", func() {
 func testAuthorizationPolicyResourceDataExists(
 	n string,
 	data *configpb.ReadConfigNodeResponse,
+	extraKeys Keys,
 ) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
@@ -460,11 +377,7 @@ func testAuthorizationPolicyResourceDataExists(
 		}
 		attrs := rs.Primary.Attributes
 
-		expectedJSON, err := protojson.MarshalOptions{EmitUnpopulated: true, UseEnumNumbers: true}.
-			Marshal(data.ConfigNode.GetAuthorizationPolicyConfig().GetPolicy())
-		if err != nil {
-			return err
-		}
+		expectedJSON := data.ConfigNode.GetAuthorizationPolicyConfig().GetPolicy()
 
 		keys := Keys{
 			"id": Equal(data.ConfigNode.Id),
@@ -479,8 +392,13 @@ func testAuthorizationPolicyResourceDataExists(
 			"description":  Equal(data.ConfigNode.GetDescription().GetValue()),
 			"create_time":  Not(BeEmpty()),
 			"update_time":  Not(BeEmpty()),
+			"json":         MatchJSON(expectedJSON),
+			"status": Equal(indykite.ReverseProtoEnumMap(indykite.AuthorizationPolicyStatusTypes)[data.ConfigNode.
+				GetAuthorizationPolicyConfig().GetStatus()]),
+		}
 
-			"json_config": MatchJSON(expectedJSON),
+		for k, v := range extraKeys {
+			keys[k] = v
 		}
 
 		return convertOmegaMatcherToError(MatchAllKeys(keys), attrs)

@@ -50,7 +50,7 @@ resource "indykite_application_agent_credential" "with-public" {
 
 ### Read-Only
 
-- `agent_config` (String)
+- `agent_config` (String, Sensitive)
 - `app_space_id` (String) identifier of Application Space
 - `application_id` (String) identifier of Application
 - `create_time` (String) Timestamp when the Resource was created. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".

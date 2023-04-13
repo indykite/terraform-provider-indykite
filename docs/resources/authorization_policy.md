@@ -17,14 +17,16 @@ description: |-
 
 ### Required
 
-- `json_config` (String) Configuration of Authorization Policy in JSON format, the same one exported by Console.
+- `json` (String) Configuration of Authorization Policy in JSON format, the same one exported by Console.
 - `location` (String) identifier of Location, where to create resource
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
+- `status` (String) Status of the Authorization Policy. active, inactive
 
 ### Optional
 
 - `description` (String) Your own description of resource. Must be less than or equal to 256 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
+- `tags` (List of String) Tags of the Authorization Policy.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only

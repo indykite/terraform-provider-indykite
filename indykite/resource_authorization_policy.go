@@ -15,20 +15,18 @@
 package indykite
 
 import (
-	"fmt"
-
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/structure"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/indykite/jarvis-sdk-go/config"
 	configpb "github.com/indykite/jarvis-sdk-go/gen/indykite/config/v1beta1"
-	knowledge_graphv1beta1 "github.com/indykite/jarvis-sdk-go/gen/indykite/knowledge_graph/v1beta1"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 const (
-	authorizationPolicyJSONConfigKey = "json_config"
+	authzJSONConfigKey = "json"
+	authzTagsKey       = "tags"
+	authzStatusKey     = "status"
 )
 
 func resourceAuthorizationPolicy() *schema.Resource {
@@ -55,15 +53,29 @@ func resourceAuthorizationPolicy() *schema.Resource {
 			createTimeKey:  createTimeSchema(),
 			updateTimeKey:  updateTimeSchema(),
 
-			authorizationPolicyJSONConfigKey: {
+			authzJSONConfigKey: {
 				Type:             schema.TypeString,
 				Required:         true,
 				DiffSuppressFunc: structure.SuppressJsonDiff,
 				ValidateFunc: validation.All(
+					validation.StringIsNotEmpty,
 					validation.StringIsJSON,
-					authorizationPolicyValidateJSON,
 				),
 				Description: "Configuration of Authorization Policy in JSON format, the same one exported by Console.",
+			},
+			authzStatusKey: {
+				Type:         schema.TypeString,
+				Required:     true,
+				ValidateFunc: validation.StringInSlice(getMapStringKeys(AuthorizationPolicyStatusTypes), false),
+				Description:  "Status of the Authorization Policy. active, inactive",
+			},
+			authzTagsKey: {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+				Description: "Tags of the Authorization Policy.",
 			},
 		},
 	}
@@ -74,60 +86,43 @@ func resourceAuthorizationPolicyFlatten(
 	resp *configpb.ReadConfigNodeResponse,
 ) (d diag.Diagnostics) {
 	policy := resp.GetConfigNode().GetAuthorizationPolicyConfig().GetPolicy()
-	if policy == nil {
+	if policy == "" {
 		return append(d, buildPluginError("config in the response is not valid AuthorizationPolicyConfig"))
 	}
+	setData(&d, data, authzJSONConfigKey, policy)
 
-	jsonVal, err := protojson.MarshalOptions{EmitUnpopulated: true, UseEnumNumbers: true}.Marshal(policy)
-	if err != nil {
-		return append(d, buildPluginError("failed to marshall message into JSON: "+err.Error()))
+	status := resp.GetConfigNode().GetAuthorizationPolicyConfig().GetStatus()
+	if status == configpb.AuthorizationPolicyConfig_STATUS_INVALID {
+		return append(d, buildPluginError("status in the response is not valid"))
 	}
 
-	setData(&d, data, authorizationPolicyJSONConfigKey, string(jsonVal))
+	statusKey, exist := ReverseProtoEnumMap(AuthorizationPolicyStatusTypes)[status]
+	if !exist {
+		d = append(d, buildPluginError("unsupported Policy Status Type: "+status.String()))
+	}
+	setData(&d, data, authzStatusKey, statusKey)
+
+	tags := resp.GetConfigNode().GetAuthorizationPolicyConfig().GetTags()
+	setData(&d, data, authzTagsKey, tags)
 
 	return d
 }
 
-func authorizationPolicyConfigUnamrshalJSON(jsonVal string) (*configpb.AuthorizationPolicyConfig, error) {
-	cfg := &configpb.AuthorizationPolicyConfig{Policy: &knowledge_graphv1beta1.Policy{}}
-	err := protojson.Unmarshal([]byte(jsonVal), cfg.Policy)
-	return cfg, err
+func authorizationPolicyConfigBuilder(data *schema.ResourceData) *configpb.AuthorizationPolicyConfig {
+	cfg := &configpb.AuthorizationPolicyConfig{
+		Policy: data.Get(authzJSONConfigKey).(string),
+		Status: AuthorizationPolicyStatusTypes[data.Get(authzStatusKey).(string)],
+		Tags:   rawArrayToStringArray(data.Get(authzTagsKey).([]interface{})),
+	}
+	return cfg
 }
 
 func resourceAuthorizationPolicyBuild(
-	d *diag.Diagnostics,
+	_ *diag.Diagnostics,
 	data *schema.ResourceData,
 	_ *metaContext,
 	builder *config.NodeRequest,
 ) {
-	cfg, err := authorizationPolicyConfigUnamrshalJSON(data.Get(authorizationPolicyJSONConfigKey).(string))
-	if err != nil {
-		*d = append(*d, buildPluginErrorWithAttrName(
-			"Failed to Unmarshal AuthorizationPolicy config JSON into Proto message",
-			authorizationPolicyJSONConfigKey,
-		))
-		return
-	}
+	cfg := authorizationPolicyConfigBuilder(data)
 	builder.WithAuthorizationPolicyConfig(cfg)
-}
-
-func authorizationPolicyValidateJSON(val interface{}, key string) (warnings []string, errors []error) {
-	v, ok := val.(string)
-	if !ok {
-		errors = append(errors, fmt.Errorf("expected type of %q to be string", key))
-		return warnings, errors
-	}
-
-	cfg, err := authorizationPolicyConfigUnamrshalJSON(v)
-	if err != nil {
-		errors = append(errors, fmt.Errorf("%q cannot be unmarshalled into Proto message: %s", key, err))
-		return warnings, errors
-	}
-
-	err = betterValidationErrorWithPath(cfg.Validate())
-	if err != nil {
-		errors = append(errors, fmt.Errorf("%q has %s", key, err.Error()))
-	}
-
-	return warnings, errors
 }

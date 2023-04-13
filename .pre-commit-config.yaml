@@ -41,13 +41,13 @@ repos:
           - id: yamlfmt
 
     - repo: https://github.com/jumanjihouse/pre-commit-hooks.git
-      rev: 2.1.6 # Do not update to 3.0.0 unless macOS comes with Ruby 2.7
+      rev: 3.0.0 # Do not update to 3.0.0 unless macOS comes with Ruby 2.7
       hooks:
           - id: markdownlint
             exclude: ^CHANGELOG.md|docs/.*\.md$ # Exclude auto generated
 
     - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
-      rev: v9.4.0
+      rev: v9.5.0
       hooks:
           - id: commitlint
             stages: [commit-msg]
@@ -56,7 +56,7 @@ repos:
                 - commitlint-plugin-function-rules
 
     - repo: https://github.com/antonbabenko/pre-commit-terraform.git
-      rev: v1.77.0
+      rev: v1.77.3
       hooks:
           - id: terraform_fmt
 
