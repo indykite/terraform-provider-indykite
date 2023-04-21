@@ -1,5 +1,14 @@
 # Changelog
 
+### [0.1.2](https://github.com/indykite/terraform-provider-indykite/compare/v0.1.1...v0.1.2) (2023-04-21)
+
+
+### Miscellaneous Chores
+
+* **deps:** update everything ([aaf1685](https://github.com/indykite/terraform-provider-indykite/commit/aaf1685c8e335c8367a50375b9e5eb812f592164))
+* **deps:** update everything ([6185c31](https://github.com/indykite/terraform-provider-indykite/commit/6185c310606fbf3e9decfda58cc22cfe72a44b02))
+* upgrade go sdk version and upgrade resource policy ([3b5410c](https://github.com/indykite/terraform-provider-indykite/commit/3b5410ca09493909b8ad8b40183fcc4059e92596))
+
 ### [0.1.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.1.0...v0.1.1) (2023-02-02)
 
 
