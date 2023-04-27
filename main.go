@@ -38,6 +38,7 @@ func main() {
 		},
 		NoLogOutputOverride: acceptanceTesting(),
 		Debug:               debugMode,
+		ProviderAddr:        "registry.terraform.io/indykite/indykite",
 	})
 }
 
