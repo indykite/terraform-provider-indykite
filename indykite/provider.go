@@ -70,7 +70,6 @@ func Provider() *schema.Provider {
 			"indykite_auth_flow":                    resourceAuthFlow(),
 			"indykite_authorization_policy":         resourceAuthorizationPolicy(),
 			"indykite_email_notification":           resourceEmailNotification(),
-			"indykite_ingest_mapping":               resourceIngestMapping(),
 			"indykite_oauth2_client":                resourceOAuth2Client(),
 			"indykite_oauth2_provider":              resourceOAuth2Provider(),
 			"indykite_oauth2_application":           resourceOAuth2Application(),
