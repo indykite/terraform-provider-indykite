@@ -1,5 +1,17 @@
 # Changelog
 
+### [0.1.3](https://github.com/indykite/terraform-provider-indykite/compare/v0.1.2...v0.1.3) (2023-05-02)
+
+
+### Bug Fixes
+
+* remove ingest mapping ([82a2293](https://github.com/indykite/terraform-provider-indykite/commit/82a22933189c75bb6edf59042d26d94644a252a4))
+
+
+### Miscellaneous Chores
+
+* **deps:** update jarvis-sdk-go to v0.11.0 ([d9c9898](https://github.com/indykite/terraform-provider-indykite/commit/d9c98982e2bd6779f85f0f8ec7c3e4e0f4643845))
+
 ### [0.1.2](https://github.com/indykite/terraform-provider-indykite/compare/v0.1.1...v0.1.2) (2023-04-21)
 
 
