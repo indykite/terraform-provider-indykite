@@ -12,10 +12,10 @@
   "commitMessagePrefix": "chore(deps): ",
   "commitMessageAction": "update",
   "groupName": "everything",
-  "ignoreDeps": [],
   "ignorePaths": [
     "**/vendor/**",
     "**/examples/**",
     "**/testdata/**"
-  ]
+  ],
+  "draftPR": true
 }
