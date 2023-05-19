@@ -19,7 +19,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	config "github.com/indykite/jarvis-sdk-go/gen/indykite/config/v1beta1"
+	config "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 )
 
 func resourceTenant() *schema.Resource {

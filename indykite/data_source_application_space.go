@@ -21,7 +21,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	configpb "github.com/indykite/jarvis-sdk-go/gen/indykite/config/v1beta1"
+	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 )
 
 func dataSourceAppSpace() *schema.Resource {

@@ -20,9 +20,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/indykite/jarvis-sdk-go/config"
-	api "github.com/indykite/jarvis-sdk-go/grpc"
-	apicfg "github.com/indykite/jarvis-sdk-go/grpc/config"
+	"github.com/indykite/indykite-sdk-go/config"
+	api "github.com/indykite/indykite-sdk-go/grpc"
+	apicfg "github.com/indykite/indykite-sdk-go/grpc/config"
 )
 
 type (
