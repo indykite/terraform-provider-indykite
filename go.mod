@@ -12,10 +12,10 @@ require (
 	github.com/hashicorp/terraform-plugin-docs v0.14.1
 	github.com/hashicorp/terraform-plugin-go v0.15.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.26.1
-	github.com/indykite/jarvis-sdk-go v0.11.0
-	github.com/onsi/ginkgo/v2 v2.9.2
-	github.com/onsi/gomega v1.27.6
-	google.golang.org/grpc v1.54.0
+	github.com/indykite/jarvis-sdk-go v0.12.0
+	github.com/onsi/ginkgo/v2 v2.9.5
+	github.com/onsi/gomega v1.27.7
+	google.golang.org/grpc v1.55.0
 	google.golang.org/protobuf v1.30.0
 	gopkg.in/yaml.v3 v3.0.1
 )
