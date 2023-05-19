@@ -1,5 +1,12 @@
 # Changelog
 
+### [0.1.4](https://github.com/indykite/terraform-provider-indykite/compare/v0.1.3...v0.1.4) (2023-05-19)
+
+
+### Miscellaneous Chores
+
+* **deps:** upgrade to renamed Go SDK ([d48b999](https://github.com/indykite/terraform-provider-indykite/commit/d48b999173b62311fd732de90bd77a9248be9201))
+
 ### [0.1.3](https://github.com/indykite/terraform-provider-indykite/compare/v0.1.2...v0.1.3) (2023-05-02)
 
 
