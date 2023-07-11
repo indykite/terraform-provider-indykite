@@ -145,12 +145,12 @@ func nameSchema() *schema.Schema {
 	}
 }
 
-func baseIDSchema(description string) *schema.Schema {
+func baseIDSchema(description string, forceNew bool) *schema.Schema {
 	return &schema.Schema{
 		Type:             schema.TypeString,
 		ValidateDiagFunc: ValidateGID,
 		Required:         true,
-		ForceNew:         true,
+		ForceNew:         forceNew,
 		Description:      description,
 	}
 }
@@ -166,38 +166,38 @@ func exactNameFilterSchema() *schema.Schema {
 }
 
 func locationSchema() *schema.Schema {
-	return baseIDSchema(locationDescription)
+	return baseIDSchema(locationDescription, true)
 }
 
 func customerIDSchema() *schema.Schema {
-	return baseIDSchema(customerIDDescription)
+	return baseIDSchema(customerIDDescription, true)
 }
 
 func appSpaceIDSchema() *schema.Schema {
-	return baseIDSchema(appSpaceIDDescription)
+	return baseIDSchema(appSpaceIDDescription, true)
 }
 func applicationIDSchema() *schema.Schema {
-	return baseIDSchema(applicationIDDescription)
+	return baseIDSchema(applicationIDDescription, true)
 }
 
 func issuerIDSchema() *schema.Schema {
-	return baseIDSchema(issuerIDDescription)
+	return baseIDSchema(issuerIDDescription, true)
 }
 
 func tenantIDSchema() *schema.Schema {
-	return baseIDSchema(tenantIDDescription)
+	return baseIDSchema(tenantIDDescription, true)
 }
 
 func appAgentIDSchema() *schema.Schema {
-	return baseIDSchema(appAgentIDDescription)
+	return baseIDSchema(appAgentIDDescription, true)
 }
 
 func oauth2ProviderIDSchema() *schema.Schema {
-	return baseIDSchema(oauth2ProviderIDDescription)
+	return baseIDSchema(oauth2ProviderIDDescription, true)
 }
 
 func oauth2ApplicationIDSchema() *schema.Schema {
-	return baseIDSchema(oauth2ApplicationIDDescription)
+	return baseIDSchema(oauth2ApplicationIDDescription, true)
 }
 
 func oauth2ScopesSchema() *schema.Schema {
