@@ -346,7 +346,6 @@ var _ = Describe("Resource Authorization Policy config", func() {
 					Check: resource.ComposeTestCheckFunc(testAuthorizationPolicyResourceDataExists(
 						resourceName,
 						authzPolicyConfigUpdateResp,
-						//nolint:lll
 						Keys{
 							"tags.#": Equal(strconv.Itoa(len(authzPolicyConfigUpdateResp.ConfigNode.
 								GetAuthorizationPolicyConfig().GetTags()))),

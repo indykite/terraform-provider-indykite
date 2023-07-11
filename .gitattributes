@@ -1,2 +1,2 @@
 # This defines file as generated, so it will not expand diff in Github
-/docs/ linguist-generated=true
+/docs/**/* linguist-generated=true

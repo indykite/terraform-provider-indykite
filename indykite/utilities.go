@@ -191,6 +191,11 @@ func optionalString(data *schema.ResourceData, key string) *wrapperspb.StringVal
 	return wrapperspb.String(v)
 }
 
+func stringOrEmpty(data *schema.ResourceData, key string) string {
+	v, _ := data.Get(key).(string)
+	return v
+}
+
 // flattenOptionalString returns String if v is not nil and v is not empty else returns nil.
 func flattenOptionalString(v *wrapperspb.StringValue) interface{} {
 	if v != nil && v.Value != "" {
