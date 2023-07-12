@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"sync"
 
 	"github.com/golang/mock/gomock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -29,6 +30,7 @@ import (
 	"github.com/indykite/indykite-sdk-go/config"
 	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 	configm "github.com/indykite/indykite-sdk-go/test/config/v1beta1"
+	"github.com/pborman/uuid"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -44,9 +46,10 @@ import (
 var _ = Describe("Resource Auth Flow", func() {
 	const resourceName = "indykite_auth_flow.wonka"
 	var (
-		mockCtrl                *gomock.Controller
-		mockConfigClient        *configm.MockConfigManagementAPIClient
-		indykiteProviderFactory func() (*schema.Provider, error)
+		mockCtrl         *gomock.Controller
+		mockConfigClient *configm.MockConfigManagementAPIClient
+		provider         *schema.Provider
+		mockedBookmark   string
 
 		// gid:/customer/1/appSpace/1/tenant/1/authFlow/1
 		authFlowIDForTenant = "gid:L2N1c3RvbWVyLzEvYXBwU3BhY2UvMS90ZW5hbnQvMS9hdXRoRmxvdy8x"
@@ -58,17 +61,23 @@ var _ = Describe("Resource Auth Flow", func() {
 		mockCtrl = gomock.NewController(TerraformGomockT(GinkgoT()))
 		mockConfigClient = configm.NewMockConfigManagementAPIClient(mockCtrl)
 
-		indykiteProviderFactory = func() (*schema.Provider, error) {
-			p := indykite.Provider()
-			cfgFunc := p.ConfigureContextFunc
-			p.ConfigureContextFunc =
-				func(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
-					client, _ := config.NewTestClient(ctx, mockConfigClient)
-					ctx = context.WithValue(ctx, indykite.ClientContext, client)
-					return cfgFunc(ctx, data)
-				}
-			return p, nil
-		}
+		// Bookmark must be longer than 40 chars - have just 1 added before the first write to test all cases
+		mockedBookmark = "for-auth-flow" + uuid.NewRandom().String()
+		bmOnce := &sync.Once{}
+
+		provider = indykite.Provider()
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc =
+			func(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
+				client, _ := config.NewTestClient(ctx, mockConfigClient)
+				ctx = indykite.WithClient(ctx, client)
+				i, d := cfgFunc(ctx, data)
+				// ConfigureContextFunc is called repeatedly, add initial bookmark just once
+				bmOnce.Do(func() {
+					i.(*indykite.ClientContext).AddBookmarks(mockedBookmark)
+				})
+				return i, d
+			}
 	})
 
 	It("Test all CRUD", func() {
@@ -123,6 +132,12 @@ var _ = Describe("Resource Auth Flow", func() {
 			},
 		}
 
+		createBM := "created-auth-flow" + uuid.NewRandom().String()
+		createBM2 := "created-auth-flow-2" + uuid.NewRandom().String()
+		updateBM := "updated-auth-flow" + uuid.NewRandom().String()
+		deleteBM := "deleted-auth-flow" + uuid.NewRandom().String()
+		deleteBM2 := "deleted-auth-flow-2" + uuid.NewRandom().String()
+
 		// Create
 		mockConfigClient.EXPECT().
 			CreateConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
@@ -141,11 +156,13 @@ var _ = Describe("Resource Auth Flow", func() {
 							`{ "key": "For testing this valid JSON is enough", "key2": 456 }`),
 					}))},
 				)),
+				"Bookmarks": ConsistOf(mockedBookmark),
 			})))).
 			Return(&configpb.CreateConfigNodeResponse{
 				Id:         jsonAuthFlowConfigResp.ConfigNode.Id,
 				CreateTime: timestamppb.Now(),
 				UpdateTime: timestamppb.Now(),
+				Bookmark:   createBM,
 			}, nil)
 
 		mockConfigClient.EXPECT().
@@ -158,11 +175,13 @@ var _ = Describe("Resource Auth Flow", func() {
 						"Source":       ContainSubstring("key: For testing this valid Yaml is enough"),
 					}))},
 				)),
+				"Bookmarks": ConsistOf(mockedBookmark, createBM, updateBM, deleteBM),
 			})))).
 			Return(&configpb.CreateConfigNodeResponse{
 				Id:         yamlAuthFlowConfigResp.ConfigNode.Id,
 				CreateTime: timestamppb.Now(),
 				UpdateTime: timestamppb.Now(),
+				Bookmark:   createBM2,
 			}, nil)
 
 		// update
@@ -177,35 +196,43 @@ var _ = Describe("Resource Auth Flow", func() {
 						"Source":       BeEquivalentTo("some: yaml after update"),
 					})),
 				})),
+				"Bookmarks": ConsistOf(mockedBookmark, createBM),
 			})))).
-			Return(&configpb.UpdateConfigNodeResponse{Id: jsonAuthFlowAfterUpdateResp.ConfigNode.Id}, nil)
+			Return(&configpb.UpdateConfigNodeResponse{
+				Id:       jsonAuthFlowAfterUpdateResp.ConfigNode.Id,
+				Bookmark: updateBM,
+			}, nil)
 
 		// Read in given order
 		gomock.InOrder(
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(jsonAuthFlowConfigResp.ConfigNode.Id),
+					"Id":        Equal(jsonAuthFlowConfigResp.ConfigNode.Id),
+					"Bookmarks": ConsistOf(mockedBookmark, createBM),
 				})))).
 				Times(2).
 				Return(jsonAuthFlowConfigResp, nil),
 
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(authFlowUIResp.ConfigNode.Id),
+					"Id":        Equal(authFlowUIResp.ConfigNode.Id),
+					"Bookmarks": ConsistOf(mockedBookmark, createBM),
 				})))).
 				Times(2).
 				Return(authFlowUIResp, nil),
 
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(jsonAuthFlowAfterUpdateResp.ConfigNode.Id),
+					"Id":        Equal(jsonAuthFlowAfterUpdateResp.ConfigNode.Id),
+					"Bookmarks": ConsistOf(mockedBookmark, createBM, updateBM),
 				})))).
 				Times(3).
 				Return(jsonAuthFlowAfterUpdateResp, nil),
 
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(yamlAuthFlowConfigResp.ConfigNode.Id),
+					"Id":        Equal(yamlAuthFlowConfigResp.ConfigNode.Id),
+					"Bookmarks": ConsistOf(mockedBookmark, createBM, updateBM, deleteBM, createBM2),
 				})))).
 				Times(2).
 				Return(yamlAuthFlowConfigResp, nil),
@@ -214,19 +241,21 @@ var _ = Describe("Resource Auth Flow", func() {
 		// Delete
 		mockConfigClient.EXPECT().
 			DeleteConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(jsonAuthFlowConfigResp.ConfigNode.Id),
+				"Id":        Equal(jsonAuthFlowConfigResp.ConfigNode.Id),
+				"Bookmarks": ConsistOf(mockedBookmark, createBM, updateBM),
 			})))).
-			Return(&configpb.DeleteConfigNodeResponse{}, nil)
+			Return(&configpb.DeleteConfigNodeResponse{Bookmark: deleteBM}, nil)
 
 		mockConfigClient.EXPECT().
 			DeleteConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(yamlAuthFlowConfigResp.ConfigNode.Id),
+				"Id":        Equal(yamlAuthFlowConfigResp.ConfigNode.Id),
+				"Bookmarks": ConsistOf(mockedBookmark, createBM, updateBM, deleteBM, createBM2),
 			})))).
-			Return(&configpb.DeleteConfigNodeResponse{}, nil)
+			Return(&configpb.DeleteConfigNodeResponse{Bookmark: deleteBM2}, nil)
 
 		resource.Test(GinkgoT(), resource.TestCase{
-			ProviderFactories: map[string]func() (*schema.Provider, error){
-				"indykite": indykiteProviderFactory,
+			Providers: map[string]*schema.Provider{
+				"indykite": provider,
 			},
 			Steps: []resource.TestStep{
 				// Error cases should be always first, easier to avoid missing mocks or incomplete plan

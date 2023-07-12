@@ -112,7 +112,7 @@ func resourceAuthFlowFlatten(
 func resourceAuthFlowBuild(
 	d *diag.Diagnostics,
 	data *schema.ResourceData,
-	meta *metaContext,
+	meta *ClientContext,
 	builder *config.NodeRequest,
 ) {
 	cfg := new(configpb.AuthFlowConfig)

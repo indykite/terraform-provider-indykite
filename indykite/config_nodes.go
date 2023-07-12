@@ -31,17 +31,17 @@ import (
 type preBuildConfig func(
 	d *diag.Diagnostics,
 	data *schema.ResourceData,
-	meta *metaContext,
+	meta *ClientContext,
 	builder *config.NodeRequest)
 type postFlattenConfig func(data *schema.ResourceData, resp *configpb.ReadConfigNodeResponse) diag.Diagnostics
 
 func configCreateContextFunc(configBuilder preBuildConfig, read schema.ReadContextFunc) schema.CreateContextFunc {
 	return func(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-		client := fromMeta(&d, meta)
+		clientCtx := getClientContext(&d, meta)
 
 		name := data.Get(nameKey).(string)
 		builder, err := newCreateConfigBuilder(&d, name)
-		if err != nil || client == nil {
+		if err != nil || clientCtx == nil {
 			return d
 		}
 
@@ -69,13 +69,13 @@ func configCreateContextFunc(configBuilder preBuildConfig, read schema.ReadConte
 
 		// Pre-Process
 		if configBuilder != nil {
-			configBuilder(&d, data, client, builder)
+			configBuilder(&d, data, clientCtx, builder)
 		}
 		if d.HasError() {
 			return d
 		}
 
-		resp, err := invokeCreateConfigNode(ctx, data, client.getClient(), builder)
+		resp, err := invokeCreateConfigNode(ctx, data, clientCtx, builder)
 		if hasFailed(&d, err) {
 			return d
 		}
@@ -88,14 +88,14 @@ func configCreateContextFunc(configBuilder preBuildConfig, read schema.ReadConte
 
 func configReadContextFunc(flatten postFlattenConfig) schema.ReadContextFunc {
 	return func(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-		client := fromMeta(&d, meta)
+		clientCtx := getClientContext(&d, meta)
 
 		builder, err := config.NewRead(data.Id())
-		if err != nil || client == nil {
+		if err != nil || clientCtx == nil {
 			return d
 		}
 
-		resp, err := invokeReadConfigNode(ctx, data, client.getClient(), builder)
+		resp, err := invokeReadConfigNode(ctx, data, clientCtx, builder)
 		if hasFailed(&d, err) {
 			return d
 		}
@@ -133,10 +133,10 @@ func configReadContextFunc(flatten postFlattenConfig) schema.ReadContextFunc {
 
 func configUpdateContextFunc(configBuilder preBuildConfig, read schema.ReadContextFunc) schema.UpdateContextFunc {
 	return func(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-		client := fromMeta(&d, meta)
+		clientCtx := getClientContext(&d, meta)
 
 		builder, err := config.NewUpdate(data.Id())
-		if err != nil || client == nil {
+		if err != nil || clientCtx == nil {
 			return d
 		}
 
@@ -149,13 +149,13 @@ func configUpdateContextFunc(configBuilder preBuildConfig, read schema.ReadConte
 
 		// Pre-Process
 		if configBuilder != nil {
-			configBuilder(&d, data, client, builder)
+			configBuilder(&d, data, clientCtx, builder)
 		}
 		if d.HasError() {
 			return d
 		}
 
-		resp, err := invokeUpdateConfigNode(ctx, data, client.getClient(), builder)
+		resp, err := invokeUpdateConfigNode(ctx, data, clientCtx, builder)
 		if hasFailed(&d, err) {
 			return d
 		}
@@ -167,17 +167,17 @@ func configUpdateContextFunc(configBuilder preBuildConfig, read schema.ReadConte
 
 func configDeleteContextFunc() schema.DeleteContextFunc {
 	return func(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-		client := fromMeta(&d, meta)
+		clientCtx := getClientContext(&d, meta)
 
 		builder, err := config.NewDelete(data.Id())
-		if err != nil || client == nil {
+		if err != nil || clientCtx == nil {
 			return d
 		}
 
 		if d.HasError() {
 			return d
 		}
-		_, err = invokeDeleteConfigNode(ctx, data, client.getClient(), builder)
+		_, err = invokeDeleteConfigNode(ctx, data, clientCtx, builder)
 		if err != nil {
 			var er *sdkerror.StatusError
 			if errors.As(err, &er) {
@@ -207,50 +207,73 @@ func newCreateConfigBuilder(d *diag.Diagnostics, name string) (*config.NodeReque
 	return b, nil
 }
 
-func invokeCreateConfigNode(parent context.Context, data *schema.ResourceData,
-	client *config.Client, b *config.NodeRequest) (*configpb.CreateConfigNodeResponse, error) {
+func invokeCreateConfigNode(
+	parent context.Context,
+	data *schema.ResourceData,
+	clientCtx *ClientContext,
+	b *config.NodeRequest,
+) (*configpb.CreateConfigNodeResponse, error) {
 	ctx, cancel := context.WithTimeout(parent, data.Timeout(schema.TimeoutCreate))
 	defer cancel()
 
-	resp, err := client.CreateConfigNode(ctx, b)
+	b.WithBookmarks(clientCtx.GetBookmarks())
+	resp, err := clientCtx.GetClient().CreateConfigNode(ctx, b)
 	if err != nil {
 		return nil, err
 	}
+	clientCtx.AddBookmarks(resp.GetBookmark())
 	return resp, nil
 }
 
-func invokeReadConfigNode(parent context.Context, data *schema.ResourceData,
-	client *config.Client, b *config.NodeRequest) (*configpb.ReadConfigNodeResponse, error) {
+func invokeReadConfigNode(
+	parent context.Context,
+	data *schema.ResourceData,
+	clientCtx *ClientContext,
+	b *config.NodeRequest,
+) (*configpb.ReadConfigNodeResponse, error) {
 	ctx, cancel := context.WithTimeout(parent, data.Timeout(schema.TimeoutRead))
 	defer cancel()
 
-	resp, err := client.ReadConfigNode(ctx, b)
+	b.WithBookmarks(clientCtx.GetBookmarks())
+	resp, err := clientCtx.GetClient().ReadConfigNode(ctx, b)
 	if err != nil {
 		return nil, err
 	}
 	return resp, nil
 }
 
-func invokeUpdateConfigNode(parent context.Context, data *schema.ResourceData,
-	client *config.Client, b *config.NodeRequest) (*configpb.UpdateConfigNodeResponse, error) {
+func invokeUpdateConfigNode(
+	parent context.Context,
+	data *schema.ResourceData,
+	clientCtx *ClientContext,
+	b *config.NodeRequest,
+) (*configpb.UpdateConfigNodeResponse, error) {
 	ctx, cancel := context.WithTimeout(parent, data.Timeout(schema.TimeoutUpdate))
 	defer cancel()
 
-	resp, err := client.UpdateConfigNode(ctx, b)
+	b.WithBookmarks(clientCtx.GetBookmarks())
+	resp, err := clientCtx.GetClient().UpdateConfigNode(ctx, b)
 	if err != nil {
 		return nil, err
 	}
+	clientCtx.AddBookmarks(resp.GetBookmark())
 	return resp, nil
 }
 
-func invokeDeleteConfigNode(parent context.Context, data *schema.ResourceData,
-	client *config.Client, b *config.NodeRequest) (*configpb.DeleteConfigNodeResponse, error) {
+func invokeDeleteConfigNode(
+	parent context.Context,
+	data *schema.ResourceData,
+	clientCtx *ClientContext,
+	b *config.NodeRequest,
+) (*configpb.DeleteConfigNodeResponse, error) {
 	ctx, cancel := context.WithTimeout(parent, data.Timeout(schema.TimeoutDelete))
 	defer cancel()
 
-	resp, err := client.DeleteConfigNode(ctx, b)
+	b.WithBookmarks(clientCtx.GetBookmarks())
+	resp, err := clientCtx.GetClient().DeleteConfigNode(ctx, b)
 	if err != nil {
 		return nil, err
 	}
+	clientCtx.AddBookmarks(resp.GetBookmark())
 	return resp, nil
 }

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"sync"
 
 	"github.com/golang/mock/gomock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -31,6 +32,7 @@ import (
 	objects "github.com/indykite/indykite-sdk-go/gen/indykite/objects/v1beta1"
 	configm "github.com/indykite/indykite-sdk-go/test/config/v1beta1"
 	"github.com/onsi/gomega/types"
+	"github.com/pborman/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
@@ -52,9 +54,10 @@ func matchEmail(address, name string) types.GomegaMatcher {
 var _ = Describe("Resource Email Notification", func() {
 	const resourceName = "indykite_email_notification.wonka"
 	var (
-		mockCtrl                *gomock.Controller
-		mockConfigClient        *configm.MockConfigManagementAPIClient
-		indykiteProviderFactory func() (*schema.Provider, error)
+		mockCtrl         *gomock.Controller
+		mockConfigClient *configm.MockConfigManagementAPIClient
+		provider         *schema.Provider
+		mockedBookmark   string
 
 		// gid:/customer/1/appSpace/1/tenant/1/mail/1
 		mailConfIDForTenant = "gid:L2N1c3RvbWVyLzEvYXBwU3BhY2UvMS90ZW5hbnQvMS9tYWlsLzE"
@@ -66,17 +69,23 @@ var _ = Describe("Resource Email Notification", func() {
 		mockCtrl = gomock.NewController(TerraformGomockT(GinkgoT()))
 		mockConfigClient = configm.NewMockConfigManagementAPIClient(mockCtrl)
 
-		indykiteProviderFactory = func() (*schema.Provider, error) {
-			p := indykite.Provider()
-			cfgFunc := p.ConfigureContextFunc
-			p.ConfigureContextFunc =
-				func(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
-					client, _ := config.NewTestClient(ctx, mockConfigClient)
-					ctx = context.WithValue(ctx, indykite.ClientContext, client)
-					return cfgFunc(ctx, data)
-				}
-			return p, nil
-		}
+		// Bookmark must be longer than 40 chars - have just 1 added before the first write to test all cases
+		mockedBookmark = "for-email" + uuid.NewRandom().String()
+		bmOnce := &sync.Once{}
+
+		provider = indykite.Provider()
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc =
+			func(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
+				client, _ := config.NewTestClient(ctx, mockConfigClient)
+				ctx = indykite.WithClient(ctx, client)
+				i, d := cfgFunc(ctx, data)
+				// ConfigureContextFunc is called repeatedly, add initial bookmark just once
+				bmOnce.Do(func() {
+					i.(*indykite.ClientContext).AddBookmarks(mockedBookmark)
+				})
+				return i, d
+			}
 	})
 
 	It("Test all CRUD", func() {
@@ -195,12 +204,11 @@ var _ = Describe("Resource Email Notification", func() {
 			},
 		}
 
-		// MOCKS
-		// There are 3 test steps
-		// 1. step call: Create + Read
-		// 2. step call: Read, Update, Read
-		// 3. step call is recreate: Read, Delete, Create and Read
-		// after steps Delete is called
+		createBM := "created-email" + uuid.NewRandom().String()
+		createBM2 := "created-email-2" + uuid.NewRandom().String()
+		updateBM := "updated-email" + uuid.NewRandom().String()
+		deleteBM := "deleted-email" + uuid.NewRandom().String()
+		deleteBM2 := "deleted-email-2" + uuid.NewRandom().String()
 
 		// Create
 		templateMatch := PointTo(MatchFields(IgnoreExtras, Fields{"Template": PointTo(MatchFields(IgnoreExtras, Fields{
@@ -241,6 +249,7 @@ var _ = Describe("Resource Email Notification", func() {
 			"EventPayload": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal("abc_def")})),
 			"TemplateArn":  Equal("SES_ARN_number"),
 		}))}))
+
 		mockConfigClient.EXPECT().
 			CreateConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
 				"Name": Equal(fullEmailConfigResp.ConfigNode.Name),
@@ -270,22 +279,26 @@ var _ = Describe("Resource Email Notification", func() {
 						"OneTimePasswordMessage": PointTo(MatchFields(IgnoreExtras, Fields{"Email": templateMatch})),
 					}))},
 				)),
+				"Bookmarks": ConsistOf(mockedBookmark),
 			})))).
 			Return(&configpb.CreateConfigNodeResponse{
 				Id:         fullEmailConfigResp.ConfigNode.Id,
 				CreateTime: timestamppb.Now(),
 				UpdateTime: timestamppb.Now(),
+				Bookmark:   createBM,
 			}, nil)
 
 		mockConfigClient.EXPECT().
 			CreateConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Name":     Equal(withTenantLocEmailConfigResp.ConfigNode.Name),
-				"Location": Equal(tenantID),
+				"Name":      Equal(withTenantLocEmailConfigResp.ConfigNode.Name),
+				"Location":  Equal(tenantID),
+				"Bookmarks": ConsistOf(mockedBookmark, createBM, updateBM, deleteBM),
 			})))).
 			Return(&configpb.CreateConfigNodeResponse{
 				Id:         withTenantLocEmailConfigResp.ConfigNode.Id,
 				CreateTime: timestamppb.Now(),
 				UpdateTime: timestamppb.Now(),
+				Bookmark:   createBM2,
 			}, nil)
 
 		// update
@@ -324,30 +337,37 @@ var _ = Describe("Resource Email Notification", func() {
 								}))}))})),
 						"ResetPasswordMessage": BeNil(),
 						"VerificationMessage":  BeNil(),
-					}))},
-				)),
+					})),
+				})),
+				"Bookmarks": ConsistOf(mockedBookmark, createBM),
 			})))).
-			Return(&configpb.UpdateConfigNodeResponse{Id: fullEmailConfigResp.ConfigNode.Id}, nil)
+			Return(&configpb.UpdateConfigNodeResponse{
+				Id:       fullEmailConfigResp.ConfigNode.Id,
+				Bookmark: updateBM,
+			}, nil)
 
 		// Read in given order
 		gomock.InOrder(
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(fullEmailConfigResp.ConfigNode.Id),
+					"Id":        Equal(fullEmailConfigResp.ConfigNode.Id),
+					"Bookmarks": ConsistOf(mockedBookmark, createBM),
 				})))).
 				Times(4).
 				Return(fullEmailConfigResp, nil),
 
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(fullEmailConfigResp.ConfigNode.Id),
+					"Id":        Equal(fullEmailConfigResp.ConfigNode.Id),
+					"Bookmarks": ConsistOf(mockedBookmark, createBM, updateBM),
 				})))).
 				Times(3).
 				Return(minimalEmailConfigResp, nil),
 
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(withTenantLocEmailConfigResp.ConfigNode.Id),
+					"Id":        Equal(withTenantLocEmailConfigResp.ConfigNode.Id),
+					"Bookmarks": ConsistOf(mockedBookmark, createBM, updateBM, deleteBM, createBM2),
 				})))).
 				Times(2).
 				Return(withTenantLocEmailConfigResp, nil),
@@ -356,19 +376,21 @@ var _ = Describe("Resource Email Notification", func() {
 		// Delete
 		mockConfigClient.EXPECT().
 			DeleteConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(fullEmailConfigResp.ConfigNode.Id),
+				"Id":        Equal(fullEmailConfigResp.ConfigNode.Id),
+				"Bookmarks": ConsistOf(mockedBookmark, createBM, updateBM),
 			})))).
-			Return(&configpb.DeleteConfigNodeResponse{}, nil)
+			Return(&configpb.DeleteConfigNodeResponse{Bookmark: deleteBM}, nil)
 
 		mockConfigClient.EXPECT().
 			DeleteConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(withTenantLocEmailConfigResp.ConfigNode.Id),
+				"Id":        Equal(withTenantLocEmailConfigResp.ConfigNode.Id),
+				"Bookmarks": ConsistOf(mockedBookmark, createBM, updateBM, deleteBM, createBM2),
 			})))).
-			Return(&configpb.DeleteConfigNodeResponse{}, nil)
+			Return(&configpb.DeleteConfigNodeResponse{Bookmark: deleteBM2}, nil)
 
 		resource.Test(GinkgoT(), resource.TestCase{
-			ProviderFactories: map[string]func() (*schema.Provider, error){
-				"indykite": indykiteProviderFactory,
+			Providers: map[string]*schema.Provider{
+				"indykite": provider,
 			},
 			Steps: []resource.TestStep{
 				// Error cases should be always first, easier to avoid missing mocks or incomplete plan

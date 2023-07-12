@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"sync"
 
 	"github.com/golang/mock/gomock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -28,6 +29,7 @@ import (
 	"github.com/indykite/indykite-sdk-go/config"
 	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 	configm "github.com/indykite/indykite-sdk-go/test/config/v1beta1"
+	"github.com/pborman/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
@@ -42,26 +44,33 @@ import (
 var _ = Describe("Resource Tenant", func() {
 	const resourceName = "indykite_tenant.development"
 	var (
-		mockCtrl                *gomock.Controller
-		mockConfigClient        *configm.MockConfigManagementAPIClient
-		indykiteProviderFactory func() (*schema.Provider, error)
+		mockCtrl         *gomock.Controller
+		mockConfigClient *configm.MockConfigManagementAPIClient
+		provider         *schema.Provider
+		mockedBookmark   string
 	)
 
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(TerraformGomockT(GinkgoT()))
 		mockConfigClient = configm.NewMockConfigManagementAPIClient(mockCtrl)
 
-		indykiteProviderFactory = func() (*schema.Provider, error) {
-			p := indykite.Provider()
-			cfgFunc := p.ConfigureContextFunc
-			p.ConfigureContextFunc =
-				func(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
-					client, _ := config.NewTestClient(ctx, mockConfigClient)
-					ctx = context.WithValue(ctx, indykite.ClientContext, client)
-					return cfgFunc(ctx, data)
-				}
-			return p, nil
-		}
+		// Bookmark must be longer than 40 chars - have just 1 added before the first write to test all cases
+		mockedBookmark = "for-tenant" + uuid.NewRandom().String()
+		bmOnce := &sync.Once{}
+
+		provider = indykite.Provider()
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc =
+			func(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
+				client, _ := config.NewTestClient(ctx, mockConfigClient)
+				ctx = indykite.WithClient(ctx, client)
+				i, d := cfgFunc(ctx, data)
+				// ConfigureContextFunc is called repeatedly, add initial bookmark just once
+				bmOnce.Do(func() {
+					i.(*indykite.ClientContext).AddBookmarks(mockedBookmark)
+				})
+				return i, d
+			}
 	})
 
 	It("Test all CRUD", func() {
@@ -111,14 +120,10 @@ var _ = Describe("Resource Tenant", func() {
 			UpdateTime:  timestamppb.Now(),
 		}
 
-		// MOCKS
-		// There are 5 test steps
-		// 1. step call: Create + Read
-		// 2. step call: Read, Update, Read
-		// 3. step call: Read, Update, Read
-		// 4. step call: Read + delete (going to fail)
-		// 5. step call: Read (changes only in deletion_protection do not trigger API)
-		// after steps Delete is called
+		createBM := "created-tenant" + uuid.NewRandom().String()
+		updateBM := "updated-tenant" + uuid.NewRandom().String()
+		updateBM2 := "updated-tenant-2" + uuid.NewRandom().String()
+		deleteBM := "deleted-tenant" + uuid.NewRandom().String()
 
 		// Create
 		mockConfigClient.EXPECT().
@@ -129,8 +134,9 @@ var _ = Describe("Resource Tenant", func() {
 				"Description": PointTo(MatchFields(IgnoreExtras, Fields{
 					"Value": Equal(initialTenantResp.Description.Value),
 				})),
+				"Bookmarks": ConsistOf(mockedBookmark),
 			})))).
-			Return(&configpb.CreateTenantResponse{Id: initialTenantResp.Id}, nil)
+			Return(&configpb.CreateTenantResponse{Id: initialTenantResp.Id, Bookmark: createBM}, nil)
 
 		// 2x update
 		mockConfigClient.EXPECT().
@@ -140,8 +146,9 @@ var _ = Describe("Resource Tenant", func() {
 				"Description": PointTo(MatchFields(IgnoreExtras, Fields{
 					"Value": Equal(readAfter1stUpdateResp.Description.Value),
 				})),
+				"Bookmarks": ConsistOf(mockedBookmark, createBM),
 			})))).
-			Return(&configpb.UpdateTenantResponse{Id: initialTenantResp.Id}, nil)
+			Return(&configpb.UpdateTenantResponse{Id: initialTenantResp.Id, Bookmark: updateBM}, nil)
 
 		mockConfigClient.EXPECT().
 			UpdateTenant(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
@@ -150,8 +157,9 @@ var _ = Describe("Resource Tenant", func() {
 					"Value": Equal(readAfter2ndUpdateResp.DisplayName),
 				})),
 				"Description": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal("")})),
+				"Bookmarks":   ConsistOf(mockedBookmark, createBM, updateBM),
 			})))).
-			Return(&configpb.UpdateTenantResponse{Id: initialTenantResp.Id}, nil)
+			Return(&configpb.UpdateTenantResponse{Id: initialTenantResp.Id, Bookmark: updateBM2}, nil)
 
 		// Read in given order
 		gomock.InOrder(
@@ -180,13 +188,14 @@ var _ = Describe("Resource Tenant", func() {
 		// Delete
 		mockConfigClient.EXPECT().
 			DeleteTenant(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(initialTenantResp.Id),
+				"Id":        Equal(initialTenantResp.Id),
+				"Bookmarks": ConsistOf(mockedBookmark, createBM, updateBM, updateBM2),
 			})))).
-			Return(&configpb.DeleteTenantResponse{}, nil)
+			Return(&configpb.DeleteTenantResponse{Bookmark: deleteBM}, nil)
 
 		resource.Test(GinkgoT(), resource.TestCase{
-			ProviderFactories: map[string]func() (*schema.Provider, error){
-				"indykite": indykiteProviderFactory,
+			Providers: map[string]*schema.Provider{
+				"indykite": provider,
 			},
 			Steps: []resource.TestStep{
 				// Errors cases must be always first

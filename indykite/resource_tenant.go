@@ -47,39 +47,43 @@ func resourceTenant() *schema.Resource {
 }
 
 func resTenantCreate(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
 	defer cancel()
 
 	name := data.Get(nameKey).(string)
-	resp, err := client.getClient().CreateTenant(ctx, &config.CreateTenantRequest{
+	resp, err := clientCtx.GetClient().CreateTenant(ctx, &config.CreateTenantRequest{
 		IssuerId:    data.Get(issuerIDKey).(string),
 		Name:        name,
 		DisplayName: optionalString(data, displayNameKey),
 		Description: optionalString(data, descriptionKey),
+		Bookmarks:   clientCtx.GetBookmarks(),
 	})
 	if hasFailed(&d, err) {
 		return d
 	}
 	data.SetId(resp.Id)
+	clientCtx.AddBookmarks(resp.GetBookmark())
 
 	return resTenantRead(ctx, data, meta)
 }
 
 func resTenantRead(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.getClient().ReadTenant(ctx, &config.ReadTenantRequest{
+	resp, err := clientCtx.GetClient().ReadTenant(ctx, &config.ReadTenantRequest{
 		Identifier: &config.ReadTenantRequest_Id{
 			Id: data.Id(),
-		}})
+		},
+		Bookmarks: clientCtx.GetBookmarks(),
+	})
 	if hasFailed(&d, err) {
 		return d
 	}
@@ -101,8 +105,8 @@ func resTenantRead(ctx context.Context, data *schema.ResourceData, meta interfac
 }
 
 func resTenantUpdate(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
@@ -117,18 +121,20 @@ func resTenantUpdate(ctx context.Context, data *schema.ResourceData, meta interf
 		Id:          data.Id(),
 		DisplayName: updateOptionalString(data, displayNameKey),
 		Description: updateOptionalString(data, descriptionKey),
+		Bookmarks:   clientCtx.GetBookmarks(),
 	}
 
-	_, err := client.getClient().UpdateTenant(ctx, req)
+	resp, err := clientCtx.GetClient().UpdateTenant(ctx, req)
 	if hasFailed(&d, err) {
 		return d
 	}
+	clientCtx.AddBookmarks(resp.GetBookmark())
 	return resTenantRead(ctx, data, meta)
 }
 
 func resTenantDelete(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutDelete))
@@ -136,9 +142,11 @@ func resTenantDelete(ctx context.Context, data *schema.ResourceData, meta interf
 	if hasDeleteProtection(&d, data) {
 		return d
 	}
-	_, err := client.getClient().DeleteTenant(ctx, &config.DeleteTenantRequest{
-		Id: data.Id(),
+	resp, err := clientCtx.GetClient().DeleteTenant(ctx, &config.DeleteTenantRequest{
+		Id:        data.Id(),
+		Bookmarks: clientCtx.GetBookmarks(),
 	})
 	hasFailed(&d, err)
+	clientCtx.AddBookmarks(resp.GetBookmark())
 	return d
 }

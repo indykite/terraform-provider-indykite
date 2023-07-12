@@ -52,14 +52,15 @@ func dataSourceOAuth2Provider() *schema.Resource {
 
 func dataOAuth2ProviderReadContext(ctx context.Context,
 	data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
+	clientCtx := getClientContext(&d, meta)
 	if d.HasError() {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.getClient().ReadOAuth2Provider(ctx, &configpb.ReadOAuth2ProviderRequest{
-		Id: data.Get(oauth2ProviderIDKey).(string),
+	resp, err := clientCtx.GetClient().ReadOAuth2Provider(ctx, &configpb.ReadOAuth2ProviderRequest{
+		Id:        data.Get(oauth2ProviderIDKey).(string),
+		Bookmarks: clientCtx.GetBookmarks(),
 	})
 	if hasFailed(&d, err) {
 		return d

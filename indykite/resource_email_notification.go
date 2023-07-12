@@ -433,7 +433,7 @@ func flattenMessageDefinition(resp *configpb.EmailDefinition) (map[string]interf
 func resourceEmailNotificationBuild(
 	d *diag.Diagnostics,
 	data *schema.ResourceData,
-	_ *metaContext,
+	_ *ClientContext,
 	builder *config.NodeRequest,
 ) {
 	configNode := &configpb.EmailServiceConfig{}

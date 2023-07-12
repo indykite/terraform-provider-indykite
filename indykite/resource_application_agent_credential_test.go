@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/golang/mock/gomock"
@@ -30,6 +31,7 @@ import (
 	"github.com/indykite/indykite-sdk-go/config"
 	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 	configm "github.com/indykite/indykite-sdk-go/test/config/v1beta1"
+	"github.com/pborman/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/indykite/terraform-provider-indykite/indykite"
@@ -43,26 +45,33 @@ import (
 var _ = Describe("Resource ApplicationAgentCredential", func() {
 	const resourceName = "indykite_application_agent_credential.development"
 	var (
-		mockCtrl                *gomock.Controller
-		mockConfigClient        *configm.MockConfigManagementAPIClient
-		indykiteProviderFactory func() (*schema.Provider, error)
+		mockCtrl         *gomock.Controller
+		mockConfigClient *configm.MockConfigManagementAPIClient
+		provider         *schema.Provider
+		mockedBookmark   string
 	)
 
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(TerraformGomockT(GinkgoT()))
 		mockConfigClient = configm.NewMockConfigManagementAPIClient(mockCtrl)
 
-		indykiteProviderFactory = func() (*schema.Provider, error) {
-			p := indykite.Provider()
-			cfgFunc := p.ConfigureContextFunc
-			p.ConfigureContextFunc =
-				func(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
-					client, _ := config.NewTestClient(ctx, mockConfigClient)
-					ctx = context.WithValue(ctx, indykite.ClientContext, client)
-					return cfgFunc(ctx, data)
-				}
-			return p, nil
-		}
+		// Bookmark must be longer than 40 chars - have just 1 added before the first write to test all cases
+		mockedBookmark = "for-app-agent-creds" + uuid.NewRandom().String()
+		bmOnce := &sync.Once{}
+
+		provider = indykite.Provider()
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc =
+			func(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
+				client, _ := config.NewTestClient(ctx, mockConfigClient)
+				ctx = indykite.WithClient(ctx, client)
+				i, d := cfgFunc(ctx, data)
+				// ConfigureContextFunc is called repeatedly, add initial bookmark just once
+				bmOnce.Do(func() {
+					i.(*indykite.ClientContext).AddBookmarks(mockedBookmark)
+				})
+				return i, d
+			}
 	})
 
 	It("Test all CRUD", func() {
@@ -97,6 +106,10 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 			Kid:                "BgQgo-U3kF7kf2dXLKFPNcl3haR8k1VD2nTTvp0GBhI",
 			CreateTime:         timestamppb.Now(),
 		}
+		createBM := "created-app-agent-creds" + uuid.NewRandom().String()
+		createBM2 := "created-app-agent-creds-2" + uuid.NewRandom().String()
+		deleteBM := "deleted-app-agent-creds" + uuid.NewRandom().String()
+		deleteBM2 := "deleted-app-agent-creds-2" + uuid.NewRandom().String()
 
 		// Create
 		mockConfigClient.EXPECT().
@@ -108,12 +121,14 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 				"PublicKey": PointTo(MatchFields(IgnoreExtras, Fields{
 					"Jwk": HaveLen(226),
 				})),
+				"Bookmarks": ConsistOf(mockedBookmark),
 			})))).
 			Return(&configpb.RegisterApplicationAgentCredentialResponse{
 				Id:                 appAgentJWKCredResp.Id,
 				ApplicationAgentId: appAgentID,
 				Kid:                appAgentJWKCredResp.Kid,
 				AgentConfig:        []byte(fmt.Sprintf(appAgentConfig, tenantID, appAgentID)),
+				Bookmark:           createBM,
 			}, nil)
 
 		mockConfigClient.EXPECT().
@@ -125,19 +140,22 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 				"PublicKey": PointTo(MatchFields(IgnoreExtras, Fields{
 					"Pem": HaveLen(271),
 				})),
+				"Bookmarks": ConsistOf(mockedBookmark, createBM, deleteBM),
 			})))).
 			Return(&configpb.RegisterApplicationAgentCredentialResponse{
 				Id:                 appAgentPEMCredResp.Id,
 				ApplicationAgentId: appAgentID,
 				Kid:                appAgentPEMCredResp.Kid,
 				AgentConfig:        []byte(fmt.Sprintf(appAgentConfig, "", appAgentID)),
+				Bookmark:           createBM2,
 			}, nil)
 
 		// Read in given order
 		gomock.InOrder(
 			mockConfigClient.EXPECT().
 				ReadApplicationAgentCredential(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(appAgentJWKCredResp.Id),
+					"Id":        Equal(appAgentJWKCredResp.Id),
+					"Bookmarks": ConsistOf(mockedBookmark, createBM),
 				})))).
 				Times(6).
 				Return(&configpb.ReadApplicationAgentCredentialResponse{
@@ -146,7 +164,8 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 
 			mockConfigClient.EXPECT().
 				ReadApplicationAgentCredential(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(appAgentPEMCredResp.Id),
+					"Id":        Equal(appAgentPEMCredResp.Id),
+					"Bookmarks": ConsistOf(mockedBookmark, createBM, deleteBM, createBM2),
 				})))).
 				Times(2).
 				Return(&configpb.ReadApplicationAgentCredentialResponse{
@@ -157,18 +176,24 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 		// Delete
 		mockConfigClient.EXPECT().
 			DeleteApplicationAgentCredential(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(appAgentJWKCredResp.Id),
+				"Id":        Equal(appAgentJWKCredResp.Id),
+				"Bookmarks": ConsistOf(mockedBookmark, createBM),
 			})))).
-			Return(&configpb.DeleteApplicationAgentCredentialResponse{}, nil)
+			Return(&configpb.DeleteApplicationAgentCredentialResponse{
+				Bookmark: deleteBM,
+			}, nil)
 		mockConfigClient.EXPECT().
 			DeleteApplicationAgentCredential(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(appAgentPEMCredResp.Id),
+				"Id":        Equal(appAgentPEMCredResp.Id),
+				"Bookmarks": ConsistOf(mockedBookmark, createBM, deleteBM, createBM2),
 			})))).
-			Return(&configpb.DeleteApplicationAgentCredentialResponse{}, nil)
+			Return(&configpb.DeleteApplicationAgentCredentialResponse{
+				Bookmark: deleteBM2,
+			}, nil)
 
 		resource.Test(GinkgoT(), resource.TestCase{
-			ProviderFactories: map[string]func() (*schema.Provider, error){
-				"indykite": indykiteProviderFactory,
+			Providers: map[string]*schema.Provider{
+				"indykite": provider,
 			},
 			Steps: []resource.TestStep{
 				// Errors case must be always first

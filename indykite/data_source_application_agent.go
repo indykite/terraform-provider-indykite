@@ -70,7 +70,14 @@ func dataSourceAppAgentList() *schema.Resource {
 }
 
 func dataAppAgentReadContext(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	req := new(configpb.ReadApplicationAgentRequest)
+	clientCtx := getClientContext(&d, meta)
+	if d.HasError() {
+		return d
+	}
+
+	req := &configpb.ReadApplicationAgentRequest{
+		Bookmarks: clientCtx.GetBookmarks(),
+	}
 	if name, exists := data.GetOk(nameKey); exists {
 		req.Identifier = &configpb.ReadApplicationAgentRequest_Name{
 			Name: &configpb.UniqueNameIdentifier{
@@ -84,13 +91,9 @@ func dataAppAgentReadContext(ctx context.Context, data *schema.ResourceData, met
 		}
 	}
 
-	client := fromMeta(&d, meta)
-	if d.HasError() {
-		return d
-	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.getClient().ReadApplicationAgent(ctx, req)
+	resp, err := clientCtx.GetClient().ReadApplicationAgent(ctx, req)
 	if hasFailed(&d, err) {
 		return d
 	}
@@ -118,15 +121,16 @@ func dataAppAgentListContext(ctx context.Context, data *schema.ResourceData, met
 		match[i] = v.(string)
 	}
 
-	client := fromMeta(&d, meta)
+	clientCtx := getClientContext(&d, meta)
 	if d.HasError() {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.getClient().ListApplicationAgents(ctx, &configpb.ListApplicationAgentsRequest{
+	resp, err := clientCtx.GetClient().ListApplicationAgents(ctx, &configpb.ListApplicationAgentsRequest{
 		AppSpaceId: data.Get(appSpaceIDKey).(string),
 		Match:      match,
+		Bookmarks:  clientCtx.GetBookmarks(),
 	})
 	if hasFailed(&d, err) {
 		return d
