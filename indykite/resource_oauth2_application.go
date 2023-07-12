@@ -95,8 +95,8 @@ func resourceOAuth2Application() *schema.Resource {
 
 func resOAuth2ApplicationCreateContext(ctx context.Context,
 	data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
@@ -131,14 +131,16 @@ func resOAuth2ApplicationCreateContext(ctx context.Context,
 			TokenEndpointAuthSigningAlg: data.Get(oauth2ApplicationTokenEndpointAuthSigningAlgKey).(string),
 			UserinfoSignedResponseAlg:   data.Get(oauth2ApplicationUserinfoSignedResponseAlgKey).(string),
 		},
+		Bookmarks: clientCtx.GetBookmarks(),
 	}
 
-	resp, err := client.getClient().CreateOAuth2Application(ctx, request)
+	resp, err := clientCtx.GetClient().CreateOAuth2Application(ctx, request)
 	if hasFailed(&d, err) {
 		return d
 	}
 	data.SetId(resp.Id)
 	setData(&d, data, oauth2ApplicationClientSecretKey, resp.ClientSecret)
+	clientCtx.AddBookmarks(resp.GetBookmark())
 
 	if d.HasError() {
 		return d
@@ -149,14 +151,15 @@ func resOAuth2ApplicationCreateContext(ctx context.Context,
 
 func resOAuth2ApplicationReadContext(ctx context.Context,
 	data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.getClient().ReadOAuth2Application(ctx, &config.ReadOAuth2ApplicationRequest{
-		Id: data.Id(),
+	resp, err := clientCtx.GetClient().ReadOAuth2Application(ctx, &config.ReadOAuth2ApplicationRequest{
+		Id:        data.Id(),
+		Bookmarks: clientCtx.GetBookmarks(),
 	})
 	if hasFailed(&d, err) {
 		return d
@@ -221,8 +224,8 @@ func resOAuth2ApplicationReadContext(ctx context.Context,
 
 func resOAuth2ApplicationUpdateContext(ctx context.Context,
 	data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
@@ -260,19 +263,21 @@ func resOAuth2ApplicationUpdateContext(ctx context.Context,
 			TokenEndpointAuthSigningAlg: data.Get(oauth2ApplicationTokenEndpointAuthSigningAlgKey).(string),
 			UserinfoSignedResponseAlg:   data.Get(oauth2ApplicationUserinfoSignedResponseAlgKey).(string),
 		},
+		Bookmarks: clientCtx.GetBookmarks(),
 	}
 
-	_, err := client.getClient().UpdateOAuth2Application(ctx, req)
+	resp, err := clientCtx.GetClient().UpdateOAuth2Application(ctx, req)
 	if hasFailed(&d, err) {
 		return d
 	}
+	clientCtx.AddBookmarks(resp.GetBookmark())
 	return resOAuth2ApplicationReadContext(ctx, data, meta)
 }
 
 func resOAuth2ApplicationDeleteContext(ctx context.Context,
 	data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutDelete))
@@ -280,10 +285,12 @@ func resOAuth2ApplicationDeleteContext(ctx context.Context,
 	if hasDeleteProtection(&d, data) {
 		return d
 	}
-	_, err := client.getClient().DeleteOAuth2Application(ctx, &config.DeleteOAuth2ApplicationRequest{
-		Id: data.Id(),
+	resp, err := clientCtx.GetClient().DeleteOAuth2Application(ctx, &config.DeleteOAuth2ApplicationRequest{
+		Id:        data.Id(),
+		Bookmarks: clientCtx.GetBookmarks(),
 	})
 	hasFailed(&d, err)
+	clientCtx.AddBookmarks(resp.GetBookmark())
 	return d
 }
 

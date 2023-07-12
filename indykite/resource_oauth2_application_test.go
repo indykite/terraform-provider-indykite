@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"sync"
 
 	"github.com/golang/mock/gomock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -28,6 +29,7 @@ import (
 	"github.com/indykite/indykite-sdk-go/config"
 	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 	configm "github.com/indykite/indykite-sdk-go/test/config/v1beta1"
+	"github.com/pborman/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
@@ -42,26 +44,33 @@ import (
 var _ = Describe("Resource OAuth2 Application", func() {
 	const resourceName = "indykite_oauth2_application.wonka-bars-oauth2-application"
 	var (
-		mockCtrl                *gomock.Controller
-		mockConfigClient        *configm.MockConfigManagementAPIClient
-		indykiteProviderFactory func() (*schema.Provider, error)
+		mockCtrl         *gomock.Controller
+		mockConfigClient *configm.MockConfigManagementAPIClient
+		provider         *schema.Provider
+		mockedBookmark   string
 	)
 
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(TerraformGomockT(GinkgoT()))
 		mockConfigClient = configm.NewMockConfigManagementAPIClient(mockCtrl)
 
-		indykiteProviderFactory = func() (*schema.Provider, error) {
-			p := indykite.Provider()
-			cfgFunc := p.ConfigureContextFunc
-			p.ConfigureContextFunc =
-				func(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
-					client, _ := config.NewTestClient(ctx, mockConfigClient)
-					ctx = context.WithValue(ctx, indykite.ClientContext, client)
-					return cfgFunc(ctx, data)
-				}
-			return p, nil
-		}
+		// Bookmark must be longer than 40 chars - have just 1 added before the first write to test all cases
+		mockedBookmark = "for-oauth2-app" + uuid.NewRandom().String()
+		bmOnce := &sync.Once{}
+
+		provider = indykite.Provider()
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc =
+			func(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
+				client, _ := config.NewTestClient(ctx, mockConfigClient)
+				ctx = indykite.WithClient(ctx, client)
+				i, d := cfgFunc(ctx, data)
+				// ConfigureContextFunc is called repeatedly, add initial bookmark just once
+				bmOnce.Do(func() {
+					i.(*indykite.ClientContext).AddBookmarks(mockedBookmark)
+				})
+				return i, d
+			}
 	})
 
 	It("Test all CRUD", func() {
@@ -196,14 +205,10 @@ var _ = Describe("Resource OAuth2 Application", func() {
 			},
 		}
 
-		// MOCKS
-		// There are 5 test steps
-		// 1. step call: Create + Read
-		// 2. step call: Read, Update, Read
-		// 3. step call: Read, Update, Read
-		// 4. step call: Read + delete (going to fail)
-		// 5. step call: Read (changes only in deletion_protection do not trigger API)
-		// after steps Delete is called
+		createBM := "created-oauth2-app" + uuid.NewRandom().String()
+		updateBM := "updated-oauth2-app" + uuid.NewRandom().String()
+		updateBM2 := "updated-oauth2-app-2" + uuid.NewRandom().String()
+		deleteBM := "deleted-oauth2-app" + uuid.NewRandom().String()
 
 		// Create
 		mockConfigClient.EXPECT().
@@ -237,11 +242,13 @@ var _ = Describe("Resource OAuth2 Application", func() {
 					"TokenEndpointAuthSigningAlg": Equal(initialResp.Config.TokenEndpointAuthSigningAlg),
 					"UserinfoSignedResponseAlg":   Equal(initialResp.Config.UserinfoSignedResponseAlg),
 				})),
+				"Bookmarks": ConsistOf(mockedBookmark),
 			})))).
 			Return(&configpb.CreateOAuth2ApplicationResponse{
 				Id:           initialResp.Id,
 				ClientId:     initialResp.Config.ClientId,
 				ClientSecret: clientSecret,
+				Bookmark:     createBM,
 			}, nil)
 
 		// 2x update
@@ -275,8 +282,12 @@ var _ = Describe("Resource OAuth2 Application", func() {
 					"TokenEndpointAuthSigningAlg": Equal(readAfter1stUpdateResp.Config.TokenEndpointAuthSigningAlg),
 					"UserinfoSignedResponseAlg":   Equal(readAfter1stUpdateResp.Config.UserinfoSignedResponseAlg),
 				})),
+				"Bookmarks": ConsistOf(mockedBookmark, createBM),
 			})))).
-			Return(&configpb.UpdateOAuth2ApplicationResponse{Id: initialResp.Id}, nil)
+			Return(&configpb.UpdateOAuth2ApplicationResponse{
+				Id:       initialResp.Id,
+				Bookmark: updateBM,
+			}, nil)
 
 		mockConfigClient.EXPECT().
 			UpdateOAuth2Application(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
@@ -308,28 +319,35 @@ var _ = Describe("Resource OAuth2 Application", func() {
 					"TokenEndpointAuthSigningAlg": Equal(readAfter2ndUpdateResp.Config.TokenEndpointAuthSigningAlg),
 					"UserinfoSignedResponseAlg":   Equal(readAfter2ndUpdateResp.Config.UserinfoSignedResponseAlg),
 				})),
+				"Bookmarks": ConsistOf(mockedBookmark, createBM, updateBM),
 			})))).
-			Return(&configpb.UpdateOAuth2ApplicationResponse{Id: initialResp.Id}, nil)
+			Return(&configpb.UpdateOAuth2ApplicationResponse{
+				Id:       initialResp.Id,
+				Bookmark: updateBM2,
+			}, nil)
 
 		// Read in given order
 		gomock.InOrder(
 			mockConfigClient.EXPECT().
 				ReadOAuth2Application(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(initialResp.Id),
+					"Id":        Equal(initialResp.Id),
+					"Bookmarks": ConsistOf(mockedBookmark, createBM),
 				})))).
 				Times(4).
 				Return(&configpb.ReadOAuth2ApplicationResponse{Oauth2Application: initialResp}, nil),
 
 			mockConfigClient.EXPECT().
 				ReadOAuth2Application(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(initialResp.Id),
+					"Id":        Equal(initialResp.Id),
+					"Bookmarks": ConsistOf(mockedBookmark, createBM, updateBM),
 				})))).
 				Times(3).
 				Return(&configpb.ReadOAuth2ApplicationResponse{Oauth2Application: readAfter1stUpdateResp}, nil),
 
 			mockConfigClient.EXPECT().
 				ReadOAuth2Application(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(initialResp.Id),
+					"Id":        Equal(initialResp.Id),
+					"Bookmarks": ConsistOf(mockedBookmark, createBM, updateBM, updateBM2),
 				})))).
 				Times(5).
 				Return(&configpb.ReadOAuth2ApplicationResponse{Oauth2Application: readAfter2ndUpdateResp}, nil),
@@ -338,13 +356,16 @@ var _ = Describe("Resource OAuth2 Application", func() {
 		// Delete
 		mockConfigClient.EXPECT().
 			DeleteOAuth2Application(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(initialResp.Id),
+				"Id":        Equal(initialResp.Id),
+				"Bookmarks": ConsistOf(mockedBookmark, createBM, updateBM, updateBM2),
 			})))).
-			Return(&configpb.DeleteOAuth2ApplicationResponse{}, nil)
+			Return(&configpb.DeleteOAuth2ApplicationResponse{
+				Bookmark: deleteBM,
+			}, nil)
 
 		resource.Test(GinkgoT(), resource.TestCase{
-			ProviderFactories: map[string]func() (*schema.Provider, error){
-				"indykite": indykiteProviderFactory,
+			Providers: map[string]*schema.Provider{
+				"indykite": provider,
 			},
 			Steps: []resource.TestStep{
 				// Errors cases must be always first

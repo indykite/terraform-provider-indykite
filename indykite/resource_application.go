@@ -46,39 +46,43 @@ func resourceApplication() *schema.Resource {
 }
 
 func resApplicationCreate(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
 	defer cancel()
 
 	name := data.Get(nameKey).(string)
-	resp, err := client.getClient().CreateApplication(ctx, &config.CreateApplicationRequest{
+	resp, err := clientCtx.GetClient().CreateApplication(ctx, &config.CreateApplicationRequest{
 		AppSpaceId:  data.Get(appSpaceIDKey).(string),
 		Name:        name,
 		DisplayName: optionalString(data, displayNameKey),
 		Description: optionalString(data, descriptionKey),
+		Bookmarks:   clientCtx.GetBookmarks(),
 	})
 	if hasFailed(&d, err) {
 		return d
 	}
 	data.SetId(resp.Id)
+	clientCtx.AddBookmarks(resp.GetBookmark())
 
 	return resApplicationRead(ctx, data, meta)
 }
 
 func resApplicationRead(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.getClient().ReadApplication(ctx, &config.ReadApplicationRequest{
+	resp, err := clientCtx.GetClient().ReadApplication(ctx, &config.ReadApplicationRequest{
 		Identifier: &config.ReadApplicationRequest_Id{
 			Id: data.Id(),
-		}})
+		},
+		Bookmarks: clientCtx.GetBookmarks(),
+	})
 	if hasFailed(&d, err) {
 		return d
 	}
@@ -99,8 +103,8 @@ func resApplicationRead(ctx context.Context, data *schema.ResourceData, meta int
 }
 
 func resApplicationUpdate(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
@@ -115,18 +119,20 @@ func resApplicationUpdate(ctx context.Context, data *schema.ResourceData, meta i
 		Id:          data.Id(),
 		DisplayName: updateOptionalString(data, displayNameKey),
 		Description: updateOptionalString(data, descriptionKey),
+		Bookmarks:   clientCtx.GetBookmarks(),
 	}
 
-	_, err := client.getClient().UpdateApplication(ctx, req)
+	resp, err := clientCtx.GetClient().UpdateApplication(ctx, req)
 	if hasFailed(&d, err) {
 		return d
 	}
+	clientCtx.AddBookmarks(resp.GetBookmark())
 	return resApplicationRead(ctx, data, meta)
 }
 
 func resApplicationDelete(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutDelete))
@@ -134,9 +140,11 @@ func resApplicationDelete(ctx context.Context, data *schema.ResourceData, meta i
 	if hasDeleteProtection(&d, data) {
 		return d
 	}
-	_, err := client.getClient().DeleteApplication(ctx, &config.DeleteApplicationRequest{
-		Id: data.Id(),
+	resp, err := clientCtx.GetClient().DeleteApplication(ctx, &config.DeleteApplicationRequest{
+		Id:        data.Id(),
+		Bookmarks: clientCtx.GetBookmarks(),
 	})
 	hasFailed(&d, err)
+	clientCtx.AddBookmarks(resp.GetBookmark())
 	return d
 }

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"sync"
 
 	"github.com/golang/mock/gomock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -29,6 +30,7 @@ import (
 	"github.com/indykite/indykite-sdk-go/config"
 	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 	configm "github.com/indykite/indykite-sdk-go/test/config/v1beta1"
+	"github.com/pborman/uuid"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -44,26 +46,33 @@ import (
 var _ = Describe("Resource OAuth2 Client", func() {
 	const resourceName = "indykite_oauth2_client.wonka"
 	var (
-		mockCtrl                *gomock.Controller
-		mockConfigClient        *configm.MockConfigManagementAPIClient
-		indykiteProviderFactory func() (*schema.Provider, error)
+		mockCtrl         *gomock.Controller
+		mockConfigClient *configm.MockConfigManagementAPIClient
+		provider         *schema.Provider
+		mockedBookmark   string
 	)
 
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(TerraformGomockT(GinkgoT()))
 		mockConfigClient = configm.NewMockConfigManagementAPIClient(mockCtrl)
 
-		indykiteProviderFactory = func() (*schema.Provider, error) {
-			p := indykite.Provider()
-			cfgFunc := p.ConfigureContextFunc
-			p.ConfigureContextFunc =
-				func(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
-					client, _ := config.NewTestClient(ctx, mockConfigClient)
-					ctx = context.WithValue(ctx, indykite.ClientContext, client)
-					return cfgFunc(ctx, data)
-				}
-			return p, nil
-		}
+		// Bookmark must be longer than 40 chars - have just 1 added before the first write to test all cases
+		mockedBookmark = "for-oauth2-client" + uuid.NewRandom().String()
+		bmOnce := &sync.Once{}
+
+		provider = indykite.Provider()
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc =
+			func(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
+				client, _ := config.NewTestClient(ctx, mockConfigClient)
+				ctx = indykite.WithClient(ctx, client)
+				i, d := cfgFunc(ctx, data)
+				// ConfigureContextFunc is called repeatedly, add initial bookmark just once
+				bmOnce.Do(func() {
+					i.(*indykite.ClientContext).AddBookmarks(mockedBookmark)
+				})
+				return i, d
+			}
 	})
 
 	It("Test all CRUD", func() {
@@ -132,6 +141,10 @@ var _ = Describe("Resource OAuth2 Client", func() {
 			},
 		}
 
+		createBM := "created-oauth2-client" + uuid.NewRandom().String()
+		updateBM := "updated-oauth2-client" + uuid.NewRandom().String()
+		deleteBM := "deleted-oauth2-client" + uuid.NewRandom().String()
+
 		// Create
 		mockConfigClient.EXPECT().
 			CreateConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
@@ -149,11 +162,13 @@ var _ = Describe("Resource OAuth2 Client", func() {
 						AuthStyle:    configpb.AuthStyle_AUTH_STYLE_AUTO_DETECT,
 					}),
 				})),
+				"Bookmarks": ConsistOf(mockedBookmark),
 			})))).
 			Return(&configpb.CreateConfigNodeResponse{
 				Id:         oauth2ClientMinimalConfigResp.ConfigNode.Id,
 				CreateTime: timestamppb.Now(),
 				UpdateTime: timestamppb.Now(),
+				Bookmark:   createBM,
 			}, nil)
 
 		// update
@@ -189,39 +204,48 @@ var _ = Describe("Resource OAuth2 Client", func() {
 						TeamId:       "some-team",
 					}),
 				})),
+				"Bookmarks": ConsistOf(mockedBookmark, createBM),
 			})))).
-			Return(&configpb.UpdateConfigNodeResponse{Id: oauth2ClientMinimalConfigResp.ConfigNode.Id}, nil)
+			Return(&configpb.UpdateConfigNodeResponse{
+				Id:       oauth2ClientMinimalConfigResp.ConfigNode.Id,
+				Bookmark: updateBM,
+			}, nil)
 
 		// Read in given order
 		gomock.InOrder(
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(oauth2ClientMinimalConfigResp.ConfigNode.Id),
+					"Id":        Equal(oauth2ClientMinimalConfigResp.ConfigNode.Id),
+					"Bookmarks": ConsistOf(mockedBookmark, createBM),
 				})))).
 				Times(3).
 				Return(oauth2ClientMinimalConfigResp, nil),
 
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(oauth2ClientMinimalConfigResp.ConfigNode.Id),
+					"Id":        Equal(oauth2ClientMinimalConfigResp.ConfigNode.Id),
+					"Bookmarks": ConsistOf(mockedBookmark, createBM),
 				})))).
 				Return(invalidProviderTypeConfigResp, nil),
 
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(oauth2ClientMinimalConfigResp.ConfigNode.Id),
+					"Id":        Equal(oauth2ClientMinimalConfigResp.ConfigNode.Id),
+					"Bookmarks": ConsistOf(mockedBookmark, createBM),
 				})))).
 				Return(invalidAuthStyleConfigResp, nil),
 
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(oauth2ClientMinimalConfigResp.ConfigNode.Id),
+					"Id":        Equal(oauth2ClientMinimalConfigResp.ConfigNode.Id),
+					"Bookmarks": ConsistOf(mockedBookmark, createBM),
 				})))).
 				Return(oauth2ClientMinimalConfigResp, nil),
 
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(oauth2ClientMinimalConfigResp.ConfigNode.Id),
+					"Id":        Equal(oauth2ClientMinimalConfigResp.ConfigNode.Id),
+					"Bookmarks": ConsistOf(mockedBookmark, createBM, updateBM),
 				})))).
 				Times(2).
 				Return(oauth2ClientFullConfigResp, nil),
@@ -230,13 +254,14 @@ var _ = Describe("Resource OAuth2 Client", func() {
 		// Delete
 		mockConfigClient.EXPECT().
 			DeleteConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(oauth2ClientMinimalConfigResp.ConfigNode.Id),
+				"Id":        Equal(oauth2ClientMinimalConfigResp.ConfigNode.Id),
+				"Bookmarks": ConsistOf(mockedBookmark, createBM, updateBM),
 			})))).
-			Return(&configpb.DeleteConfigNodeResponse{}, nil)
+			Return(&configpb.DeleteConfigNodeResponse{Bookmark: deleteBM}, nil)
 
 		resource.Test(GinkgoT(), resource.TestCase{
-			ProviderFactories: map[string]func() (*schema.Provider, error){
-				"indykite": indykiteProviderFactory,
+			Providers: map[string]*schema.Provider{
+				"indykite": provider,
 			},
 			Steps: []resource.TestStep{
 				// Error cases should be always first, easier to avoid missing mocks or incomplete plan

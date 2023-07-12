@@ -15,7 +15,9 @@
 package indykite
 
 import (
+	"container/ring"
 	"context"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -30,21 +32,41 @@ type (
 		terraformVersion string
 	}
 
-	metaContext struct {
-		client *config.Client
-		config *tfConfig
+	// ClientContext defines structure returned by ConfigureContextFunc,
+	// which is passed into resources as meta arguemnt.
+	ClientContext struct {
+		client    *config.Client
+		config    *tfConfig
+		bookmarks *clientBookmarks
+	}
+
+	clientBookmarks struct {
+		queueRing *ring.Ring
+		count     int
+		sync.Mutex
 	}
 
 	contextKey int
 )
 
 const (
-	// ClientContext for unit testing to pass *config.Client along.
-	ClientContext contextKey = 1
+	clientContextKey contextKey = 1
+
+	// parallelism sets how many concurrent resource Terraform can process in the same time.
+	// Default value is 10. If there is a way to get real value, use that instead of hardcoded value.
+	// DO NOT SET it too high, as this amount of bookmarks will be send in requests.
+	parallelism = 10
 )
 
 // Provider returns a terraform.ResourceProvider.
 func Provider() *schema.Provider {
+	// Bookmarks must be set globally on Provider level.
+	// Because ConfigureContextFunc is called multiple times per resource.
+	bookmarks := &clientBookmarks{
+		queueRing: ring.New(parallelism),
+		count:     0,
+	}
+
 	// The actual provider
 	provider := &schema.Provider{
 		DataSourcesMap: map[string]*schema.Resource{
@@ -80,40 +102,96 @@ func Provider() *schema.Provider {
 	}
 
 	provider.ConfigureContextFunc =
-		func(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
-			return providerConfigure(ctx, data, provider.TerraformVersion)
+		func(ctx context.Context, _ *schema.ResourceData) (interface{}, diag.Diagnostics) {
+			return providerConfigure(ctx, bookmarks, provider.TerraformVersion)
 		}
 
 	return provider
 }
 
-func providerConfigure(ctx context.Context, _ *schema.ResourceData, version string) (interface{}, diag.Diagnostics) {
+func providerConfigure(
+	ctx context.Context,
+	bookmarks *clientBookmarks,
+	version string,
+) (interface{}, diag.Diagnostics) {
 	cfg := &tfConfig{terraformVersion: version}
 	c, err := cfg.getClient(ctx)
 	if err.HasError() {
 		return nil, err
 	}
-	return &metaContext{client: c, config: cfg}, nil
+	return &ClientContext{
+		client:    c,
+		config:    cfg,
+		bookmarks: bookmarks,
+	}, nil
 }
 
-func fromMeta(d *diag.Diagnostics, meta interface{}) *metaContext {
-	client, ok := meta.(*metaContext)
-	if !ok || client == nil {
+// getClientContext converts meta into ClientContext structure.
+func getClientContext(d *diag.Diagnostics, meta interface{}) *ClientContext {
+	clientCtx, ok := meta.(*ClientContext)
+	if !ok || clientCtx == nil {
 		*d = append(*d, buildPluginError("Unable retrieve IndyKite client from meta"))
 	}
-	return client
+	return clientCtx
 }
 
-func (x *metaContext) getClient() *config.Client {
+// GetClient returns Config client, which exposes the whole config API.
+func (x *ClientContext) GetClient() *config.Client {
 	return x.client
+}
+
+// AddBookmarks adds new bookmarks to round queue.
+// Calling repeatedly will add more and more bookmarks while remove old ones.
+// Size of queue should reflect Terraform parallelism and API restrictions.
+func (x *ClientContext) AddBookmarks(bookmarks ...string) {
+	if len(bookmarks) == 0 {
+		return
+	}
+	x.bookmarks.Lock()
+	defer x.bookmarks.Unlock()
+
+	for _, b := range bookmarks {
+		if len(b) == 0 {
+			continue
+		}
+
+		x.bookmarks.queueRing.Value = b
+		x.bookmarks.queueRing = x.bookmarks.queueRing.Next()
+		if x.bookmarks.count < parallelism {
+			x.bookmarks.count++
+		}
+	}
+}
+
+// GetBookmarks returns all stored bookmarks in the round queue.
+// Size of queue, and thus amount of bookmarks returned, should reflect Terraform parallelism and API restrictions.
+func (x *ClientContext) GetBookmarks() []string {
+	x.bookmarks.Lock()
+	defer x.bookmarks.Unlock()
+
+	b := make([]string, 0, x.bookmarks.count)
+	x.bookmarks.queueRing.Do(func(a any) {
+		if v, _ := a.(string); len(v) > 0 {
+			b = append(b, v)
+		}
+	})
+
+	return b
+}
+
+// WithClient stores the config client into the context.
+func WithClient(ctx context.Context, c *config.Client) context.Context {
+	return context.WithValue(ctx, clientContextKey, c)
 }
 
 // getClient configures and returns a fully initialized getClient.
 func (c *tfConfig) getClient(ctx context.Context) (*config.Client, diag.Diagnostics) {
-	if client, ok := ctx.Value(ClientContext).(*config.Client); ok {
+	if client, ok := ctx.Value(clientContextKey).(*config.Client); ok {
 		return client, nil
 	}
 
+	// This can be called multiple times, because it is called from ConfigureContextFunc,
+	// which is called for each resource.
 	conn, err := config.NewClient(ctx,
 		api.WithServiceAccount(), api.WithCredentialsLoader(apicfg.DefaultEnvironmentLoader))
 	if err != nil {

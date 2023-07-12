@@ -68,8 +68,8 @@ func resourceOAuth2Provider() *schema.Resource {
 
 func resOAuth2ProviderCreateContext(ctx context.Context,
 	data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
@@ -93,27 +93,30 @@ func resOAuth2ProviderCreateContext(ctx context.Context,
 			FrontChannelLoginUri:        rawMapToStringMap(data.Get(oauth2ProviderFrontChannelLoginURIKey)),
 			FrontChannelConsentUri:      rawMapToStringMap(data.Get(oauth2ProviderFrontChannelConsentURIKey)),
 		},
+		Bookmarks: clientCtx.GetBookmarks(),
 	}
 
-	resp, err := client.getClient().CreateOAuth2Provider(ctx, request)
+	resp, err := clientCtx.GetClient().CreateOAuth2Provider(ctx, request)
 	if hasFailed(&d, err) {
 		return d
 	}
 	data.SetId(resp.Id)
+	clientCtx.AddBookmarks(resp.GetBookmark())
 
 	return resOAuth2ProviderReadContext(ctx, data, meta)
 }
 
 func resOAuth2ProviderReadContext(ctx context.Context,
 	data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.getClient().ReadOAuth2Provider(ctx, &configpb.ReadOAuth2ProviderRequest{
-		Id: data.Id(),
+	resp, err := clientCtx.GetClient().ReadOAuth2Provider(ctx, &configpb.ReadOAuth2ProviderRequest{
+		Id:        data.Id(),
+		Bookmarks: clientCtx.GetBookmarks(),
 	})
 	if hasFailed(&d, err) {
 		return d
@@ -146,8 +149,8 @@ func resOAuth2ProviderReadContext(ctx context.Context,
 
 func resOAuth2ProviderUpdateContext(ctx context.Context,
 	data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
@@ -174,19 +177,21 @@ func resOAuth2ProviderUpdateContext(ctx context.Context,
 			FrontChannelLoginUri:        rawMapToStringMap(data.Get(oauth2ProviderFrontChannelLoginURIKey)),
 			FrontChannelConsentUri:      rawMapToStringMap(data.Get(oauth2ProviderFrontChannelConsentURIKey)),
 		},
+		Bookmarks: clientCtx.GetBookmarks(),
 	}
 
-	_, err := client.getClient().UpdateOAuth2Provider(ctx, req)
+	resp, err := clientCtx.GetClient().UpdateOAuth2Provider(ctx, req)
 	if hasFailed(&d, err) {
 		return d
 	}
+	clientCtx.AddBookmarks(resp.GetBookmark())
 	return resOAuth2ProviderReadContext(ctx, data, meta)
 }
 
 func resOAuth2ProviderDeleteContext(ctx context.Context,
 	data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutDelete))
@@ -194,10 +199,12 @@ func resOAuth2ProviderDeleteContext(ctx context.Context,
 	if hasDeleteProtection(&d, data) {
 		return d
 	}
-	_, err := client.getClient().DeleteOAuth2Provider(ctx, &configpb.DeleteOAuth2ProviderRequest{
-		Id: data.Id(),
+	resp, err := clientCtx.GetClient().DeleteOAuth2Provider(ctx, &configpb.DeleteOAuth2ProviderRequest{
+		Id:        data.Id(),
+		Bookmarks: clientCtx.GetBookmarks(),
 	})
 	hasFailed(&d, err)
+	clientCtx.AddBookmarks(resp.GetBookmark())
 	return d
 }
 

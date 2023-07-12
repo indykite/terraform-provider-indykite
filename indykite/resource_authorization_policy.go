@@ -120,7 +120,7 @@ func authorizationPolicyConfigBuilder(data *schema.ResourceData) *configpb.Autho
 func resourceAuthorizationPolicyBuild(
 	_ *diag.Diagnostics,
 	data *schema.ResourceData,
-	_ *metaContext,
+	_ *ClientContext,
 	builder *config.NodeRequest,
 ) {
 	cfg := authorizationPolicyConfigBuilder(data)

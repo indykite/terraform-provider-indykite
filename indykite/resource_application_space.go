@@ -46,39 +46,43 @@ func resourceApplicationSpace() *schema.Resource {
 }
 
 func resAppSpaceCreateContext(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
 	defer cancel()
 
 	name := data.Get(nameKey).(string)
-	resp, err := client.getClient().CreateApplicationSpace(ctx, &config.CreateApplicationSpaceRequest{
+	resp, err := clientCtx.GetClient().CreateApplicationSpace(ctx, &config.CreateApplicationSpaceRequest{
 		CustomerId:  data.Get(customerIDKey).(string),
 		Name:        name,
 		DisplayName: optionalString(data, displayNameKey),
 		Description: optionalString(data, descriptionKey),
+		Bookmarks:   clientCtx.GetBookmarks(),
 	})
 	if hasFailed(&d, err) {
 		return d
 	}
 	data.SetId(resp.Id)
+	clientCtx.AddBookmarks(resp.GetBookmark())
 
 	return resAppSpaceReadContext(ctx, data, meta)
 }
 
 func resAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.getClient().ReadApplicationSpace(ctx, &config.ReadApplicationSpaceRequest{
+	resp, err := clientCtx.GetClient().ReadApplicationSpace(ctx, &config.ReadApplicationSpaceRequest{
 		Identifier: &config.ReadApplicationSpaceRequest_Id{
 			Id: data.Id(),
-		}})
+		},
+		Bookmarks: clientCtx.GetBookmarks(),
+	})
 	if hasFailed(&d, err) {
 		return d
 	}
@@ -98,8 +102,8 @@ func resAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta
 }
 
 func resAppSpaceUpdateContext(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
@@ -114,18 +118,20 @@ func resAppSpaceUpdateContext(ctx context.Context, data *schema.ResourceData, me
 		Id:          data.Id(),
 		DisplayName: updateOptionalString(data, displayNameKey),
 		Description: updateOptionalString(data, descriptionKey),
+		Bookmarks:   clientCtx.GetBookmarks(),
 	}
 
-	_, err := client.getClient().UpdateApplicationSpace(ctx, req)
+	resp, err := clientCtx.GetClient().UpdateApplicationSpace(ctx, req)
 	if hasFailed(&d, err) {
 		return d
 	}
+	clientCtx.AddBookmarks(resp.GetBookmark())
 	return resAppSpaceReadContext(ctx, data, meta)
 }
 
 func resAppSpaceDeleteContext(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutDelete))
@@ -133,9 +139,11 @@ func resAppSpaceDeleteContext(ctx context.Context, data *schema.ResourceData, me
 	if hasDeleteProtection(&d, data) {
 		return d
 	}
-	_, err := client.getClient().DeleteApplicationSpace(ctx, &config.DeleteApplicationSpaceRequest{
-		Id: data.Id(),
+	resp, err := clientCtx.GetClient().DeleteApplicationSpace(ctx, &config.DeleteApplicationSpaceRequest{
+		Id:        data.Id(),
+		Bookmarks: clientCtx.GetBookmarks(),
 	})
 	hasFailed(&d, err)
+	clientCtx.AddBookmarks(resp.GetBookmark())
 	return d
 }

@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"sync"
 
 	"github.com/golang/mock/gomock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -28,6 +29,7 @@ import (
 	"github.com/indykite/indykite-sdk-go/config"
 	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 	configm "github.com/indykite/indykite-sdk-go/test/config/v1beta1"
+	"github.com/pborman/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
@@ -42,26 +44,30 @@ import (
 var _ = Describe("DataSource OAuth2Application", func() {
 	const resourceName = "data.indykite_oauth2_application.wonka-bars-oauth2-application-2"
 	var (
-		mockCtrl                *gomock.Controller
-		mockConfigClient        *configm.MockConfigManagementAPIClient
-		indykiteProviderFactory func() (*schema.Provider, error)
+		mockCtrl         *gomock.Controller
+		mockConfigClient *configm.MockConfigManagementAPIClient
+		provider         *schema.Provider
+		mockedBookmark   string
 	)
 
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(TerraformGomockT(GinkgoT()))
 		mockConfigClient = configm.NewMockConfigManagementAPIClient(mockCtrl)
+		mockedBookmark = "for-oauth2-app-reads" + uuid.NewRandom().String() // Bookmark must be longer than 40 chars
+		bmOnce := &sync.Once{}
 
-		indykiteProviderFactory = func() (*schema.Provider, error) {
-			p := indykite.Provider()
-			cfgFunc := p.ConfigureContextFunc
-			p.ConfigureContextFunc =
-				func(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
-					client, _ := config.NewTestClient(ctx, mockConfigClient)
-					ctx = context.WithValue(ctx, indykite.ClientContext, client)
-					return cfgFunc(ctx, data)
-				}
-			return p, nil
-		}
+		provider = indykite.Provider()
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc =
+			func(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
+				client, _ := config.NewTestClient(ctx, mockConfigClient)
+				ctx = indykite.WithClient(ctx, client)
+				i, d := cfgFunc(ctx, data)
+				bmOnce.Do(func() {
+					i.(*indykite.ClientContext).AddBookmarks(mockedBookmark)
+				})
+				return i, d
+			}
 	})
 
 	It("Test load by ID", func() {
@@ -110,15 +116,16 @@ var _ = Describe("DataSource OAuth2Application", func() {
 		gomock.InOrder(
 			mockConfigClient.EXPECT().
 				ReadOAuth2Application(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(resp.Id),
+					"Id":        Equal(resp.Id),
+					"Bookmarks": ConsistOf(mockedBookmark),
 				})))).
 				Times(5).
 				Return(&configpb.ReadOAuth2ApplicationResponse{Oauth2Application: resp}, nil),
 		)
 
 		resource.Test(GinkgoT(), resource.TestCase{
-			ProviderFactories: map[string]func() (*schema.Provider, error){
-				"indykite": indykiteProviderFactory,
+			Providers: map[string]*schema.Provider{
+				"indykite": provider,
 			},
 			Steps: []resource.TestStep{
 				// Errors cases must be always first

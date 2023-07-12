@@ -65,14 +65,15 @@ func dataSourceOAuth2Application() *schema.Resource {
 
 func dataOAuth2ApplicationReadContext(ctx context.Context,
 	data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
+	clientCtx := getClientContext(&d, meta)
 	if d.HasError() {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.getClient().ReadOAuth2Application(ctx, &configpb.ReadOAuth2ApplicationRequest{
-		Id: data.Get(oauth2ApplicationIDKey).(string),
+	resp, err := clientCtx.GetClient().ReadOAuth2Application(ctx, &configpb.ReadOAuth2ApplicationRequest{
+		Id:        data.Get(oauth2ApplicationIDKey).(string),
+		Bookmarks: clientCtx.GetBookmarks(),
 	})
 	if hasFailed(&d, err) {
 		return d

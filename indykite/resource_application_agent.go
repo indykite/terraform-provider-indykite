@@ -47,39 +47,43 @@ func resourceApplicationAgent() *schema.Resource {
 }
 
 func resAppAgentCreate(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
 	defer cancel()
 
 	name := data.Get(nameKey).(string)
-	resp, err := client.getClient().CreateApplicationAgent(ctx, &config.CreateApplicationAgentRequest{
+	resp, err := clientCtx.GetClient().CreateApplicationAgent(ctx, &config.CreateApplicationAgentRequest{
 		ApplicationId: data.Get(applicationIDKey).(string),
 		Name:          name,
 		DisplayName:   optionalString(data, displayNameKey),
 		Description:   optionalString(data, descriptionKey),
+		Bookmarks:     clientCtx.GetBookmarks(),
 	})
 	if hasFailed(&d, err) {
 		return d
 	}
 	data.SetId(resp.Id)
+	clientCtx.AddBookmarks(resp.GetBookmark())
 
 	return resAppAgentRead(ctx, data, meta)
 }
 
 func resAppAgentRead(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.getClient().ReadApplicationAgent(ctx, &config.ReadApplicationAgentRequest{
+	resp, err := clientCtx.GetClient().ReadApplicationAgent(ctx, &config.ReadApplicationAgentRequest{
 		Identifier: &config.ReadApplicationAgentRequest_Id{
 			Id: data.Id(),
-		}})
+		},
+		Bookmarks: clientCtx.GetBookmarks(),
+	})
 	if hasFailed(&d, err) {
 		return d
 	}
@@ -101,8 +105,8 @@ func resAppAgentRead(ctx context.Context, data *schema.ResourceData, meta interf
 }
 
 func resAppAgentUpdate(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
@@ -117,18 +121,20 @@ func resAppAgentUpdate(ctx context.Context, data *schema.ResourceData, meta inte
 		Id:          data.Id(),
 		DisplayName: updateOptionalString(data, displayNameKey),
 		Description: updateOptionalString(data, descriptionKey),
+		Bookmarks:   clientCtx.GetBookmarks(),
 	}
 
-	_, err := client.getClient().UpdateApplicationAgent(ctx, req)
+	resp, err := clientCtx.GetClient().UpdateApplicationAgent(ctx, req)
 	if hasFailed(&d, err) {
 		return d
 	}
+	clientCtx.AddBookmarks(resp.GetBookmark())
 	return resAppAgentRead(ctx, data, meta)
 }
 
 func resAppAgentDelete(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutDelete))
@@ -136,9 +142,11 @@ func resAppAgentDelete(ctx context.Context, data *schema.ResourceData, meta inte
 	if hasDeleteProtection(&d, data) {
 		return d
 	}
-	_, err := client.getClient().DeleteApplicationAgent(ctx, &config.DeleteApplicationAgentRequest{
-		Id: data.Id(),
+	resp, err := clientCtx.GetClient().DeleteApplicationAgent(ctx, &config.DeleteApplicationAgentRequest{
+		Id:        data.Id(),
+		Bookmarks: clientCtx.GetBookmarks(),
 	})
 	hasFailed(&d, err)
+	clientCtx.AddBookmarks(resp.GetBookmark())
 	return d
 }

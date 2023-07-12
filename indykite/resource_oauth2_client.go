@@ -194,7 +194,7 @@ func resourceOAuth2ClientFlatten(
 func resourceOAuth2ClientBuild(
 	d *diag.Diagnostics,
 	data *schema.ResourceData,
-	_ *metaContext,
+	_ *ClientContext,
 	builder *config.NodeRequest,
 ) {
 	configNode := &configpb.OAuth2ClientConfig{

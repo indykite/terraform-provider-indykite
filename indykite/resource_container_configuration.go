@@ -134,24 +134,26 @@ func resCustomerConfigCreateUpdateContext(
 	data *schema.ResourceData,
 	meta interface{},
 ) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
 	defer cancel()
 
-	resp, err := client.getClient().UpdateCustomerConfig(ctx, &config.UpdateCustomerConfigRequest{
+	resp, err := clientCtx.GetClient().UpdateCustomerConfig(ctx, &config.UpdateCustomerConfigRequest{
 		Id: data.Get(customerIDKey).(string),
 		Config: &config.CustomerConfig{
 			DefaultAuthFlowId:     stringOrEmpty(data, defaultAuthFlowIDKey),
 			DefaultEmailServiceId: stringOrEmpty(data, defaultEmailServiceIDKey),
 		},
+		Bookmarks: clientCtx.GetBookmarks(),
 	})
 	if hasFailed(&d, err) {
 		return d
 	}
 	data.SetId(buildContainerID(resp.Id))
+	clientCtx.AddBookmarks(resp.GetBookmark())
 
 	return resCustomerConfigReadContext(ctx, data, meta)
 }
@@ -161,15 +163,16 @@ func resCustomerConfigReadContext(
 	data *schema.ResourceData,
 	meta interface{},
 ) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
 
-	resp, err := client.getClient().ReadCustomerConfig(ctx, &config.ReadCustomerConfigRequest{
-		Id: data.Get(customerIDKey).(string),
+	resp, err := clientCtx.GetClient().ReadCustomerConfig(ctx, &config.ReadCustomerConfigRequest{
+		Id:        data.Get(customerIDKey).(string),
+		Bookmarks: clientCtx.GetBookmarks(),
 	})
 	if hasFailed(&d, err) {
 		return d
@@ -186,25 +189,27 @@ func resApplicationSpaceConfigCreateUpdateContext(
 	data *schema.ResourceData,
 	meta interface{},
 ) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
 	defer cancel()
 
-	resp, err := client.getClient().UpdateApplicationSpaceConfig(ctx, &config.UpdateApplicationSpaceConfigRequest{
+	resp, err := clientCtx.GetClient().UpdateApplicationSpaceConfig(ctx, &config.UpdateApplicationSpaceConfigRequest{
 		Id: data.Get(appSpaceIDKey).(string),
 		Config: &config.ApplicationSpaceConfig{
 			DefaultAuthFlowId:     stringOrEmpty(data, defaultAuthFlowIDKey),
 			DefaultEmailServiceId: stringOrEmpty(data, defaultEmailServiceIDKey),
 			DefaultTenantId:       stringOrEmpty(data, defaultTenantIDKey),
 		},
+		Bookmarks: clientCtx.GetBookmarks(),
 	})
 	if hasFailed(&d, err) {
 		return d
 	}
 	data.SetId(buildContainerID(resp.Id))
+	clientCtx.AddBookmarks(resp.GetBookmark())
 
 	return resApplicationSpaceConfigReadContext(ctx, data, meta)
 }
@@ -214,15 +219,16 @@ func resApplicationSpaceConfigReadContext(
 	data *schema.ResourceData,
 	meta interface{},
 ) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
 
-	resp, err := client.getClient().ReadApplicationSpaceConfig(ctx, &config.ReadApplicationSpaceConfigRequest{
-		Id: data.Get(appSpaceIDKey).(string),
+	resp, err := clientCtx.GetClient().ReadApplicationSpaceConfig(ctx, &config.ReadApplicationSpaceConfigRequest{
+		Id:        data.Get(appSpaceIDKey).(string),
+		Bookmarks: clientCtx.GetBookmarks(),
 	})
 	if hasFailed(&d, err) {
 		return d
@@ -240,24 +246,26 @@ func resTenantConfigCreateUpdateContext(
 	data *schema.ResourceData,
 	meta interface{},
 ) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
 	defer cancel()
 
-	resp, err := client.getClient().UpdateTenantConfig(ctx, &config.UpdateTenantConfigRequest{
+	resp, err := clientCtx.GetClient().UpdateTenantConfig(ctx, &config.UpdateTenantConfigRequest{
 		Id: data.Get(tenantIDKey).(string),
 		Config: &config.TenantConfig{
 			DefaultAuthFlowId:     stringOrEmpty(data, defaultAuthFlowIDKey),
 			DefaultEmailServiceId: stringOrEmpty(data, defaultEmailServiceIDKey),
 		},
+		Bookmarks: clientCtx.GetBookmarks(),
 	})
 	if hasFailed(&d, err) {
 		return d
 	}
 	data.SetId(buildContainerID(resp.Id))
+	clientCtx.AddBookmarks(resp.GetBookmark())
 
 	return resTenantConfigReadContext(ctx, data, meta)
 }
@@ -267,15 +275,16 @@ func resTenantConfigReadContext(
 	data *schema.ResourceData,
 	meta interface{},
 ) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
 
-	resp, err := client.getClient().ReadTenantConfig(ctx, &config.ReadTenantConfigRequest{
-		Id: data.Get(tenantIDKey).(string),
+	resp, err := clientCtx.GetClient().ReadTenantConfig(ctx, &config.ReadTenantConfigRequest{
+		Id:        data.Get(tenantIDKey).(string),
+		Bookmarks: clientCtx.GetBookmarks(),
 	})
 	if hasFailed(&d, err) {
 		return d

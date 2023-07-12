@@ -70,7 +70,14 @@ func dataSourceTenantList() *schema.Resource {
 }
 
 func dataTenantReadContext(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	req := new(configpb.ReadTenantRequest)
+	clientCtx := getClientContext(&d, meta)
+	if d.HasError() {
+		return d
+	}
+
+	req := &configpb.ReadTenantRequest{
+		Bookmarks: clientCtx.GetBookmarks(),
+	}
 	if name, exists := data.GetOk(nameKey); exists {
 		req.Identifier = &configpb.ReadTenantRequest_Name{
 			Name: &configpb.UniqueNameIdentifier{
@@ -84,13 +91,9 @@ func dataTenantReadContext(ctx context.Context, data *schema.ResourceData, meta 
 		}
 	}
 
-	client := fromMeta(&d, meta)
-	if d.HasError() {
-		return d
-	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.getClient().ReadTenant(ctx, req)
+	resp, err := clientCtx.GetClient().ReadTenant(ctx, req)
 	if hasFailed(&d, err) {
 		return d
 	}
@@ -117,15 +120,16 @@ func dataTenantListContext(ctx context.Context, data *schema.ResourceData, meta 
 		match[i] = v.(string)
 	}
 
-	client := fromMeta(&d, meta)
+	clientCtx := getClientContext(&d, meta)
 	if d.HasError() {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.getClient().ListTenants(ctx, &configpb.ListTenantsRequest{
+	resp, err := clientCtx.GetClient().ListTenants(ctx, &configpb.ListTenantsRequest{
 		AppSpaceId: data.Get(appSpaceIDKey).(string),
 		Match:      match,
+		Bookmarks:  clientCtx.GetBookmarks(),
 	})
 	if hasFailed(&d, err) {
 		return d

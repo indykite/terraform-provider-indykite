@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"sync"
 
 	"github.com/golang/mock/gomock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -28,6 +29,7 @@ import (
 	"github.com/indykite/indykite-sdk-go/config"
 	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 	configm "github.com/indykite/indykite-sdk-go/test/config/v1beta1"
+	"github.com/pborman/uuid"
 
 	"github.com/indykite/terraform-provider-indykite/indykite"
 	"github.com/indykite/terraform-provider-indykite/indykite/test"
@@ -44,26 +46,33 @@ var _ = Describe("Resource Customer/AppSpace/Tenant configuration", func() {
 		tenantResourceName   = "indykite_tenant_configuration.development"
 	)
 	var (
-		mockCtrl                *gomock.Controller
-		mockConfigClient        *configm.MockConfigManagementAPIClient
-		indykiteProviderFactory func() (*schema.Provider, error)
+		mockCtrl         *gomock.Controller
+		mockConfigClient *configm.MockConfigManagementAPIClient
+		provider         *schema.Provider
+		mockedBookmark   string
 	)
 
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(TerraformGomockT(GinkgoT()))
 		mockConfigClient = configm.NewMockConfigManagementAPIClient(mockCtrl)
 
-		indykiteProviderFactory = func() (*schema.Provider, error) {
-			p := indykite.Provider()
-			cfgFunc := p.ConfigureContextFunc
-			p.ConfigureContextFunc =
-				func(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
-					client, _ := config.NewTestClient(ctx, mockConfigClient)
-					ctx = context.WithValue(ctx, indykite.ClientContext, client)
-					return cfgFunc(ctx, data)
-				}
-			return p, nil
-		}
+		// Bookmark must be longer than 40 chars - have just 1 added before the first write to test all cases
+		mockedBookmark = "for-container-cfg" + uuid.NewRandom().String()
+		bmOnce := &sync.Once{}
+
+		provider = indykite.Provider()
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc =
+			func(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
+				client, _ := config.NewTestClient(ctx, mockConfigClient)
+				ctx = indykite.WithClient(ctx, client)
+				i, d := cfgFunc(ctx, data)
+				// ConfigureContextFunc is called repeatedly, add initial bookmark just once
+				bmOnce.Do(func() {
+					i.(*indykite.ClientContext).AddBookmarks(mockedBookmark)
+				})
+				return i, d
+			}
 	})
 
 	It("Test CRU of Customer configuration", func() {
@@ -86,37 +95,46 @@ var _ = Describe("Resource Customer/AppSpace/Tenant configuration", func() {
 			},
 		}
 
+		createUpdateBM := "created-updated-customer-cfg" + uuid.NewRandom().String()
+		createUpdateBM2 := "created-updated-customer-cfg-2" + uuid.NewRandom().String()
+
 		// Create/Update
 		mockConfigClient.EXPECT().
 			UpdateCustomerConfig(gomock.Any(), test.WrapMatcher(test.EqualProto(&configpb.UpdateCustomerConfigRequest{
-				Id:     customerID,
-				Config: expectedCustomerResp.Config,
+				Id:        customerID,
+				Config:    expectedCustomerResp.Config,
+				Bookmarks: []string{mockedBookmark},
 			}))).
 			Return(&configpb.UpdateCustomerConfigResponse{
-				Id: customerID,
+				Id:       customerID,
+				Bookmark: createUpdateBM,
 			}, nil)
 
 		mockConfigClient.EXPECT().
 			UpdateCustomerConfig(gomock.Any(), test.WrapMatcher(test.EqualProto(&configpb.UpdateCustomerConfigRequest{
-				Id:     customerID,
-				Config: expectedUpdatedCustomerResp.Config,
+				Id:        customerID,
+				Config:    expectedUpdatedCustomerResp.Config,
+				Bookmarks: []string{mockedBookmark, createUpdateBM},
 			}))).
 			Return(&configpb.UpdateCustomerConfigResponse{
-				Id: customerID,
+				Id:       customerID,
+				Bookmark: createUpdateBM2,
 			}, nil)
 
 		// Read in given order
 		gomock.InOrder(
 			mockConfigClient.EXPECT().
 				ReadCustomerConfig(gomock.Any(), test.WrapMatcher(test.EqualProto(&configpb.ReadCustomerConfigRequest{
-					Id: customerID,
+					Id:        customerID,
+					Bookmarks: []string{mockedBookmark, createUpdateBM},
 				}))).
 				Times(3).
 				Return(expectedCustomerResp, nil),
 
 			mockConfigClient.EXPECT().
 				ReadCustomerConfig(gomock.Any(), test.WrapMatcher(test.EqualProto(&configpb.ReadCustomerConfigRequest{
-					Id: customerID,
+					Id:        customerID,
+					Bookmarks: []string{mockedBookmark, createUpdateBM, createUpdateBM2},
 				}))).
 				Times(2).
 				Return(expectedUpdatedCustomerResp, nil),
@@ -147,8 +165,8 @@ var _ = Describe("Resource Customer/AppSpace/Tenant configuration", func() {
 		}
 
 		resource.Test(GinkgoT(), resource.TestCase{
-			ProviderFactories: map[string]func() (*schema.Provider, error){
-				"indykite": indykiteProviderFactory,
+			Providers: map[string]*schema.Provider{
+				"indykite": provider,
 			},
 			Steps: []resource.TestStep{
 				// Errors case must be always first
@@ -211,27 +229,34 @@ var _ = Describe("Resource Customer/AppSpace/Tenant configuration", func() {
 			},
 		}
 
+		createUpdateBM := "created-updated-app-space-cfg" + uuid.NewRandom().String()
+		createUpdateBM2 := "created-updated-app-space-cfg-2" + uuid.NewRandom().String()
+
 		// Create/Update
 		mockConfigClient.EXPECT().
 			UpdateApplicationSpaceConfig(gomock.Any(), test.WrapMatcher(test.EqualProto(
 				&configpb.UpdateApplicationSpaceConfigRequest{
-					Id:     appSpaceID,
-					Config: expectedAppSpaceResp.Config,
+					Id:        appSpaceID,
+					Config:    expectedAppSpaceResp.Config,
+					Bookmarks: []string{mockedBookmark},
 				},
 			))).
 			Return(&configpb.UpdateApplicationSpaceConfigResponse{
-				Id: appSpaceID,
+				Id:       appSpaceID,
+				Bookmark: createUpdateBM,
 			}, nil)
 
 		mockConfigClient.EXPECT().
 			UpdateApplicationSpaceConfig(gomock.Any(), test.WrapMatcher(test.EqualProto(
 				&configpb.UpdateApplicationSpaceConfigRequest{
-					Id:     appSpaceID,
-					Config: expectedUpdatedAppSpaceResp.Config,
+					Id:        appSpaceID,
+					Config:    expectedUpdatedAppSpaceResp.Config,
+					Bookmarks: []string{mockedBookmark, createUpdateBM},
 				},
 			))).
 			Return(&configpb.UpdateApplicationSpaceConfigResponse{
-				Id: appSpaceID,
+				Id:       appSpaceID,
+				Bookmark: createUpdateBM2,
 			}, nil)
 
 		// Read in given order
@@ -239,7 +264,8 @@ var _ = Describe("Resource Customer/AppSpace/Tenant configuration", func() {
 			mockConfigClient.EXPECT().
 				ReadApplicationSpaceConfig(gomock.Any(), test.WrapMatcher(test.EqualProto(
 					&configpb.ReadApplicationSpaceConfigRequest{
-						Id: appSpaceID,
+						Id:        appSpaceID,
+						Bookmarks: []string{mockedBookmark, createUpdateBM},
 					},
 				))).
 				Times(3).
@@ -248,7 +274,8 @@ var _ = Describe("Resource Customer/AppSpace/Tenant configuration", func() {
 			mockConfigClient.EXPECT().
 				ReadApplicationSpaceConfig(gomock.Any(), test.WrapMatcher(test.EqualProto(
 					&configpb.ReadApplicationSpaceConfigRequest{
-						Id: appSpaceID,
+						Id:        appSpaceID,
+						Bookmarks: []string{mockedBookmark, createUpdateBM, createUpdateBM2},
 					},
 				))).
 				Times(2).
@@ -281,8 +308,8 @@ var _ = Describe("Resource Customer/AppSpace/Tenant configuration", func() {
 		}
 
 		resource.Test(GinkgoT(), resource.TestCase{
-			ProviderFactories: map[string]func() (*schema.Provider, error){
-				"indykite": indykiteProviderFactory,
+			Providers: map[string]*schema.Provider{
+				"indykite": provider,
 			},
 			Steps: []resource.TestStep{
 				// Errors case must be always first
@@ -350,23 +377,30 @@ var _ = Describe("Resource Customer/AppSpace/Tenant configuration", func() {
 			},
 		}
 
+		createUpdateBM := "created-updated-tenant-cfg" + uuid.NewRandom().String()
+		createUpdateBM2 := "created-updated-tenant-cfg-2" + uuid.NewRandom().String()
+
 		// Create/Update
 		mockConfigClient.EXPECT().
 			UpdateTenantConfig(gomock.Any(), test.WrapMatcher(test.EqualProto(&configpb.UpdateTenantConfigRequest{
-				Id:     appSpaceID,
-				Config: expectedAppSpaceResp.Config,
+				Id:        appSpaceID,
+				Config:    expectedAppSpaceResp.Config,
+				Bookmarks: []string{mockedBookmark},
 			}))).
 			Return(&configpb.UpdateTenantConfigResponse{
-				Id: appSpaceID,
+				Id:       appSpaceID,
+				Bookmark: createUpdateBM,
 			}, nil)
 
 		mockConfigClient.EXPECT().
 			UpdateTenantConfig(gomock.Any(), test.WrapMatcher(test.EqualProto(&configpb.UpdateTenantConfigRequest{
-				Id:     appSpaceID,
-				Config: expectedUpdatedAppSpaceResp.Config,
+				Id:        appSpaceID,
+				Config:    expectedUpdatedAppSpaceResp.Config,
+				Bookmarks: []string{mockedBookmark, createUpdateBM},
 			}))).
 			Return(&configpb.UpdateTenantConfigResponse{
-				Id: appSpaceID,
+				Id:       appSpaceID,
+				Bookmark: createUpdateBM2,
 			}, nil)
 
 		// Read in given order
@@ -374,7 +408,8 @@ var _ = Describe("Resource Customer/AppSpace/Tenant configuration", func() {
 			mockConfigClient.EXPECT().
 				ReadTenantConfig(gomock.Any(), test.WrapMatcher(test.EqualProto(
 					&configpb.ReadTenantConfigRequest{
-						Id: appSpaceID,
+						Id:        appSpaceID,
+						Bookmarks: []string{mockedBookmark, createUpdateBM},
 					},
 				))).
 				Times(3).
@@ -383,7 +418,8 @@ var _ = Describe("Resource Customer/AppSpace/Tenant configuration", func() {
 			mockConfigClient.EXPECT().
 				ReadTenantConfig(gomock.Any(), test.WrapMatcher(test.EqualProto(
 					&configpb.ReadTenantConfigRequest{
-						Id: appSpaceID,
+						Id:        appSpaceID,
+						Bookmarks: []string{mockedBookmark, createUpdateBM, createUpdateBM2},
 					},
 				))).
 				Times(2).
@@ -415,8 +451,8 @@ var _ = Describe("Resource Customer/AppSpace/Tenant configuration", func() {
 		}
 
 		resource.Test(GinkgoT(), resource.TestCase{
-			ProviderFactories: map[string]func() (*schema.Provider, error){
-				"indykite": indykiteProviderFactory,
+			Providers: map[string]*schema.Provider{
+				"indykite": provider,
 			},
 			Steps: []resource.TestStep{
 				// Errors case must be always first

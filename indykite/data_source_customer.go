@@ -39,22 +39,22 @@ func dataSourceCustomer() *schema.Resource {
 }
 
 func dataSourceCustomerRead(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	client := fromMeta(&d, meta)
-	if client == nil {
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
 		return d
 	}
 
-	var req *configpb.ReadCustomerRequest
+	req := &configpb.ReadCustomerRequest{
+		Bookmarks: clientCtx.GetBookmarks(),
+	}
 	if name, exists := data.GetOk(nameKey); exists {
-		req = &configpb.ReadCustomerRequest{
-			Identifier: &configpb.ReadCustomerRequest_Name{
-				Name: name.(string),
-			}}
+		req.Identifier = &configpb.ReadCustomerRequest_Name{
+			Name: name.(string),
+		}
 	} else if id, exists := data.GetOk(customerIDKey); exists {
-		req = &configpb.ReadCustomerRequest{
-			Identifier: &configpb.ReadCustomerRequest_Id{
-				Id: id.(string),
-			}}
+		req.Identifier = &configpb.ReadCustomerRequest_Id{
+			Id: id.(string),
+		}
 	}
 
 	if err := betterValidationErrorWithPath(req.Validate()); err != nil {
@@ -66,7 +66,7 @@ func dataSourceCustomerRead(ctx context.Context, data *schema.ResourceData, meta
 
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.getClient().ReadCustomer(ctx, req)
+	resp, err := clientCtx.GetClient().ReadCustomer(ctx, req)
 	if hasFailed(&d, err) {
 		return d
 	}

@@ -68,7 +68,14 @@ func dataSourceAppSpaceList() *schema.Resource {
 }
 
 func dataAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	req := new(configpb.ReadApplicationSpaceRequest)
+	clientCtx := getClientContext(&d, meta)
+	if d.HasError() {
+		return d
+	}
+
+	req := &configpb.ReadApplicationSpaceRequest{
+		Bookmarks: clientCtx.GetBookmarks(),
+	}
 	if name, exists := data.GetOk(nameKey); exists {
 		req.Identifier = &configpb.ReadApplicationSpaceRequest_Name{
 			Name: &configpb.UniqueNameIdentifier{
@@ -82,13 +89,9 @@ func dataAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, met
 		}
 	}
 
-	client := fromMeta(&d, meta)
-	if d.HasError() {
-		return d
-	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.getClient().ReadApplicationSpace(ctx, req)
+	resp, err := clientCtx.GetClient().ReadApplicationSpace(ctx, req)
 	if hasFailed(&d, err) {
 		return d
 	}
@@ -118,15 +121,16 @@ func dataAppSpaceListContext(ctx context.Context, data *schema.ResourceData, met
 		match[i] = v.(string)
 	}
 
-	client := fromMeta(&d, meta)
+	clientCtx := getClientContext(&d, meta)
 	if d.HasError() {
 		return d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := client.getClient().ListApplicationSpaces(ctx, &configpb.ListApplicationSpacesRequest{
+	resp, err := clientCtx.GetClient().ListApplicationSpaces(ctx, &configpb.ListApplicationSpacesRequest{
 		CustomerId: data.Get(customerIDKey).(string),
 		Match:      match,
+		Bookmarks:  clientCtx.GetBookmarks(),
 	})
 	if hasFailed(&d, err) {
 		return d

@@ -152,6 +152,3 @@ issues:
         - linters:
               - lll
           source: ^[\t ]*(Detail|Description)\:.*,?$
-        - linters:
-              - unparam
-          source: indykiteProviderFactory # This needs to match input type, cannot be refactored
