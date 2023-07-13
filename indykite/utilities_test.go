@@ -32,7 +32,7 @@ var _ = Describe("Utilities", func() {
 			d := indykite.ValidateGID(input, path)
 
 			if errStringMatcher == nil {
-				Expect(d).To(HaveLen(0))
+				Expect(d).To(BeEmpty())
 			} else {
 				Expect(d).To(HaveLen(1))
 				Expect(d[0].Detail).To(errStringMatcher)

@@ -8,31 +8,44 @@ linters:
         - ineffassign
         - staticcheck
         - stylecheck
-        - typecheck
+        - typecheck # Not in the linter list, but keep it https://golangci-lint.run/usage/faq/#why-do-you-have-typecheck-errors
         - unused
 
         # Extra
         - asciicheck
         - bidichk
         - contextcheck
+        - dogsled
         - durationcheck
         - dupword
+        - errchkjson
         - exhaustive
+        - forbidigo
         - gci
+        - ginkgolinter
+        - gocheckcompilerdirectives
         - gocritic
         - godot
+        # - goerr113 # As this is public SDK, would be nice to follow new error patterns
         - gofmt
         - goheader
         - gosec
+        - gosmopolitan
+        - grouper
         - lll
         - loggercheck
+        - misspell
         - nakedret
+        - nolintlint
         - prealloc
+        - reassign
         - revive
+        - tagalign
         - testpackage
         - unconvert
-        - unconvert
         - unparam
+        - usestdlibvars
+        - wastedassign
         - whitespace
 
 linters-settings:
@@ -66,7 +79,7 @@ linters-settings:
         values:
             regexp:
                 # As long we decide which format of YEAR in copyright we want, add this hack
-                our_year: 202[2] # Just change to 202[2-3] or other when changed
+                our_year: 202[2-3] # Just change to 202[2-3] or other when changed
         template: |-
             Copyright (c) {{OUR_YEAR}} IndyKite
 

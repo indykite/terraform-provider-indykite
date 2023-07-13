@@ -79,7 +79,7 @@ var _ = Describe("Resource Authorization Policy config", func() {
 				UpdateTime:  timestamppb.Now(),
 				Config: &configpb.ConfigNode_AuthorizationPolicyConfig{
 					AuthorizationPolicyConfig: &configpb.AuthorizationPolicyConfig{
-						// nolint:lll
+						//nolint:lll
 						Policy: "{\"meta\":{\"policyVersion\":\"1.0-indykite\"},\"subject\":{\"type\":\"Person\"},\"actions\":[\"CAN_DRIVE\",\"CAN_PERFORM_SERVICE\"],\"resource\":{\"type\":\"Car\"},\"condition\":{\"cypher\":\"MATCH (subject:Person)-[:PART_OF]->(:Household)-[:DISPOSES]->(resource:Car)\"}}",
 						Status: configpb.AuthorizationPolicyConfig_STATUS_ACTIVE,
 						Tags:   nil,
@@ -103,7 +103,7 @@ var _ = Describe("Resource Authorization Policy config", func() {
 				UpdateTime:  timestamppb.Now(),
 				Config: &configpb.ConfigNode_AuthorizationPolicyConfig{
 					AuthorizationPolicyConfig: &configpb.AuthorizationPolicyConfig{
-						// nolint:lll
+						//nolint:lll
 						Policy: "{\"meta\":{\"policyVersion\":\"1.0-indykite\"},\"subject\":{\"type\":\"Person\"},\"actions\":[\"CAN_DRIVE\",\"CAN_PERFORM_SERVICE\"],\"resource\":{\"type\":\"Car\"},\"condition\":{\"cypher\":\"MATCH (subject:Person)-[:PART_OF]->(:Household)-[:DISPOSES]->(resource:Car)\"}}",
 						Status: configpb.AuthorizationPolicyConfig_STATUS_ACTIVE,
 						Tags:   []string{"test", "wonka"},
@@ -300,7 +300,7 @@ var _ = Describe("Resource Authorization Policy config", func() {
 				// ---- Run mocked tests here ----
 				{
 					// Minimal config - Checking Create and Read (authzPolicyConfigResp)
-					// nolint:lll
+					//nolint:lll
 					Config: `resource "indykite_authorization_policy" "wonka" {
 						location = "` + tenantID + `"
 						name = "wonka-authorization-policy-config"
@@ -332,7 +332,7 @@ var _ = Describe("Resource Authorization Policy config", func() {
 				},
 				{
 					// Checking Read(authzPolicyConfigResp), Update and Read(authzPolicyConfigUpdateResp)
-					// nolint:lll
+					//nolint:lll
 					Config: `resource "indykite_authorization_policy" "wonka" {
 						location = "` + tenantID + `"
 						name = "wonka-authorization-policy-config"
@@ -346,7 +346,7 @@ var _ = Describe("Resource Authorization Policy config", func() {
 					Check: resource.ComposeTestCheckFunc(testAuthorizationPolicyResourceDataExists(
 						resourceName,
 						authzPolicyConfigUpdateResp,
-						// nolint:lll
+						//nolint:lll
 						Keys{
 							"tags.#": Equal(strconv.Itoa(len(authzPolicyConfigUpdateResp.ConfigNode.
 								GetAuthorizationPolicyConfig().GetTags()))),

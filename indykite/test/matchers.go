@@ -73,7 +73,7 @@ func (matcher *equalProtoMatcher) GomegaString() string {
 
 func (matcher *equalProtoMatcher) Match(actual interface{}) (success bool, err error) {
 	if actual == nil && matcher.Expected == nil {
-		// nolint
+		//nolint
 		return false, fmt.Errorf("Refusing to compare <nil> to <nil>.\nBe explicit and use BeNil() instead.  This is to avoid mistakes where both sides of an assertion are erroneously uninitialized.")
 	}
 
