@@ -425,7 +425,7 @@ var _ = Describe("Resource Email Notification", func() {
 						}
 					}
 					`,
-					// nolint:lll
+					//nolint:lll
 					ExpectError: regexp.MustCompile(`((?s)("access_key_id" is required.*)|("secret_access_key" is required.*)|("region" is required.*)){3}`),
 				},
 				{
@@ -458,7 +458,7 @@ var _ = Describe("Resource Email Notification", func() {
 					// There is update of Terraform which produce 'Too many template blocks error'
 					// or 'Attribute supports 1 item maximum, but config has 2 declared'
 					// but older version still produce 'List longer than MaxItems'
-					// nolint:lll
+					//nolint:lll
 					ExpectError: regexp.MustCompile(`Too many template blocks|List longer than MaxItems|Attribute supports 1 item maximum`),
 				},
 				{

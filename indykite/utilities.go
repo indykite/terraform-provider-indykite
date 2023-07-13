@@ -37,7 +37,7 @@ var (
 	nameCheck = regexp.MustCompile(`^[a-z]+(?:[-a-z0-9]*)*[a-z0-9]+$`)
 
 	// TODO improve the regexp pattern
-	// nolint:lll
+	//nolint:lll
 	emailRegex = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
 	// pemRegex defines regex to match PEM Private key format.
