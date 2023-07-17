@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.1.4...v0.2.0) (2023-07-17)
+
+
+### Features
+
+* add support for container configurations ([159c153](https://github.com/indykite/terraform-provider-indykite/commit/159c15307751475c6159d3fceefbe83eda6c14da))
+* implement bookmarks to handle casual consistency ([82390ac](https://github.com/indykite/terraform-provider-indykite/commit/82390ac45b4c26a5f7ca3160404f9f6b052ecf7a))
+
+
+### Miscellaneous Chores
+
+* upgrade everything ([3c22f7d](https://github.com/indykite/terraform-provider-indykite/commit/3c22f7d994d35db0e542bc26d1b86c06c1c9f882))
+
 ### [0.1.4](https://github.com/indykite/terraform-provider-indykite/compare/v0.1.3...v0.1.4) (2023-05-19)
 
 
