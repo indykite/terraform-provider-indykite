@@ -183,6 +183,25 @@ func SuppressYamlDiff(k, old, new string, _ *schema.ResourceData) bool {
 	return reflect.DeepEqual(oldMap, newMap)
 }
 
+// SuppressDurationDiff compares duration written as string and compare if value is the same or not.
+// So values like 1h or 60m is the same.
+func SuppressDurationDiff(_, oldValue, newValue string, _ *schema.ResourceData) bool {
+	if oldValue == newValue {
+		return true
+	}
+	var oldDur, newDur time.Duration
+	var err error
+
+	if oldDur, err = time.ParseDuration(oldValue); err != nil {
+		return false
+	}
+	if newDur, err = time.ParseDuration(newValue); err != nil {
+		return false
+	}
+
+	return oldDur == newDur
+}
+
 func optionalString(data *schema.ResourceData, key string) *wrapperspb.StringValue {
 	v, ok := data.Get(key).(string)
 	if !ok || v == "" {
