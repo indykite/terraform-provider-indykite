@@ -16,9 +16,10 @@ linters:
         - bidichk
         - contextcheck
         - dogsled
-        - durationcheck
         - dupword
+        - durationcheck
         - errchkjson
+        - errname
         - exhaustive
         - forbidigo
         - gci
@@ -34,8 +35,10 @@ linters:
         - grouper
         - lll
         - loggercheck
+        - mirror
         - misspell
         - nakedret
+        - nestif
         - nolintlint
         - prealloc
         - reassign

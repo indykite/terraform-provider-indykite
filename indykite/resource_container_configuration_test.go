@@ -19,7 +19,9 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -30,6 +32,8 @@ import (
 	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 	configm "github.com/indykite/indykite-sdk-go/test/config/v1beta1"
 	"github.com/pborman/uuid"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/indykite/terraform-provider-indykite/indykite"
 	"github.com/indykite/terraform-provider-indykite/indykite/test"
@@ -74,6 +78,33 @@ var _ = Describe("Resource Customer/AppSpace/Tenant configuration", func() {
 				return i, d
 			}
 	})
+
+	var addUsernamePolicyMatchers = func(keys Keys, up *configpb.UsernamePolicy) {
+		if up == nil {
+			keys["username_policy.#"] = Equal("0")
+			return
+		}
+		keys["username_policy.#"] = Equal("1")
+		keys["username_policy.0.%"] = Not(BeEmpty())
+
+		keys["username_policy.0.allowed_email_domains.#"] = Equal(strconv.Itoa(len(up.AllowedEmailDomains)))
+		for i, v := range up.AllowedEmailDomains {
+			keys["username_policy.0.allowed_email_domains."+strconv.Itoa(i)] = Equal(v)
+		}
+		keys["username_policy.0.exclusive_email_domains.#"] = Equal(strconv.Itoa(len(up.ExclusiveEmailDomains)))
+		for i, v := range up.ExclusiveEmailDomains {
+			keys["username_policy.0.exclusive_email_domains."+strconv.Itoa(i)] = Equal(v)
+		}
+
+		keys["username_policy.0.allowed_username_formats.#"] = Equal(strconv.Itoa(len(up.AllowedUsernameFormats)))
+		for i, v := range up.AllowedUsernameFormats {
+			keys["username_policy.0.allowed_username_formats."+strconv.Itoa(i)] = Equal(v)
+		}
+
+		keys["username_policy.0.valid_email"] = Equal(strconv.FormatBool(up.ValidEmail))
+		keys["username_policy.0.verify_email"] = Equal(strconv.FormatBool(up.VerifyEmail))
+		keys["username_policy.0.verify_email_grace_period"] = Equal(up.VerifyEmailGracePeriod.AsDuration().String())
+	}
 
 	It("Test CRU of Customer configuration", func() {
 		// Terraform created config must be in sync with data in expectedCustomerResp and expectedUpdatedCustomerResp
@@ -183,21 +214,21 @@ var _ = Describe("Resource Customer/AppSpace/Tenant configuration", func() {
 					ExpectError: regexp.MustCompile("Invalid ID value"),
 				},
 				{
-					// Performs 1 read (appAgentJWKCredResp)
+					// Performs 1 read
 					ResourceName:  customerResourceName,
 					ImportState:   true,
 					ImportStateId: customerID,
 					ExpectError:   regexp.MustCompile(`indykite_customer_configuration doesn't support import`),
 				},
 				{
-					// Checking Create and Read (appAgentJWKCredResp)
+					// Checking Create and Read
 					Config: fmt.Sprintf(tfConfigDef, customerID, ""),
 					Check: resource.ComposeTestCheckFunc(
 						testResourceDataExists(customerResourceName, expectedCustomerResp),
 					),
 				},
 				{
-					// Checking Create and Read (appAgentJWKCredResp)
+					// Checking Create and Read
 					Config: fmt.Sprintf(tfConfigDef, customerID, `default_auth_flow_id = "`+sampleID+`"
 					default_email_service_id = "`+sampleID2+`"`),
 					Check: resource.ComposeTestCheckFunc(
@@ -226,6 +257,18 @@ var _ = Describe("Resource Customer/AppSpace/Tenant configuration", func() {
 				DefaultAuthFlowId:     sampleID,
 				DefaultEmailServiceId: sampleID2,
 				DefaultTenantId:       tenantID,
+				UsernamePolicy: &configpb.UsernamePolicy{
+					AllowedUsernameFormats: []string{"email"},
+					ValidEmail:             true,
+					VerifyEmail:            true,
+					VerifyEmailGracePeriod: durationpb.New(10 * time.Minute),
+					AllowedEmailDomains:    []string{"gmail.com", "outlook.com"},
+					ExclusiveEmailDomains:  []string{"indykite.com"},
+				},
+				UniquePropertyConstraints: map[string]*configpb.UniquePropertyConstraint{
+					"property1":      {},
+					"super_property": {TenantUnique: true, Canonicalization: []string{"unicode"}},
+				},
 			},
 		}
 
@@ -302,6 +345,14 @@ var _ = Describe("Resource Customer/AppSpace/Tenant configuration", func() {
 					"default_email_service_id": Equal(data.Config.DefaultEmailServiceId),
 					"default_tenant_id":        Equal(data.Config.DefaultTenantId),
 				}
+				addUsernamePolicyMatchers(keys, data.Config.UsernamePolicy)
+				if propsLen := len(data.Config.UniquePropertyConstraints); propsLen > 0 {
+					keys["unique_property_constraints.%"] = Equal(strconv.Itoa(propsLen))
+					for k, v := range data.Config.UniquePropertyConstraints {
+						j, _ := protojson.MarshalOptions{EmitUnpopulated: true}.Marshal(v)
+						keys["unique_property_constraints."+k] = MatchJSON(j)
+					}
+				}
 
 				return convertOmegaMatcherToError(MatchAllKeys(keys), rs.Primary.Attributes)
 			}
@@ -330,7 +381,37 @@ var _ = Describe("Resource Customer/AppSpace/Tenant configuration", func() {
 					ExpectError: regexp.MustCompile("Invalid ID value"),
 				},
 				{
-					// Performs 1 read (appAgentJWKCredResp)
+					Config: fmt.Sprintf(tfConfigDef, appSpaceID,
+						`username_policy { verify_email_grace_period = "long-time" }`),
+					ExpectError: regexp.MustCompile(`invalid duration "long-time"`),
+				},
+				{
+					Config: fmt.Sprintf(tfConfigDef, appSpaceID, `unique_property_constraints = {
+							"__invalid": jsonencode({"tenantUnique": false})
+						}`),
+					ExpectError: regexp.MustCompile(
+						`Only A-Z, numbers and _ is allowed, and must start with letter: __invalid`),
+				},
+				{
+					Config: fmt.Sprintf(tfConfigDef, appSpaceID, `unique_property_constraints = {
+							"property_name": "ccc"
+						}`),
+					ExpectError: regexp.MustCompile(`value is not valid JSON: invalid character 'c'`),
+				},
+				{
+					Config: fmt.Sprintf(tfConfigDef, appSpaceID, `unique_property_constraints = {
+							"property_name": jsonencode({"abc": false})
+						}`),
+					ExpectError: regexp.MustCompile(`unknown field "abc"`),
+				},
+				{
+					Config: fmt.Sprintf(tfConfigDef, appSpaceID, `unique_property_constraints = {
+							"property_name": jsonencode({"canonicalization": ["ai"]})
+						}`),
+					ExpectError: regexp.MustCompile(`invalid .*\.Canonicalization\[0\]: value must be in list`),
+				},
+				{
+					// Performs 1 read
 					ResourceName:  appSpaceResourceName,
 					ImportState:   true,
 					ImportStateId: appSpaceID,
@@ -338,17 +419,29 @@ var _ = Describe("Resource Customer/AppSpace/Tenant configuration", func() {
 					ExpectError: regexp.MustCompile(`indykite_application_space_configuration doesn't support import`),
 				},
 				{
-					// Checking Create and Read (appAgentJWKCredResp)
+					// Checking Create and Read
 					Config: fmt.Sprintf(tfConfigDef, appSpaceID, ""),
 					Check: resource.ComposeTestCheckFunc(
 						testDataExists(appSpaceResourceName, expectedAppSpaceResp),
 					),
 				},
 				{
-					// Checking Create and Read (appAgentJWKCredResp)
+					// Checking Create and Read
 					Config: fmt.Sprintf(tfConfigDef, appSpaceID, `default_auth_flow_id = "`+sampleID+`"
 					default_email_service_id = "`+sampleID2+`"
-					default_tenant_id = "`+tenantID+`"`),
+					default_tenant_id = "`+tenantID+`"
+					username_policy {
+						allowed_username_formats = ["email"]
+						valid_email = true
+						verify_email = true
+						verify_email_grace_period = "600s"
+						allowed_email_domains = ["gmail.com", "outlook.com"]
+						exclusive_email_domains = ["indykite.com"]
+					}
+					unique_property_constraints = {
+						"property1": jsonencode({"tenantUnique": false})
+						"super_property": jsonencode({"tenantUnique": true, "canonicalization": ["unicode"]})
+					}`),
 					Check: resource.ComposeTestCheckFunc(
 						testDataExists(appSpaceResourceName, expectedUpdatedAppSpaceResp),
 					),
@@ -374,6 +467,14 @@ var _ = Describe("Resource Customer/AppSpace/Tenant configuration", func() {
 			Config: &configpb.TenantConfig{
 				DefaultAuthFlowId:     sampleID,
 				DefaultEmailServiceId: sampleID2,
+				UsernamePolicy: &configpb.UsernamePolicy{
+					AllowedUsernameFormats: []string{"email"},
+					ValidEmail:             true,
+					VerifyEmail:            true,
+					VerifyEmailGracePeriod: durationpb.New(10 * time.Minute),
+					AllowedEmailDomains:    []string{"gmail.com", "outlook.com"},
+					ExclusiveEmailDomains:  []string{"indykite.com"},
+				},
 			},
 		}
 
@@ -445,6 +546,7 @@ var _ = Describe("Resource Customer/AppSpace/Tenant configuration", func() {
 					"default_auth_flow_id":     Equal(data.Config.DefaultAuthFlowId),
 					"default_email_service_id": Equal(data.Config.DefaultEmailServiceId),
 				}
+				addUsernamePolicyMatchers(keys, data.Config.UsernamePolicy)
 
 				return convertOmegaMatcherToError(MatchAllKeys(keys), rs.Primary.Attributes)
 			}
@@ -469,7 +571,12 @@ var _ = Describe("Resource Customer/AppSpace/Tenant configuration", func() {
 					ExpectError: regexp.MustCompile("Invalid ID value"),
 				},
 				{
-					// Performs 1 read (appAgentJWKCredResp)
+					Config: fmt.Sprintf(tfConfigDef, appSpaceID,
+						`username_policy { verify_email_grace_period = "long-time" }`),
+					ExpectError: regexp.MustCompile(`invalid duration "long-time"`),
+				},
+				{
+					// Performs 1 read
 					ResourceName:  tenantResourceName,
 					ImportState:   true,
 					ImportStateId: appSpaceID,
@@ -477,16 +584,24 @@ var _ = Describe("Resource Customer/AppSpace/Tenant configuration", func() {
 					ExpectError: regexp.MustCompile(`indykite_tenant_configuration doesn't support import`),
 				},
 				{
-					// Checking Create and Read (appAgentJWKCredResp)
+					// Checking Create and Read
 					Config: fmt.Sprintf(tfConfigDef, appSpaceID, ""),
 					Check: resource.ComposeTestCheckFunc(
 						testDataExists(tenantResourceName, expectedAppSpaceResp),
 					),
 				},
 				{
-					// Checking Create and Read (appAgentJWKCredResp)
+					// Checking Create and Read
 					Config: fmt.Sprintf(tfConfigDef, appSpaceID, `default_auth_flow_id = "`+sampleID+`"
-					default_email_service_id = "`+sampleID2+`"`),
+					default_email_service_id = "`+sampleID2+`"
+					username_policy {
+						allowed_username_formats = ["email"]
+						valid_email = true
+						verify_email = true
+						verify_email_grace_period = "600s"
+						allowed_email_domains = ["gmail.com", "outlook.com"]
+						exclusive_email_domains = ["indykite.com"]
+					}`),
 					Check: resource.ComposeTestCheckFunc(
 						testDataExists(tenantResourceName, expectedUpdatedAppSpaceResp),
 					),
