@@ -1,5 +1,17 @@
 # Changelog
 
+### [0.2.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.2.0...v0.2.1) (2023-08-03)
+
+
+### Bug Fixes
+
+* add missing container config node attributes ([6900303](https://github.com/indykite/terraform-provider-indykite/commit/6900303777c04cc142ae63c53e9535e0e0229b1b))
+
+
+### Miscellaneous Chores
+
+* **deps:** update everything ([d65b4db](https://github.com/indykite/terraform-provider-indykite/commit/d65b4db88aeadc515b26defccd3d2b0062f32a78))
+
 ## [0.2.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.1.4...v0.2.0) (2023-07-17)
 
 
