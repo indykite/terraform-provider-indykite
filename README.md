@@ -1,5 +1,9 @@
 # Terraform Provider for IndyKite
 
+[![Test](https://github.com/indykite/terraform-provider-indykite/actions/workflows/go-test.yaml/badge.svg)](https://github.com/indykite/terraform-provider-indykite/actions/workflows/go-test.yaml)&nbsp;
+[![codecov](https://codecov.io/gh/indykite/terraform-provider-indykite/graph/badge.svg?token=bPeHVRUJaZ)](https://codecov.io/gh/indykite/terraform-provider-indykite)&nbsp;
+[![registry](https://img.shields.io/github/v/release/indykite/terraform-provider-indykite)](https://registry.terraform.io/providers/indykite/indykite/latest)
+
 The Terraform IndyKite provider is a plugin for Terraform that allows for the full
 lifecycle management of IndyKite resources.
 This provider is maintained internally by the IndyKite Provider team.
