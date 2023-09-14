@@ -90,8 +90,8 @@ var _ = Describe("Resource OAuth2 Client", func() {
 					Oauth2ClientConfig: &configpb.OAuth2ClientConfig{
 						ProviderType: configpb.ProviderType_PROVIDER_TYPE_GOOGLE_COM,
 						ClientId:     "my-own-client-id",
-						ClientSecret: "client-secret-for-google",
-						AuthStyle:    configpb.AuthStyle_AUTH_STYLE_AUTO_DETECT,
+						// ClientSecret Secret is never returned
+						AuthStyle: configpb.AuthStyle_AUTH_STYLE_AUTO_DETECT,
 					},
 				},
 			},

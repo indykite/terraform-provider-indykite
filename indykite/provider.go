@@ -88,6 +88,7 @@ func Provider() *schema.Provider {
 			"indykite_application_space":               resourceApplicationSpace(),
 			"indykite_application_space_configuration": resourceApplicationSpaceConfiguration(),
 			"indykite_application":                     resourceApplication(),
+			"indykite_audit_sink":                      resourceAuditSink(),
 			"indykite_tenant":                          resourceTenant(),
 			"indykite_tenant_configuration":            resourceTenantConfiguration(),
 			"indykite_application_agent":               resourceApplicationAgent(),
