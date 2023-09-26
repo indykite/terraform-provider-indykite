@@ -22,7 +22,7 @@ download:
 
 install-tools: download
 	@echo Installing tools from tools.go
-	@go install $$(go list -f '{{range .Imports}}{{.}} {{end}}' tools.go)
+	@go install $$(go list -e -f '{{range .Imports}}{{.}} {{end}}' tools.go)
 
 test:
 	go test -v -cpu 4 -covermode=count -coverpkg github.com/indykite/terraform-provider-indykite/... -coverprofile=coverage.out ./...
