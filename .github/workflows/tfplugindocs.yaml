@@ -1,0 +1,41 @@
+---
+name: Terraform plugin docs
+concurrency: tfplugindocs
+on:
+    push:
+        branches:
+            - master
+
+permissions:
+    contents: write
+
+jobs:
+    tfplugindocs:
+        name: Generate Terraform plugin docs
+        runs-on: ubuntu-latest
+        steps:
+            - name: Check out code
+              uses: actions/checkout@v4
+
+            - name: Set up Go
+              uses: actions/setup-go@v4
+              with:
+                  go-version-file: go.mod
+
+            - name: Generate docs
+              run: |
+                  make install-tools tfdocs_generate
+
+            - name: Fix trailing whitespace & EOF in generated docs
+              uses: pre-commit/action@v3.0.0
+              # ignoring errors, as pre-commit will fail if files were modified
+              continue-on-error: true
+              with:
+                  extra_args: --hook-stage=manual --all-files
+
+            - name: Commit generated docs
+              uses: stefanzweifel/git-auto-commit-action@v4
+              with:
+                  # using ci: prefix to hide this commit from changelog
+                  commit_message: 'ci: update Terraform plugin docs'
+                  commit_options: --no-verify --signoff
