@@ -76,7 +76,7 @@ var _ = Describe("Resource Email Notification", func() {
 		provider = indykite.Provider()
 		cfgFunc := provider.ConfigureContextFunc
 		provider.ConfigureContextFunc =
-			func(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
+			func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
 				client, _ := config.NewTestClient(ctx, mockConfigClient)
 				ctx = indykite.WithClient(ctx, client)
 				i, d := cfgFunc(ctx, data)
@@ -480,8 +480,9 @@ var _ = Describe("Resource Email Notification", func() {
 					// There is update of Terraform which produce 'Too many template blocks error'
 					// or 'Attribute supports 1 item maximum, but config has 2 declared'
 					// but older version still produce 'List longer than MaxItems'
-					//nolint:lll
-					ExpectError: regexp.MustCompile(`Too many template blocks|List longer than MaxItems|Attribute supports 1 item maximum`),
+					ExpectError: regexp.MustCompile(
+						`Too many template blocks|List longer than MaxItems|Attribute supports 1 item maximum`,
+					),
 				},
 				{
 					Config: `resource "indykite_email_notification" "wonka" {

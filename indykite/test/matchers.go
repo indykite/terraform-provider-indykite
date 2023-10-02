@@ -31,7 +31,7 @@ type matcherWrapper struct {
 	matcher types.GomegaMatcher
 	// This is used to save variable between calls to Matches and String in case of error
 	// to be able to print better messages on failure
-	actual interface{}
+	actual any
 }
 
 // WrapMatcher wraps Omega matcher into Gomock Matcher.
@@ -39,13 +39,13 @@ func WrapMatcher(matcher types.GomegaMatcher) gomock.Matcher {
 	return &matcherWrapper{matcher: matcher}
 }
 
-func (m *matcherWrapper) Matches(x interface{}) (ok bool) {
+func (m *matcherWrapper) Matches(x any) bool {
 	m.actual = x
-	var err error
-	if ok, err = m.matcher.Match(x); err != nil {
+	ok, err := m.matcher.Match(x)
+	if err != nil {
 		ok = false
 	}
-	return
+	return ok
 }
 
 func (m *matcherWrapper) String() string {
@@ -71,12 +71,12 @@ func (matcher *equalProtoMatcher) GomegaString() string {
 	return string(ex)
 }
 
-func (matcher *equalProtoMatcher) Match(actual interface{}) (success bool, err error) {
+func (matcher *equalProtoMatcher) Match(actual any) (bool, error) {
 	if actual == nil && matcher.Expected == nil {
-		//nolint
-		return false, fmt.Errorf("Refusing to compare <nil> to <nil>.\nBe explicit and use BeNil() instead.  This is to avoid mistakes where both sides of an assertion are erroneously uninitialized.")
+		//nolint:lll
+		return false, fmt.Errorf("refusing to compare <nil> to <nil>.\nBe explicit and use BeNil() instead. This is to avoid mistakes where both sides of an assertion are erroneously uninitialized")
 	}
-
+	var err error
 	if a, ok := actual.(*anypb.Any); ok {
 		var pa proto.Message
 		pa, err = a.UnmarshalNew()
@@ -93,7 +93,7 @@ func (matcher *equalProtoMatcher) Match(actual interface{}) (success bool, err e
 	return proto.Equal(pa, matcher.Expected), nil
 }
 
-func (matcher *equalProtoMatcher) FailureMessage(actual interface{}) (message string) {
+func (matcher *equalProtoMatcher) FailureMessage(actual any) string {
 	actualMessage, actualOK := actual.(proto.Message)
 	if actualOK {
 		op := protojson.MarshalOptions{AllowPartial: true}
@@ -105,7 +105,7 @@ func (matcher *equalProtoMatcher) FailureMessage(actual interface{}) (message st
 	return format.Message(actual, "to equal", matcher.Expected)
 }
 
-func (matcher *equalProtoMatcher) NegatedFailureMessage(actual interface{}) (message string) {
+func (matcher *equalProtoMatcher) NegatedFailureMessage(actual any) string {
 	actualMessage, actualOK := actual.(proto.Message)
 	if actualOK {
 		op := protojson.MarshalOptions{AllowPartial: true}

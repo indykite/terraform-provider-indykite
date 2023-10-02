@@ -104,7 +104,8 @@ func resourceApplicationAgentCredential() *schema.Resource {
 	}
 }
 
-func resAppAgentCredCreate(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+func resAppAgentCredCreate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -148,7 +149,8 @@ func resAppAgentCredCreate(ctx context.Context, data *schema.ResourceData, meta 
 	return resAppAgentCredRead(ctx, data, meta)
 }
 
-func resAppAgentCredUpdate(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+func resAppAgentCredUpdate(_ context.Context, data *schema.ResourceData, _ any) diag.Diagnostics {
+	var d diag.Diagnostics
 	if data.HasChangeExcept(defaultTenantKey) {
 		return append(d, buildPluginError("All fields except '"+defaultTenantKey+"' must be set to forceNew:true."))
 	}
@@ -160,7 +162,7 @@ func resAppAgentCredUpdate(ctx context.Context, data *schema.ResourceData, meta 
 		return d
 	}
 
-	mapCfg := map[string]interface{}{}
+	mapCfg := map[string]any{}
 	err := json.Unmarshal([]byte(agentConfig), &mapCfg)
 	if err != nil {
 		return append(d, buildPluginErrorWithAttrName(err.Error(), agentConfigKey))
@@ -178,7 +180,8 @@ func resAppAgentCredUpdate(ctx context.Context, data *schema.ResourceData, meta 
 	return d
 }
 
-func resAppAgentCredRead(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+func resAppAgentCredRead(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -211,7 +214,8 @@ func resAppAgentCredRead(ctx context.Context, data *schema.ResourceData, meta in
 	return d
 }
 
-func resAppAgentCredDelete(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+func resAppAgentCredDelete(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d

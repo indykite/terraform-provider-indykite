@@ -150,7 +150,8 @@ func resourceOAuth2Client() *schema.Resource {
 func resourceOAuth2ClientFlatten(
 	data *schema.ResourceData,
 	resp *configpb.ReadConfigNodeResponse,
-) (d diag.Diagnostics) {
+) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientConf := resp.GetConfigNode().GetOauth2ClientConfig()
 	if clientConf == nil {
 		return diag.Diagnostics{buildPluginError("config in the response is not valid OAuth2ClientConfig")}
@@ -192,7 +193,7 @@ func resourceOAuth2ClientFlatten(
 }
 
 func resourceOAuth2ClientBuild(
-	d *diag.Diagnostics,
+	_ *diag.Diagnostics,
 	data *schema.ResourceData,
 	_ *ClientContext,
 	builder *config.NodeRequest,

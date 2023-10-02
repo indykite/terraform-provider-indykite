@@ -38,7 +38,8 @@ func dataSourceCustomer() *schema.Resource {
 	}
 }
 
-func dataSourceCustomerRead(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+func dataSourceCustomerRead(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d

@@ -45,7 +45,8 @@ func resourceApplication() *schema.Resource {
 	}
 }
 
-func resApplicationCreate(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+func resApplicationCreate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -70,7 +71,8 @@ func resApplicationCreate(ctx context.Context, data *schema.ResourceData, meta i
 	return resApplicationRead(ctx, data, meta)
 }
 
-func resApplicationRead(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+func resApplicationRead(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -102,7 +104,8 @@ func resApplicationRead(ctx context.Context, data *schema.ResourceData, meta int
 	return d
 }
 
-func resApplicationUpdate(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+func resApplicationUpdate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -130,7 +133,8 @@ func resApplicationUpdate(ctx context.Context, data *schema.ResourceData, meta i
 	return resApplicationRead(ctx, data, meta)
 }
 
-func resApplicationDelete(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+func resApplicationDelete(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d

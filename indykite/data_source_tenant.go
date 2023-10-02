@@ -16,6 +16,7 @@ package indykite
 
 import (
 	"context"
+	"errors"
 	"io"
 	"strings"
 
@@ -69,7 +70,8 @@ func dataSourceTenantList() *schema.Resource {
 	}
 }
 
-func dataTenantReadContext(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+func dataTenantReadContext(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if d.HasError() {
 		return d
@@ -113,8 +115,9 @@ func dataTenantReadContext(ctx context.Context, data *schema.ResourceData, meta 
 	return d
 }
 
-func dataTenantListContext(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	rawFilter := data.Get(filterKey).([]interface{})
+func dataTenantListContext(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	rawFilter := data.Get(filterKey).([]any)
 	match := make([]string, len(rawFilter))
 	for i, v := range rawFilter {
 		match[i] = v.(string)
@@ -135,17 +138,17 @@ func dataTenantListContext(ctx context.Context, data *schema.ResourceData, meta 
 		return d
 	}
 
-	var allTenants []map[string]interface{}
+	var allTenants []map[string]any
 	for {
 		app, err := resp.Recv()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			hasFailed(&d, err)
 			return d
 		}
-		allTenants = append(allTenants, map[string]interface{}{
+		allTenants = append(allTenants, map[string]any{
 			customerIDKey:  app.GetTenant().GetCustomerId(),
 			appSpaceIDKey:  app.GetTenant().GetAppSpaceId(),
 			issuerIDKey:    app.GetTenant().GetIssuerId(),

@@ -16,6 +16,7 @@ package indykite
 
 import (
 	"context"
+	"errors"
 	"io"
 	"strings"
 
@@ -67,7 +68,8 @@ func dataSourceApplicationList() *schema.Resource {
 	}
 }
 
-func dataApplicationReadContext(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+func dataApplicationReadContext(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if d.HasError() {
 		return d
@@ -111,8 +113,9 @@ func dataApplicationReadContext(ctx context.Context, data *schema.ResourceData, 
 	return d
 }
 
-func dataApplicationListContext(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	rawFilter := data.Get(filterKey).([]interface{})
+func dataApplicationListContext(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	rawFilter := data.Get(filterKey).([]any)
 	match := make([]string, len(rawFilter))
 	for i, v := range rawFilter {
 		match[i] = v.(string)
@@ -133,17 +136,17 @@ func dataApplicationListContext(ctx context.Context, data *schema.ResourceData, 
 		return d
 	}
 
-	var allApplications []map[string]interface{}
+	var allApplications []map[string]any
 	for {
 		app, err := resp.Recv()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			hasFailed(&d, err)
 			return d
 		}
-		allApplications = append(allApplications, map[string]interface{}{
+		allApplications = append(allApplications, map[string]any{
 			customerIDKey:  app.GetApplication().GetCustomerId(),
 			appSpaceIDKey:  app.GetApplication().GetAppSpaceId(),
 			"id":           app.GetApplication().GetId(),

@@ -67,7 +67,8 @@ func resourceOAuth2Provider() *schema.Resource {
 }
 
 func resOAuth2ProviderCreateContext(ctx context.Context,
-	data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+	data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -107,7 +108,8 @@ func resOAuth2ProviderCreateContext(ctx context.Context,
 }
 
 func resOAuth2ProviderReadContext(ctx context.Context,
-	data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+	data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -148,7 +150,8 @@ func resOAuth2ProviderReadContext(ctx context.Context,
 }
 
 func resOAuth2ProviderUpdateContext(ctx context.Context,
-	data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+	data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -189,7 +192,8 @@ func resOAuth2ProviderUpdateContext(ctx context.Context,
 }
 
 func resOAuth2ProviderDeleteContext(ctx context.Context,
-	data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+	data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -302,11 +306,11 @@ func oauth2ProviderTokenEndpointAuthSigningAlgSchema() *schema.Schema {
 	}
 }
 
-func validateMapOfURIs(keyMinLength int, keyMaxLength int) schema.SchemaValidateDiagFunc {
-	return func(v interface{}, path cty.Path) diag.Diagnostics {
+func validateMapOfURIs(keyMinLength, keyMaxLength int) schema.SchemaValidateDiagFunc {
+	return func(v any, path cty.Path) diag.Diagnostics {
 		var diags diag.Diagnostics
 
-		inputMap, _ := v.(map[string]interface{})
+		inputMap, _ := v.(map[string]any)
 		if len(inputMap) == 0 {
 			diags = append(diags, diag.Diagnostic{
 				Severity:      diag.Error,
@@ -330,13 +334,13 @@ func validateMapOfURIs(keyMinLength int, keyMaxLength int) schema.SchemaValidate
 	}
 }
 
-func rawArrayToGrantTypeArray(d *diag.Diagnostics, rawData interface{}) []configpb.GrantType {
-	arr := make([]configpb.GrantType, len(rawData.([]interface{})))
+func rawArrayToGrantTypeArray(d *diag.Diagnostics, rawData any) []configpb.GrantType {
+	arr := make([]configpb.GrantType, len(rawData.([]any)))
 	if len(arr) == 0 {
 		return nil
 	}
 	var exists bool
-	for i, el := range rawData.([]interface{}) {
+	for i, el := range rawData.([]any) {
 		arr[i], exists = OAuth2GrantTypes[el.(string)]
 		if !exists {
 			*d = append(*d, buildPluginError("unsupported grant type: "+el.(string)))
@@ -364,13 +368,13 @@ func grantTypeArrayToRawArray(d *diag.Diagnostics, grantTypes []configpb.GrantTy
 	return arr
 }
 
-func rawArrayToResponseTypeArray(d *diag.Diagnostics, rawData interface{}) []configpb.ResponseType {
-	arr := make([]configpb.ResponseType, len(rawData.([]interface{})))
+func rawArrayToResponseTypeArray(d *diag.Diagnostics, rawData any) []configpb.ResponseType {
+	arr := make([]configpb.ResponseType, len(rawData.([]any)))
 	if len(arr) == 0 {
 		return nil
 	}
 	var exists bool
-	for i, el := range rawData.([]interface{}) {
+	for i, el := range rawData.([]any) {
 		arr[i], exists = OAuth2ResponseTypes[el.(string)]
 		if !exists {
 			*d = append(*d, buildPluginError("unsupported response type: "+el.(string)))
@@ -398,13 +402,13 @@ func responseTypeArrayToRawArray(d *diag.Diagnostics, responseTypes []configpb.R
 	return arr
 }
 
-func rawSetToTokenEndpointAuthMethodArray(d *diag.Diagnostics, rawData interface{}) []configpb.TokenEndpointAuthMethod {
-	arr := make([]configpb.TokenEndpointAuthMethod, len(rawData.([]interface{})))
+func rawSetToTokenEndpointAuthMethodArray(d *diag.Diagnostics, rawData any) []configpb.TokenEndpointAuthMethod {
+	arr := make([]configpb.TokenEndpointAuthMethod, len(rawData.([]any)))
 	if len(arr) == 0 {
 		return nil
 	}
 	var exists bool
-	for i, el := range rawData.([]interface{}) {
+	for i, el := range rawData.([]any) {
 		arr[i], exists = OAuth2TokenEndpointAuthMethods[el.(string)]
 		if !exists {
 			*d = append(*d, buildPluginError("unsupported response type: "+el.(string)))

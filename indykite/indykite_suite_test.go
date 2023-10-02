@@ -69,13 +69,13 @@ func TerraformGomockT(ginkgoT GinkgoTInterface) GomockTestCleanuper {
 	}
 }
 
-func (t terraformGomockTestReporter) Errorf(format string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, format, args...)
+func (terraformGomockTestReporter) Errorf(format string, args ...any) {
+	_, _ = fmt.Fprintf(os.Stderr, format, args...)
 	panic("Error, see stderr")
 }
 
-func (t terraformGomockTestReporter) Fatalf(format string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, format, args...)
+func (terraformGomockTestReporter) Fatalf(format string, args ...any) {
+	_, _ = fmt.Fprintf(os.Stderr, format, args...)
 	panic("Fatal, see stderr")
 }
 
@@ -105,7 +105,7 @@ func JSONEquals(oldValue, newValue string) bool {
 	return match
 }
 
-func convertOmegaMatcherToError(matcher OmegaMatcher, actual interface{}) error {
+func convertOmegaMatcherToError(matcher OmegaMatcher, actual any) error {
 	success, err := matcher.Match(actual)
 	if err != nil {
 		return err

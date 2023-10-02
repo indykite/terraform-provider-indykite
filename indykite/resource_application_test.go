@@ -61,7 +61,7 @@ var _ = Describe("Resource Application", func() {
 		provider = indykite.Provider()
 		cfgFunc := provider.ConfigureContextFunc
 		provider.ConfigureContextFunc =
-			func(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
+			func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
 				client, _ := config.NewTestClient(ctx, mockConfigClient)
 				ctx = indykite.WithClient(ctx, client)
 				i, d := cfgFunc(ctx, data)

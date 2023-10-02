@@ -63,7 +63,7 @@ var _ = Describe("Resource Authorization Policy config", func() {
 		provider = indykite.Provider()
 		cfgFunc := provider.ConfigureContextFunc
 		provider.ConfigureContextFunc =
-			func(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
+			func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
 				client, _ := config.NewTestClient(ctx, mockConfigClient)
 				ctx = indykite.WithClient(ctx, client)
 				i, d := cfgFunc(ctx, data)
@@ -324,8 +324,8 @@ var _ = Describe("Resource Authorization Policy config", func() {
 				},
 
 				// ---- Run mocked tests here ----
+				// Minimal config - Checking Create and Read (authzPolicyConfigResp)
 				{
-					// Minimal config - Checking Create and Read (authzPolicyConfigResp)
 					//nolint:lll
 					Config: `resource "indykite_authorization_policy" "wonka" {
 						location = "` + tenantID + `"
@@ -356,8 +356,8 @@ var _ = Describe("Resource Authorization Policy config", func() {
 					ExpectError: regexp.MustCompile(
 						`not valid AuthorizationPolicyConfig((?s).*)IndyKite plugin error, please report this issue`),
 				},
+				// Checking Read(authzPolicyConfigResp), Update and Read(authzPolicyConfigUpdateResp)
 				{
-					// Checking Read(authzPolicyConfigResp), Update and Read(authzPolicyConfigUpdateResp)
 					//nolint:lll
 					Config: `resource "indykite_authorization_policy" "wonka" {
 						location = "` + tenantID + `"

@@ -103,7 +103,7 @@ func Provider() *schema.Provider {
 	}
 
 	provider.ConfigureContextFunc =
-		func(ctx context.Context, _ *schema.ResourceData) (interface{}, diag.Diagnostics) {
+		func(ctx context.Context, _ *schema.ResourceData) (any, diag.Diagnostics) {
 			return providerConfigure(ctx, bookmarks, provider.TerraformVersion)
 		}
 
@@ -114,7 +114,7 @@ func providerConfigure(
 	ctx context.Context,
 	bookmarks *clientBookmarks,
 	version string,
-) (interface{}, diag.Diagnostics) {
+) (any, diag.Diagnostics) {
 	cfg := &tfConfig{terraformVersion: version}
 	c, err := cfg.getClient(ctx)
 	if err.HasError() {
@@ -128,7 +128,7 @@ func providerConfigure(
 }
 
 // getClientContext converts meta into ClientContext structure.
-func getClientContext(d *diag.Diagnostics, meta interface{}) *ClientContext {
+func getClientContext(d *diag.Diagnostics, meta any) *ClientContext {
 	clientCtx, ok := meta.(*ClientContext)
 	if !ok || clientCtx == nil {
 		*d = append(*d, buildPluginError("Unable retrieve IndyKite client from meta"))
@@ -150,9 +150,8 @@ func (x *ClientContext) AddBookmarks(bookmarks ...string) {
 	}
 	x.bookmarks.Lock()
 	defer x.bookmarks.Unlock()
-
 	for _, b := range bookmarks {
-		if len(b) == 0 {
+		if b == "" {
 			continue
 		}
 
@@ -186,7 +185,7 @@ func WithClient(ctx context.Context, c *config.Client) context.Context {
 }
 
 // getClient configures and returns a fully initialized getClient.
-func (c *tfConfig) getClient(ctx context.Context) (*config.Client, diag.Diagnostics) {
+func (*tfConfig) getClient(ctx context.Context) (*config.Client, diag.Diagnostics) {
 	if client, ok := ctx.Value(clientContextKey).(*config.Client); ok {
 		return client, nil
 	}

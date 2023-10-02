@@ -34,11 +34,10 @@ import (
 )
 
 var (
-	nameCheck = regexp.MustCompile(`^[a-z]+(?:[-a-z0-9]*)*[a-z0-9]+$`)
+	nameCheck = regexp.MustCompile(`^[a-z]+[-a-z0-9]*[a-z0-9]+$`)
 
-	// TODO improve the regexp pattern
-	//nolint:lll
-	emailRegex = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+	// TODO improve the regexp pattern.
+	emailRegex = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$") //nolint:lll
 
 	// pemRegex defines regex to match PEM Private key format.
 	pemRegex = regexp.MustCompile(`^-----BEGIN PRIVATE KEY-----(?:(?s).*)-----END PRIVATE KEY-----(?:\n)?$`)
@@ -50,7 +49,8 @@ var supportedSigningAlgs = []string{
 }
 
 // ValidateName is Terraform validation helper to verify value is valid name.
-func ValidateName(i interface{}, path cty.Path) (ret diag.Diagnostics) {
+func ValidateName(i any, path cty.Path) diag.Diagnostics {
+	var ret diag.Diagnostics
 	v, ok := i.(string)
 	if !ok {
 		return append(ret, buildPluginErrorWithPath(
@@ -77,7 +77,8 @@ func ValidateName(i interface{}, path cty.Path) (ret diag.Diagnostics) {
 }
 
 // ValidateEmail is Terraform validation helper to verify value is valid email.
-func ValidateEmail(i interface{}, path cty.Path) (ret diag.Diagnostics) {
+func ValidateEmail(i any, path cty.Path) diag.Diagnostics {
+	var ret diag.Diagnostics
 	v, ok := i.(string)
 	if !ok {
 		return append(ret, buildPluginErrorWithPath(
@@ -105,7 +106,7 @@ func ValidateEmail(i interface{}, path cty.Path) (ret diag.Diagnostics) {
 }
 
 // ValidateGID is Terraform validation helper to verify value is valid gid.
-func ValidateGID(i interface{}, path cty.Path) (ret diag.Diagnostics) {
+func ValidateGID(i any, path cty.Path) diag.Diagnostics {
 	v, ok := i.(string)
 	var errSummary string
 	switch {
@@ -133,7 +134,8 @@ func ValidateGID(i interface{}, path cty.Path) (ret diag.Diagnostics) {
 }
 
 // ValidateYaml is Terraform validation helper to verify value is valid YAML.
-func ValidateYaml(i interface{}, path cty.Path) (ret diag.Diagnostics) {
+func ValidateYaml(i any, path cty.Path) diag.Diagnostics {
+	var ret diag.Diagnostics
 	v, ok := i.(string)
 	if !ok {
 		return append(ret, buildPluginErrorWithPath(
@@ -141,7 +143,7 @@ func ValidateYaml(i interface{}, path cty.Path) (ret diag.Diagnostics) {
 			path,
 		))
 	}
-	var y interface{}
+	var y any
 	if err := yaml.Unmarshal([]byte(v), &y); err != nil {
 		return diag.Diagnostics{{
 			Severity:      diag.Error,
@@ -153,30 +155,30 @@ func ValidateYaml(i interface{}, path cty.Path) (ret diag.Diagnostics) {
 }
 
 // DisplayNameDiffSuppress suppress Terraform changes when it contains name returned from API.
-func DisplayNameDiffSuppress(k, old, new string, d *schema.ResourceData) bool {
-	if k == displayNameKey && old == d.Get(nameKey).(string) && new == "" {
+func DisplayNameDiffSuppress(k, old, newVal string, d *schema.ResourceData) bool {
+	if k == displayNameKey && old == d.Get(nameKey).(string) && newVal == "" {
 		return true
 	}
 	return false
 }
 
 // DisplayNameCredentialDiffSuppress suppress Terraform changes when it contains KID returned from API.
-func DisplayNameCredentialDiffSuppress(k, old, new string, d *schema.ResourceData) bool {
-	if k == displayNameKey && old == d.Get(kidKey).(string) && new == "" {
+func DisplayNameCredentialDiffSuppress(k, old, newVal string, d *schema.ResourceData) bool {
+	if k == displayNameKey && old == d.Get(kidKey).(string) && newVal == "" {
 		return true
 	}
 	return false
 }
 
 // SuppressYamlDiff verify that 2 YAML strings are the same in value and suppress Terraform changes.
-func SuppressYamlDiff(k, old, new string, _ *schema.ResourceData) bool {
-	var oldMap, newMap map[string]interface{}
+func SuppressYamlDiff(_, old, newVal string, _ *schema.ResourceData) bool {
+	var oldMap, newMap map[string]any
 
 	if err := yaml.Unmarshal([]byte(old), &oldMap); err != nil {
 		return false
 	}
 
-	if err := yaml.Unmarshal([]byte(new), &newMap); err != nil {
+	if err := yaml.Unmarshal([]byte(newVal), &newMap); err != nil {
 		return false
 	}
 
@@ -216,7 +218,7 @@ func stringOrEmpty(data *schema.ResourceData, key string) string {
 }
 
 // flattenOptionalString returns String if v is not nil and v is not empty else returns nil.
-func flattenOptionalString(v *wrapperspb.StringValue) interface{} {
+func flattenOptionalString(v *wrapperspb.StringValue) any {
 	if v != nil && v.Value != "" {
 		return v.Value
 	}
@@ -248,7 +250,7 @@ func updateOptionalString(data *schema.ResourceData, key string) *wrapperspb.Str
 	return wrapperspb.String(v)
 }
 
-func setData(d *diag.Diagnostics, data *schema.ResourceData, attr string, value interface{}) {
+func setData(d *diag.Diagnostics, data *schema.ResourceData, attr string, value any) {
 	if valOf := reflect.ValueOf(value); value == nil || (valOf.Kind() == reflect.Ptr && valOf.IsNil()) {
 		if err := data.Set(attr, nil); err != nil {
 			*d = append(*d, diag.Diagnostic{
@@ -329,22 +331,22 @@ func hasFailed(d *diag.Diagnostics, err error) bool {
 	return false
 }
 
-// rawArrayToStringArray casts raw data to []interface{} and next to []string.
-func rawArrayToStringArray(rawData interface{}) []string {
-	strArr := make([]string, len(rawData.([]interface{})))
+// rawArrayToStringArray casts raw data to []any and next to []string.
+func rawArrayToStringArray(rawData any) []string {
+	strArr := make([]string, len(rawData.([]any)))
 	if len(strArr) == 0 {
 		return nil
 	}
-	for i, el := range rawData.([]interface{}) {
+	for i, el := range rawData.([]any) {
 		strArr[i] = el.(string)
 	}
 	return strArr
 }
 
-// rawMapToStringMap casts raw data to map[string]interface{} and next convert to map[string]string.
-func rawMapToStringMap(rawData interface{}) map[string]string {
+// rawMapToStringMap casts raw data to map[string]any and next convert to map[string]string.
+func rawMapToStringMap(rawData any) map[string]string {
 	out := make(map[string]string)
-	for i, el := range rawData.(map[string]interface{}) {
+	for i, el := range rawData.(map[string]any) {
 		out[i] = el.(string)
 	}
 	if len(out) == 0 {
@@ -354,7 +356,7 @@ func rawMapToStringMap(rawData interface{}) map[string]string {
 }
 
 func stringToOptionalStringWrapper(in string) *wrapperspb.StringValue {
-	if len(in) == 0 {
+	if in == "" {
 		return nil
 	}
 	return wrapperspb.String(in)
