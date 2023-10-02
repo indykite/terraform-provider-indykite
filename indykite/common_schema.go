@@ -208,7 +208,7 @@ func oauth2ScopesSchema() *schema.Schema {
 		Elem: &schema.Schema{
 			Type: schema.TypeString,
 			ValidateFunc: validation.StringMatch(
-				//nolint
+				//nolint:gosimple // Keep escaped version as it is copy from spec
 				regexp.MustCompile("^[\\x21\\x23-\\x5b\\x5d-\\x7e]+$"),
 				"Scope does not pass validation according to Section 3.3 of OAuth 2.0 [RFC6749]",
 			),

@@ -43,7 +43,7 @@ var _ = Describe("Provider Bookmarks", func() {
 		p := indykite.Provider()
 		cfgFunc := p.ConfigureContextFunc
 		p.ConfigureContextFunc =
-			func(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
+			func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
 				client, _ := config.NewTestClient(ctx, mockConfigClient)
 				ctx = indykite.WithClient(ctx, client)
 				return cfgFunc(ctx, data)

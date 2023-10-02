@@ -26,7 +26,7 @@ var (
 	gidBase64Regex = regexp.MustCompile("^gid:[A-Za-z0-9_-]{22,}$")
 )
 
-func basicStateImporter(_ context.Context, data *schema.ResourceData, _ interface{}) ([]*schema.ResourceData, error) {
+func basicStateImporter(_ context.Context, data *schema.ResourceData, _ any) ([]*schema.ResourceData, error) {
 	if err := parseImportID(data); err != nil {
 		return nil, err
 	}

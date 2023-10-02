@@ -51,7 +51,8 @@ func dataSourceOAuth2Provider() *schema.Resource {
 }
 
 func dataOAuth2ProviderReadContext(ctx context.Context,
-	data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+	data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if d.HasError() {
 		return d
@@ -69,7 +70,8 @@ func dataOAuth2ProviderReadContext(ctx context.Context,
 	return dataOAuth2ProviderFlatten(data, resp.GetOauth2Provider())
 }
 
-func dataOAuth2ProviderFlatten(data *schema.ResourceData, resp *configpb.OAuth2Provider) (d diag.Diagnostics) {
+func dataOAuth2ProviderFlatten(data *schema.ResourceData, resp *configpb.OAuth2Provider) diag.Diagnostics {
+	var d diag.Diagnostics
 	if resp.GetConfig() == nil {
 		return diag.Diagnostics{buildPluginError("empty OAuth2Provider response")}
 	}

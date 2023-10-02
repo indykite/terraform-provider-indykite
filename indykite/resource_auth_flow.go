@@ -77,7 +77,8 @@ func resourceAuthFlow() *schema.Resource {
 func resourceAuthFlowFlatten(
 	data *schema.ResourceData,
 	resp *configpb.ReadConfigNodeResponse,
-) (d diag.Diagnostics) {
+) diag.Diagnostics {
+	var d diag.Diagnostics
 	authFlowNodeConfig := resp.GetConfigNode().GetAuthFlowConfig()
 	if authFlowNodeConfig == nil {
 		return diag.Diagnostics{buildPluginError("config in the response is not valid AuthFlowNodeConfig")}
@@ -112,7 +113,7 @@ func resourceAuthFlowFlatten(
 func resourceAuthFlowBuild(
 	d *diag.Diagnostics,
 	data *schema.ResourceData,
-	meta *ClientContext,
+	_ *ClientContext,
 	builder *config.NodeRequest,
 ) {
 	cfg := new(configpb.AuthFlowConfig)

@@ -36,7 +36,8 @@ type preBuildConfig func(
 type postFlattenConfig func(data *schema.ResourceData, resp *configpb.ReadConfigNodeResponse) diag.Diagnostics
 
 func configCreateContextFunc(configBuilder preBuildConfig, read schema.ReadContextFunc) schema.CreateContextFunc {
-	return func(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+	return func(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+		var d diag.Diagnostics
 		clientCtx := getClientContext(&d, meta)
 
 		name := data.Get(nameKey).(string)
@@ -87,7 +88,8 @@ func configCreateContextFunc(configBuilder preBuildConfig, read schema.ReadConte
 }
 
 func configReadContextFunc(flatten postFlattenConfig) schema.ReadContextFunc {
-	return func(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+	return func(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+		var d diag.Diagnostics
 		clientCtx := getClientContext(&d, meta)
 
 		builder, err := config.NewRead(data.Id())
@@ -132,7 +134,8 @@ func configReadContextFunc(flatten postFlattenConfig) schema.ReadContextFunc {
 }
 
 func configUpdateContextFunc(configBuilder preBuildConfig, read schema.ReadContextFunc) schema.UpdateContextFunc {
-	return func(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+	return func(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+		var d diag.Diagnostics
 		clientCtx := getClientContext(&d, meta)
 
 		builder, err := config.NewUpdate(data.Id())
@@ -166,7 +169,8 @@ func configUpdateContextFunc(configBuilder preBuildConfig, read schema.ReadConte
 }
 
 func configDeleteContextFunc() schema.DeleteContextFunc {
-	return func(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+	return func(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+		var d diag.Diagnostics
 		clientCtx := getClientContext(&d, meta)
 
 		builder, err := config.NewDelete(data.Id())

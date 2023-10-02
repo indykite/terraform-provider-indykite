@@ -65,7 +65,7 @@ var _ = Describe("DataSource Tenant", func() {
 		provider = indykite.Provider()
 		cfgFunc := provider.ConfigureContextFunc
 		provider.ConfigureContextFunc =
-			func(ctx context.Context, data *schema.ResourceData) (interface{}, diag.Diagnostics) {
+			func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
 				client, _ := config.NewTestClient(ctx, mockConfigClient)
 				ctx = indykite.WithClient(ctx, client)
 				i, d := cfgFunc(ctx, data)
@@ -215,8 +215,8 @@ var _ = Describe("DataSource Tenant", func() {
 			Times(5).
 			DoAndReturn(
 				func(
-					_, _ interface{},
-					_ ...interface{},
+					_, _ any,
+					_ ...any,
 				) (*configm.MockConfigManagementAPI_ListTenantsClient, error) {
 					mockListTenantsClient.EXPECT().Recv().
 						Return(&configpb.ListTenantsResponse{Tenant: tenantResp}, nil)

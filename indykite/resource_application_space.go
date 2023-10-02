@@ -45,7 +45,8 @@ func resourceApplicationSpace() *schema.Resource {
 	}
 }
 
-func resAppSpaceCreateContext(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+func resAppSpaceCreateContext(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -70,7 +71,8 @@ func resAppSpaceCreateContext(ctx context.Context, data *schema.ResourceData, me
 	return resAppSpaceReadContext(ctx, data, meta)
 }
 
-func resAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+func resAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -101,7 +103,8 @@ func resAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta
 	return d
 }
 
-func resAppSpaceUpdateContext(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+func resAppSpaceUpdateContext(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -129,7 +132,8 @@ func resAppSpaceUpdateContext(ctx context.Context, data *schema.ResourceData, me
 	return resAppSpaceReadContext(ctx, data, meta)
 }
 
-func resAppSpaceDeleteContext(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+func resAppSpaceDeleteContext(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d

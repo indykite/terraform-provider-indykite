@@ -169,7 +169,8 @@ when Tenant is created, and deleted when Tenant is deleted.`
 	}
 }
 
-func noopDelete(_ context.Context, _ *schema.ResourceData, _ any) (d diag.Diagnostics) {
+func noopDelete(_ context.Context, _ *schema.ResourceData, _ any) diag.Diagnostics {
+	var d diag.Diagnostics
 	return d
 }
 
@@ -177,7 +178,8 @@ func resCustomerConfigCreateUpdateContext(
 	ctx context.Context,
 	data *schema.ResourceData,
 	meta any,
-) (d diag.Diagnostics) {
+) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -206,7 +208,8 @@ func resCustomerConfigReadContext(
 	ctx context.Context,
 	data *schema.ResourceData,
 	meta any,
-) (d diag.Diagnostics) {
+) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -232,7 +235,8 @@ func resApplicationSpaceConfigCreateUpdateContext(
 	ctx context.Context,
 	data *schema.ResourceData,
 	meta any,
-) (d diag.Diagnostics) {
+) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -281,7 +285,8 @@ func resApplicationSpaceConfigReadContext(
 	ctx context.Context,
 	data *schema.ResourceData,
 	meta any,
-) (d diag.Diagnostics) {
+) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -315,7 +320,8 @@ func resTenantConfigCreateUpdateContext(
 	ctx context.Context,
 	data *schema.ResourceData,
 	meta any,
-) (d diag.Diagnostics) {
+) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -351,7 +357,8 @@ func resTenantConfigReadContext(
 	ctx context.Context,
 	data *schema.ResourceData,
 	meta any,
-) (d diag.Diagnostics) {
+) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -403,7 +410,7 @@ func getUsernamePolicySchema() *schema.Schema {
 				usernamePolicyVerifyEmailGracePeriodKey: {
 					Type:     schema.TypeString,
 					Optional: true,
-					ValidateDiagFunc: func(v interface{}, path cty.Path) diag.Diagnostics {
+					ValidateDiagFunc: func(v any, path cty.Path) diag.Diagnostics {
 						if _, err := time.ParseDuration(v.(string)); err != nil {
 							return diag.Diagnostics{{
 								Severity:      diag.Error,
@@ -479,7 +486,7 @@ func resContainerCfgUsernamePolicyFlatten(
 	}})
 }
 
-func resContainerCfgUniqueConstraintValidation(value interface{}, path cty.Path) diag.Diagnostics {
+func resContainerCfgUniqueConstraintValidation(value any, path cty.Path) diag.Diagnostics {
 	d := validation.MapKeyMatch(
 		regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]{0,253}$`),
 		"Only A-Z, numbers and _ is allowed, and must start with letter",

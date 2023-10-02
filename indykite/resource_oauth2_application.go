@@ -94,7 +94,8 @@ func resourceOAuth2Application() *schema.Resource {
 }
 
 func resOAuth2ApplicationCreateContext(ctx context.Context,
-	data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+	data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -150,7 +151,8 @@ func resOAuth2ApplicationCreateContext(ctx context.Context,
 }
 
 func resOAuth2ApplicationReadContext(ctx context.Context,
-	data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+	data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -223,7 +225,8 @@ func resOAuth2ApplicationReadContext(ctx context.Context,
 }
 
 func resOAuth2ApplicationUpdateContext(ctx context.Context,
-	data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+	data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -275,7 +278,8 @@ func resOAuth2ApplicationUpdateContext(ctx context.Context,
 }
 
 func resOAuth2ApplicationDeleteContext(ctx context.Context,
-	data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+	data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -518,7 +522,7 @@ func oauth2ApplicationUserinfoSignedResponseAlgSchema() *schema.Schema {
 }
 
 func validateIsUUID(key string) schema.SchemaValidateDiagFunc {
-	return func(v interface{}, path cty.Path) diag.Diagnostics {
+	return func(v any, path cty.Path) diag.Diagnostics {
 		var diags diag.Diagnostics
 
 		_, errors := validation.IsUUID(v, key)
@@ -537,7 +541,7 @@ func validateIsUUID(key string) schema.SchemaValidateDiagFunc {
 }
 
 func validateApplicationUserSupportEmailAddress(key string) schema.SchemaValidateDiagFunc {
-	return func(i interface{}, path cty.Path) diag.Diagnostics {
+	return func(i any, path cty.Path) diag.Diagnostics {
 		var diags diag.Diagnostics
 
 		v, ok := i.(string)

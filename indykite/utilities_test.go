@@ -27,7 +27,7 @@ import (
 var _ = Describe("Utilities", func() {
 	invalidBase64Error := "expected to be a valid Raw URL Base64 string with 'gid:' prefix, got illegal base64 data"
 	DescribeTable("ValidateBase64ID",
-		func(input interface{}, errStringMatcher OmegaMatcher) {
+		func(input any, errStringMatcher OmegaMatcher) {
 			path := cty.IndexIntPath(22)
 			d := indykite.ValidateGID(input, path)
 
@@ -53,12 +53,12 @@ var _ = Describe("Utilities", func() {
 	)
 
 	DescribeTable("DisplayNameDiffSuppress",
-		func(k, currentName, old, new string, expected OmegaMatcher) {
+		func(k, currentName, old, newVal string, expected OmegaMatcher) {
 			resourceData := schema.TestResourceDataRaw(GinkgoT(),
 				map[string]*schema.Schema{"name": {Type: schema.TypeString}},
-				map[string]interface{}{"name": currentName},
+				map[string]any{"name": currentName},
 			)
-			Expect(indykite.DisplayNameDiffSuppress(k, old, new, resourceData)).To(expected)
+			Expect(indykite.DisplayNameDiffSuppress(k, old, newVal, resourceData)).To(expected)
 		},
 		Entry("Different key", "description", "a", "b", "c", BeFalse()),
 		// If new and old are the same, tested function is not called at all

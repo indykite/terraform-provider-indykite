@@ -95,7 +95,8 @@ func resourceAuditSink() *schema.Resource {
 func resourceAuditSinkFlatten(
 	data *schema.ResourceData,
 	resp *configpb.ReadConfigNodeResponse,
-) (d diag.Diagnostics) {
+) diag.Diagnostics {
+	var d diag.Diagnostics
 	switch p := resp.GetConfigNode().GetAuditSinkConfig().GetProvider().(type) {
 	case *configpb.AuditSinkConfig_Kafka:
 		var oldPassword any

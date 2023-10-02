@@ -16,6 +16,7 @@ package indykite
 
 import (
 	"context"
+	"errors"
 	"io"
 	"strings"
 
@@ -67,7 +68,8 @@ func dataSourceAppSpaceList() *schema.Resource {
 	}
 }
 
-func dataAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+func dataAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if d.HasError() {
 		return d
@@ -99,7 +101,8 @@ func dataAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, met
 	return dataAppSpaceFlatten(data, resp.GetAppSpace())
 }
 
-func dataAppSpaceFlatten(data *schema.ResourceData, resp *configpb.ApplicationSpace) (d diag.Diagnostics) {
+func dataAppSpaceFlatten(data *schema.ResourceData, resp *configpb.ApplicationSpace) diag.Diagnostics {
+	var d diag.Diagnostics
 	if resp == nil {
 		return diag.Diagnostics{buildPluginError("empty ApplicationSpace response")}
 	}
@@ -114,8 +117,9 @@ func dataAppSpaceFlatten(data *schema.ResourceData, resp *configpb.ApplicationSp
 	return d
 }
 
-func dataAppSpaceListContext(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
-	rawFilter := data.Get(filterKey).([]interface{})
+func dataAppSpaceListContext(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	rawFilter := data.Get(filterKey).([]any)
 	match := make([]string, len(rawFilter))
 	for i, v := range rawFilter {
 		match[i] = v.(string)
@@ -136,17 +140,17 @@ func dataAppSpaceListContext(ctx context.Context, data *schema.ResourceData, met
 		return d
 	}
 
-	var allAppSpaces []map[string]interface{}
+	var allAppSpaces []map[string]any
 	for {
 		appSpace, err := resp.Recv()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			hasFailed(&d, err)
 			return d
 		}
-		allAppSpaces = append(allAppSpaces, map[string]interface{}{
+		allAppSpaces = append(allAppSpaces, map[string]any{
 			customerIDKey:  appSpace.GetAppSpace().GetCustomerId(),
 			"id":           appSpace.GetAppSpace().GetId(),
 			nameKey:        appSpace.GetAppSpace().GetName(),

@@ -46,7 +46,8 @@ func resourceTenant() *schema.Resource {
 	}
 }
 
-func resTenantCreate(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+func resTenantCreate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -71,7 +72,8 @@ func resTenantCreate(ctx context.Context, data *schema.ResourceData, meta interf
 	return resTenantRead(ctx, data, meta)
 }
 
-func resTenantRead(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+func resTenantRead(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -104,7 +106,8 @@ func resTenantRead(ctx context.Context, data *schema.ResourceData, meta interfac
 	return d
 }
 
-func resTenantUpdate(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+func resTenantUpdate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
@@ -132,7 +135,8 @@ func resTenantUpdate(ctx context.Context, data *schema.ResourceData, meta interf
 	return resTenantRead(ctx, data, meta)
 }
 
-func resTenantDelete(ctx context.Context, data *schema.ResourceData, meta interface{}) (d diag.Diagnostics) {
+func resTenantDelete(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d

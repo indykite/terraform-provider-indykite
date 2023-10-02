@@ -75,7 +75,7 @@ const (
 func resourceEmailNotification() *schema.Resource {
 	readContext := configReadContextFunc(resourceEmailNotificationFlatten)
 
-	oneOfProvider := []string{providerSESKey, providerSendgridKey /*, providerMailjetKey, providerMailgunKey */}
+	oneOfProvider := []string{providerSESKey, providerSendgridKey /* , providerMailjetKey, providerMailgunKey */}
 	return &schema.Resource{
 		CreateContext: configCreateContextFunc(resourceEmailNotificationBuild, readContext),
 		ReadContext:   readContext,
@@ -295,7 +295,8 @@ func emailTemplateSchema() *schema.Schema {
 func resourceEmailNotificationFlatten(
 	data *schema.ResourceData,
 	resp *configpb.ReadConfigNodeResponse,
-) (d diag.Diagnostics) {
+) diag.Diagnostics {
+	var d diag.Diagnostics
 	mailConf := resp.GetConfigNode().GetEmailServiceConfig()
 	if mailConf == nil {
 		return diag.Diagnostics{buildPluginError("config in the response is not valid EmailNotificationConfig")}
@@ -307,12 +308,12 @@ func resourceEmailNotificationFlatten(
 
 	switch provider := mailConf.Provider.(type) {
 	case *configpb.EmailServiceConfig_Amazon:
-		var oldAccessKey interface{}
-		if val, ok := data.Get(providerSESKey).([]interface{}); ok && len(val) > 0 {
-			dataMap, _ := val[0].(map[string]interface{})
+		var oldAccessKey any
+		if val, ok := data.Get(providerSESKey).([]any); ok && len(val) > 0 {
+			dataMap, _ := val[0].(map[string]any)
 			oldAccessKey = dataMap[sesSecretAccessKey]
 		}
-		setData(&d, data, providerSESKey, []map[string]interface{}{{
+		setData(&d, data, providerSESKey, []map[string]any{{
 			sesAccessKey:          provider.Amazon.AccessKeyId,
 			sesSecretAccessKey:    oldAccessKey,
 			sesRegionKey:          provider.Amazon.Region,
@@ -322,12 +323,12 @@ func resourceEmailNotificationFlatten(
 			sesFeedbackAddrKey:    provider.Amazon.FeedbackForwardingEmailAddress,
 		}})
 	case *configpb.EmailServiceConfig_Sendgrid:
-		var oldAPIKey interface{}
-		if val, ok := data.Get(providerSendgridKey).([]interface{}); ok && len(val) > 0 {
-			dataMap, _ := val[0].(map[string]interface{})
+		var oldAPIKey any
+		if val, ok := data.Get(providerSendgridKey).([]any); ok && len(val) > 0 {
+			dataMap, _ := val[0].(map[string]any)
 			oldAPIKey = dataMap[sendgridAPIKey]
 		}
-		setData(&d, data, providerSendgridKey, []map[string]interface{}{{
+		setData(&d, data, providerSendgridKey, []map[string]any{{
 			sendgridAPIKey:     oldAPIKey,
 			sendgridSandboxKey: provider.Sendgrid.SandboxMode,
 			sendgridIPPoolKey:  flattenOptionalString(provider.Sendgrid.IpPoolName),
@@ -343,7 +344,7 @@ func resourceEmailNotificationFlatten(
 			invitationMessageKey,
 		))
 	} else if val != nil {
-		setData(&d, data, invitationMessageKey, []map[string]interface{}{val})
+		setData(&d, data, invitationMessageKey, []map[string]any{val})
 	}
 
 	if val, err := flattenMessageDefinition(mailConf.ResetPasswordMessage); err != nil {
@@ -352,7 +353,7 @@ func resourceEmailNotificationFlatten(
 			resetPasswordMessageKey,
 		))
 	} else if val != nil {
-		setData(&d, data, resetPasswordMessageKey, []map[string]interface{}{val})
+		setData(&d, data, resetPasswordMessageKey, []map[string]any{val})
 	}
 
 	if val, err := flattenMessageDefinition(mailConf.VerificationMessage); err != nil {
@@ -361,7 +362,7 @@ func resourceEmailNotificationFlatten(
 			verificationMessageKey,
 		))
 	} else if val != nil {
-		setData(&d, data, verificationMessageKey, []map[string]interface{}{val})
+		setData(&d, data, verificationMessageKey, []map[string]any{val})
 	}
 
 	if val, err := flattenMessageDefinition(mailConf.OneTimePasswordMessage); err != nil {
@@ -370,7 +371,7 @@ func resourceEmailNotificationFlatten(
 			oneTimePasswordMessageKey,
 		))
 	} else if val != nil {
-		setData(&d, data, oneTimePasswordMessageKey, []map[string]interface{}{val})
+		setData(&d, data, oneTimePasswordMessageKey, []map[string]any{val})
 	}
 
 	return d
@@ -391,7 +392,7 @@ func flattenEmailAddrList(resp []*configpb.Email) []map[string]string {
 	return flatten
 }
 
-func flattenMessageDefinition(resp *configpb.EmailDefinition) (map[string]interface{}, error) {
+func flattenMessageDefinition(resp *configpb.EmailDefinition) (map[string]any, error) {
 	if resp == nil {
 		return nil, nil
 	}
@@ -410,14 +411,14 @@ func flattenMessageDefinition(resp *configpb.EmailDefinition) (map[string]interf
 			return nil, err
 		}
 	}
-	return map[string]interface{}{
+	return map[string]any{
 		fromMailKey:    flattenEmailAddrList([]*configpb.Email{t.Template.From}),
 		replyToMailKey: flattenEmailAddrList([]*configpb.Email{t.Template.ReplyTo}),
 		toMailKey:      flattenEmailAddrList(t.Template.To),
 		ccMailKey:      flattenEmailAddrList(t.Template.Cc),
 		bccMailKey:     flattenEmailAddrList(t.Template.Bcc),
 		subjectMailKey: t.Template.Subject,
-		mailTemplateKey: []map[string]interface{}{{
+		mailTemplateKey: []map[string]any{{
 			templateIDKey:            t.Template.TemplateId,
 			templateVersionKey:       flattenOptionalString(t.Template.TemplateVersion),
 			templateHeadersKey:       flattenOptionalMap(t.Template.Headers),
@@ -443,7 +444,7 @@ func resourceEmailNotificationBuild(
 	}
 
 	if val, ok := data.GetOk(providerSESKey); ok {
-		mapVal := val.([]interface{})[0].(map[string]interface{})
+		mapVal := val.([]any)[0].(map[string]any)
 		provider := &configpb.AmazonSESProviderConfig{
 			AccessKeyId:                    mapVal[sesAccessKey].(string),
 			SecretAccessKey:                mapVal[sesSecretAccessKey].(string),
@@ -460,7 +461,7 @@ func resourceEmailNotificationBuild(
 	}
 
 	if val, ok := data.GetOk(providerSendgridKey); ok {
-		mapVal := val.([]interface{})[0].(map[string]interface{})
+		mapVal := val.([]any)[0].(map[string]any)
 		configNode.Provider = &configpb.EmailServiceConfig_Sendgrid{Sendgrid: &configpb.SendGridProviderConfig{
 			ApiKey:      mapVal[sendgridAPIKey].(string),
 			SandboxMode: mapVal[sendgridSandboxKey].(bool),
@@ -493,12 +494,12 @@ func resourceEmailNotificationBuild(
 }
 
 // buildEmailAddrList will cast step-by-step to []map[string]string.
-func buildEmailAddrList(rawData interface{}) []*configpb.Email {
-	emails := make([]*configpb.Email, len(rawData.([]interface{})))
-	for i, v := range rawData.([]interface{}) {
+func buildEmailAddrList(rawData any) []*configpb.Email {
+	emails := make([]*configpb.Email, len(rawData.([]any)))
+	for i, v := range rawData.([]any) {
 		emails[i] = &configpb.Email{
-			Address: v.(map[string]interface{})[emailAddressKey].(string),
-			Name:    v.(map[string]interface{})[emailNameKey].(string),
+			Address: v.(map[string]any)[emailAddressKey].(string),
+			Name:    v.(map[string]any)[emailNameKey].(string),
 		}
 	}
 	if len(emails) == 0 {
@@ -508,17 +509,17 @@ func buildEmailAddrList(rawData interface{}) []*configpb.Email {
 }
 
 // buildEmailAddress uses buildEmailAddrList and returns first element or nil.
-func buildEmailAddress(rawData interface{}) *configpb.Email {
+func buildEmailAddress(rawData any) *configpb.Email {
 	if arr := buildEmailAddrList(rawData); len(arr) > 0 {
 		return arr[0]
 	}
 	return nil
 }
 
-// buildEmailDefinition casts immediately to []interface{} and first element to map[string]interface{} without checks.
-func buildEmailDefinition(rawData interface{}, d *diag.Diagnostics, path cty.Path) *configpb.EmailDefinition {
-	data := rawData.([]interface{})[0].(map[string]interface{})
-	if len(data[mailTemplateKey].([]interface{})) == 0 {
+// buildEmailDefinition casts immediately to []any and first element to map[string]any without checks.
+func buildEmailDefinition(rawData any, d *diag.Diagnostics, path cty.Path) *configpb.EmailDefinition {
+	data := rawData.([]any)[0].(map[string]any)
+	if len(data[mailTemplateKey].([]any)) == 0 {
 		*d = append(*d, diag.Diagnostic{
 			Severity:      diag.Error,
 			Summary:       "email message must contain template definition",
@@ -526,7 +527,7 @@ func buildEmailDefinition(rawData interface{}, d *diag.Diagnostics, path cty.Pat
 		})
 		return nil
 	}
-	templateData := data[mailTemplateKey].([]interface{})[0].(map[string]interface{})
+	templateData := data[mailTemplateKey].([]any)[0].(map[string]any)
 	templateDef := &configpb.EmailTemplate{
 		TemplateId:      templateData[templateIDKey].(string),
 		TemplateVersion: stringToOptionalStringWrapper(templateData[templateVersionKey].(string)),
@@ -563,7 +564,7 @@ func buildDynamicTemplateValues(rawJSON string) (map[string]*objects.Value, erro
 	if rawJSON == "" {
 		return nil, nil
 	}
-	jsonMap := make(map[string]interface{})
+	jsonMap := make(map[string]any)
 	if err := json.Unmarshal([]byte(rawJSON), &jsonMap); err != nil {
 		return nil, err
 	}
