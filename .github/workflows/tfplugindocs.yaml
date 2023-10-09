@@ -34,7 +34,7 @@ jobs:
                   extra_args: --hook-stage=manual --all-files
 
             - name: Commit generated docs
-              uses: stefanzweifel/git-auto-commit-action@v4
+              uses: stefanzweifel/git-auto-commit-action@v5
               with:
                   # using ci: prefix to hide this commit from changelog
                   commit_message: 'ci: update Terraform plugin docs'
