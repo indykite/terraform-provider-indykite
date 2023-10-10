@@ -38,3 +38,12 @@ provider "indykite" {
 Be sure you have the correct Terraform version (0.13.0+), you can choose the binary here:
 
 - https://releases.hashicorp.com/terraform/
+
+## Provider development
+### GitHub workflows
+
+`tfplugindocs` GitHub workflow automatically re-generates the provider documentation once commit is pushed to `master`.
+It requires a PAT with the following permissions:
+- Read access to metadata
+- Read and Write access to administration
+- Read and Write access to code
