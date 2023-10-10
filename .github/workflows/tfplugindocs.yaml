@@ -16,6 +16,8 @@ jobs:
         steps:
             - name: Check out code
               uses: actions/checkout@v4
+              with:
+                  token: ${{ secrets.REPO_PAT }}
 
             - name: Set up Go
               uses: actions/setup-go@v4
@@ -33,9 +35,26 @@ jobs:
               with:
                   extra_args: --hook-stage=manual --all-files
 
-            - name: Commit generated docs
-              uses: stefanzweifel/git-auto-commit-action@v4
+
+            - name: Temporarily disable "include administrators" branch protection
+              uses: benjefferies/branch-protection-bot@1.0.9
+              if: always()
               with:
-                  # using ci: prefix to hide this commit from changelog
+                  access_token: ${{ secrets.REPO_PAT }}
+                  enforce_admins: false
+
+            - name: Commit generated docs
+              uses: stefanzweifel/git-auto-commit-action@v5
+              with:
+                  # [skip ci] is NOT added to ensure that new workflow runs (release-please needs to update its PR)
+                  # This should not add an infinite loop because the next time docs are generated they will be the same
+                  # https://docs.github.com/en/actions/managing-workflow-runs/skipping-workflow-runs
                   commit_message: 'ci: update Terraform plugin docs'
                   commit_options: --no-verify --signoff
+
+            - name: Enable "include administrators" branch protection
+              uses: benjefferies/branch-protection-bot@1.0.9
+              if: always()    # Force to always run this step to ensure "include administrators" is always turned back on
+              with:
+                  access_token: ${{ secrets.REPO_PAT }}
+                  enforce_admins: true

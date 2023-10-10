@@ -121,7 +121,7 @@ linters-settings:
         max-func-lines: 8 # Counting also declaration, not just body
 
     nolintlint:
-        allow-no-explanation: ['lll']
+        allow-no-explanation: [lll]
         require-explanation: true
         require-specific: true
 
