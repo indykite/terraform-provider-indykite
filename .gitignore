@@ -10,6 +10,13 @@ terraform-provider-indykite
 # Test binary, built with `go test -c`
 *.test
 
+# Integration tests with locally build Terraform provider
+tests/provider/.terraform
+tests/provider/terraform.d
+tests/provider/.terraform.lock.hcl
+tests/provider/terraform.tfstate
+tests/provider/terraform.tfstate.backup
+
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
@@ -18,8 +25,3 @@ vendor/
 dist
 
 .idea
-/example/.terraform
-/example/.terraform.lock.hcl
-/example/terraform.tfstate
-/example/terraform.tfstate.backup
-/example/terraform.d

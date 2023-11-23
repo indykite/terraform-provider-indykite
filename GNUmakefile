@@ -27,6 +27,14 @@ install-tools:
 test:
 	go test -v -cpu 4 -covermode=count -coverpkg github.com/indykite/terraform-provider-indykite/... -coverprofile=coverage.out ./...
 
+integration:
+	cd ./tests/provider && terraform init && terraform plan && terraform apply -input=false -auto-approve
+	cd ./tests/terraform && go test --tags=integration ./...
+	cd ./tests/provider && terraform destroy -input=false -auto-approve && rm terraform.tfstate terraform.tfstate.backup
+
+upgrade_test_provider:
+	cd ./tests/provider && terraform init -upgrade
+
 upgrade:
 	@echo "==> Upgrading Go"
 	@GO111MODULE=on go get -u all && go mod tidy
@@ -39,3 +47,12 @@ tidy:
 
 tfdocs_generate:
 	tfplugindocs generate --rendered-provider-name "IndyKite"
+
+build_test_local_plugin:
+	@echo "Build local Terraform provider plugin and store to tests/provider/.terraform folder"
+	@go build -o terraform-provider-indykite$$(go env GOEXE)
+	@mkdir -p ./tests/provider/terraform.d/plugins/registry.terraform.io/indykite/indykite/0.0.1/$$(go env GOHOSTOS)_$$(go env GOHOSTARCH)/
+	@cp terraform-provider-indykite$$(go env GOEXE) ./tests/provider/terraform.d/plugins/registry.terraform.io/indykite/indykite/0.0.1/$$(go env GOHOSTOS)_$$(go env GOHOSTARCH)/
+	@echo "Clean up all files that are outdated for Terraform provider"
+	@rm -f ./tests/provider/.terraform.lock.hcl
+	@cd ./tests/provider && terraform init -backend=false
