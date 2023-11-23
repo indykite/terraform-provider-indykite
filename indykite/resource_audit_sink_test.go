@@ -22,7 +22,6 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/golang/mock/gomock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -31,6 +30,7 @@ import (
 	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 	configm "github.com/indykite/indykite-sdk-go/test/config/v1beta1"
 	"github.com/pborman/uuid"
+	"go.uber.org/mock/gomock"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 

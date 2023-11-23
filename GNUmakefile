@@ -16,13 +16,13 @@ lint:
 	@echo "==> Checking source code against linters..."
 	golangci-lint run --timeout 2m0s ./...
 
-download:
-	@echo Download go.mod dependencies
-	@go mod download
-
-install-tools: download
-	@echo Installing tools from tools.go
-	@go install $$(go list -e -f '{{range .Imports}}{{.}} {{end}}' tools.go)
+install-tools:
+	@echo Installing tools
+	@go install github.com/daixiang0/gci@latest
+	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	@go install github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@latest
+	@go install github.com/onsi/ginkgo/v2/ginkgo@latest
+	@echo Installation completed
 
 test:
 	go test -v -cpu 4 -covermode=count -coverpkg github.com/indykite/terraform-provider-indykite/... -coverprofile=coverage.out ./...

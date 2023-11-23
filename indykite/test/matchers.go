@@ -18,9 +18,9 @@ package test
 import (
 	"fmt"
 
-	"github.com/golang/mock/gomock"
 	"github.com/onsi/gomega/format"
 	"github.com/onsi/gomega/types"
+	"go.uber.org/mock/gomock"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
