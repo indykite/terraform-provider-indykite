@@ -17,11 +17,11 @@ package indykite_test
 import (
 	"context"
 
-	"github.com/golang/mock/gomock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/indykite/indykite-sdk-go/config"
 	configm "github.com/indykite/indykite-sdk-go/test/config/v1beta1"
+	"go.uber.org/mock/gomock"
 
 	"github.com/indykite/terraform-provider-indykite/indykite"
 

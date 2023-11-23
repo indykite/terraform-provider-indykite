@@ -22,7 +22,6 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/golang/mock/gomock"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -33,6 +32,7 @@ import (
 	configm "github.com/indykite/indykite-sdk-go/test/config/v1beta1"
 	"github.com/onsi/gomega/types"
 	"github.com/pborman/uuid"
+	"go.uber.org/mock/gomock"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
@@ -62,7 +62,7 @@ var _ = Describe("Resource Email Notification", func() {
 		// gid:/customer/1/appSpace/1/tenant/1/mail/1
 		mailConfIDForTenant = "gid:L2N1c3RvbWVyLzEvYXBwU3BhY2UvMS90ZW5hbnQvMS9tYWlsLzE"
 		// gid:/customer/1/mail/1
-		mailConfIDForCustomer = "gid:L2N1c3RvbWVyLzEvbWFpbC8x"
+		mailConfIDForCustomer = "gid:L2N1c3RvbWVyLzEvbWFpbC8x" // #nosec G101
 	)
 
 	BeforeEach(func() {

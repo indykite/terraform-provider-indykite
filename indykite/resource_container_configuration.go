@@ -35,7 +35,7 @@ const (
 	idPrefix                 = "container:"
 	defaultTenantIDKey       = "default_tenant_id"
 	defaultAuthFlowIDKey     = "default_auth_flow_id"
-	defaultEmailServiceIDKey = "default_email_service_id"
+	defaultEmailServiceIDKey = "default_email_service_id" // #nosec G101
 
 	usernamePolicyKey                       = "username_policy"
 	usernamePolicyAllowedUsernameFormatsKey = "allowed_username_formats"
