@@ -1,4 +1,4 @@
-// Copyright (c) 2022 IndyKite
+// Copyright (c) 2023 IndyKite
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,14 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build tools
-// +build tools
-
-package tools
+package terraform_test
 
 import (
-	_ "github.com/daixiang0/gci"
-	_ "github.com/golangci/golangci-lint/cmd/golangci-lint"
-	// Documentation generator
-	_ "github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs"
+	"testing"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
+
+func TestTerraform(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Terraform Suite")
+}

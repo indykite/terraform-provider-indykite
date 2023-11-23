@@ -1,10 +1,14 @@
 ---
 name: Terraform plugin docs
-concurrency: tfplugindocs
+
 on:
     push:
         branches:
             - master
+
+concurrency:
+    group: tfdocs-${{ github.ref }}
+    cancel-in-progress: true
 
 permissions:
     contents: write

@@ -2,11 +2,9 @@
 name: Test
 on:
     pull_request:
-        types: [opened, synchronize, reopened]
+        types: [opened, synchronize, reopened, ready_for_review]
         branches:
             - master
-        tags:
-            - '!*' # Do not execute on tags
 
     # Run on master too to report coverage on master branch to Codecov
     push:
@@ -17,10 +15,9 @@ concurrency:
     group: pr-${{ github.ref }}
     cancel-in-progress: true
 
-
 jobs:
     test:
-        name: Test
+        name: Unit Test
         runs-on: ubuntu-latest
         steps:
             - name: Check out code
