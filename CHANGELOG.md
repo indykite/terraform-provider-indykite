@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.2.1...v0.3.0) (2023-11-23)
+
+
+### Features
+
+* add audit sink configuration ([08f3cd4](https://github.com/indykite/terraform-provider-indykite/commit/08f3cd4a8d20de3d59109e3482a6d63e56bb9738))
+* add automated integration tests ([8351eb3](https://github.com/indykite/terraform-provider-indykite/commit/8351eb31fdd16ee55d8e8e3913c06e4e5c794764))
+
+
+### Miscellaneous Chores
+
+* **deps:** update everything ([31d39dd](https://github.com/indykite/terraform-provider-indykite/commit/31d39dd727d5d831baffe2c18b3ec70058354f0f))
+* **deps:** upgrade dependencies ([9b2a359](https://github.com/indykite/terraform-provider-indykite/commit/9b2a3595e31d331af9d5c1d008fb6ec3d7cd86aa))
+
 ### [0.2.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.2.0...v0.2.1) (2023-08-03)
 
 
