@@ -28,7 +28,7 @@ test:
 	go test -v -cpu 4 -covermode=count -coverpkg github.com/indykite/terraform-provider-indykite/... -coverprofile=coverage.out ./...
 
 integration:
-	cd ./tests/provider && terraform init && terraform plan && terraform apply -input=false -auto-approve
+	cd ./tests/provider && terraform plan && terraform apply -input=false -auto-approve
 	cd ./tests/terraform && go test --tags=integration ./...
 	cd ./tests/provider && terraform destroy -input=false -auto-approve && rm terraform.tfstate terraform.tfstate.backup
 
