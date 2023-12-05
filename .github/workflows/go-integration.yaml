@@ -5,7 +5,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - master
-
+  workflow_dispatch:
 concurrency:
   group: integration-${{ github.ref }}
   cancel-in-progress: true
