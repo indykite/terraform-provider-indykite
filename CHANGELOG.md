@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.3.0...v0.4.0) (2023-12-07)
+
+
+### Features
+
+* add workflow_dispatch in integration tests ([92ef2c3](https://github.com/indykite/terraform-provider-indykite/commit/92ef2c39a33af9724309c32e507ed8176975526d))
+
+
+### Bug Fixes
+
+* terraform init ([61b8805](https://github.com/indykite/terraform-provider-indykite/commit/61b8805aa6cb533ced9e5b1cea4d260489cc33fc))
+
 ## [0.3.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.2.1...v0.3.0) (2023-11-23)
 
 
