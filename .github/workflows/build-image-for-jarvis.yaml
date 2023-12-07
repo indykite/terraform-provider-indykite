@@ -25,10 +25,10 @@ jobs:
           echo "version=$version" >> $GITHUB_OUTPUT
       - name: setup buildx
         id: buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
       - name: Setup GCP Auth
         id: auth
-        uses: google-github-actions/auth@v1
+        uses: google-github-actions/auth@v2
         with:
             workload_identity_provider: 'projects/699926043561/locations/global/workloadIdentityPools/github-dev/providers/github-dev-provider'
             service_account: 'terraform-provider-indykite@jarvis-dev-268314.iam.gserviceaccount.com'

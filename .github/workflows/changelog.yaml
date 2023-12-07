@@ -17,7 +17,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - id: release-please
-              uses: GoogleCloudPlatform/release-please-action@v3
+              uses: GoogleCloudPlatform/release-please-action@v4
               with:
                   # All configuration must be specified here, until https://github.com/google-github-actions/release-please-action/issues/798 is fixed.
                   changelog-types: |
