@@ -41,7 +41,7 @@ jobs:
 
 
             - name: Temporarily disable "include administrators" branch protection
-              uses: benjefferies/branch-protection-bot@1.0.9
+              uses: benjefferies/branch-protection-bot@v1.1.2
               if: always()
               with:
                   access_token: ${{ secrets.REPO_PAT }}
@@ -57,7 +57,7 @@ jobs:
                   commit_options: --no-verify --signoff
 
             - name: Enable "include administrators" branch protection
-              uses: benjefferies/branch-protection-bot@1.0.9
+              uses: benjefferies/branch-protection-bot@v1.1.2
               if: always()    # Force to always run this step to ensure "include administrators" is always turned back on
               with:
                   access_token: ${{ secrets.REPO_PAT }}

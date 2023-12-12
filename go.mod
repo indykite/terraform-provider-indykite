@@ -8,12 +8,12 @@ require (
 	github.com/hashicorp/go-cty v1.4.1-0.20200723130312-85980079f637
 	github.com/hashicorp/terraform-plugin-go v0.19.1
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.30.0
-	github.com/indykite/indykite-sdk-go v0.19.0
-	github.com/onsi/ginkgo/v2 v2.13.1
+	github.com/indykite/indykite-sdk-go v0.20.0
+	github.com/onsi/ginkgo/v2 v2.13.2
 	github.com/onsi/gomega v1.30.0
 	github.com/pborman/uuid v1.2.1
 	go.uber.org/mock v0.3.0
-	google.golang.org/grpc v1.59.0
+	google.golang.org/grpc v1.60.0
 	google.golang.org/protobuf v1.31.0
 	gopkg.in/yaml.v3 v3.0.1
 )
