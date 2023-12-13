@@ -14,6 +14,7 @@ jobs:
   test-integration:
     name: Integration Tests
     runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
     env:
       INDYKITE_APPLICATION_CREDENTIALS: ${{ secrets.SERVICE_ACCOUNT_CREDENTIALS }}
       CUSTOMER_ID: ${{secrets.CUSTOMER_ID}}
