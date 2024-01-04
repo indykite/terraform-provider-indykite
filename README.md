@@ -16,12 +16,13 @@ please responsibly disclose by contacting us at security@indykite.com.
 
 - [Provider documentation](https://registry.terraform.io/providers/indykite/indykite/latest/docs)
 
+The provider need to be set:
 ```hcl
 terraform {
   required_providers {
     indykite = {
       source = "indykite/indykite"
-      version = ">= 0.3.0"
+      version = "~> 0.4"
     }
   }
 }
@@ -31,6 +32,10 @@ provider "indykite" {
 }
 ```
 
+And configured with one of the following environment variable:
+- INDYKITE_APPLICATION_CREDENTIALS_FILE with path to service account credentials file generated from our console.
+- INDYKITE_APPLICATION_CREDENTIALS with content of service account credentials file generated from our console.
+
 ## Install
 
 ### Terraform
@@ -38,6 +43,11 @@ provider "indykite" {
 Be sure you have the correct Terraform version (0.13.0+), you can choose the binary here:
 
 - https://releases.hashicorp.com/terraform/
+
+## Example
+
+You can find Terraform examples in our [Provider documentation](https://registry.terraform.io/providers/indykite/indykite/latest/docs).
+A complete script example is available [test.tf](tests/provider/test.tf).
 
 ## Provider development
 ### GitHub workflows

@@ -25,3 +25,4 @@ vendor/
 dist
 
 .idea
+/local/
