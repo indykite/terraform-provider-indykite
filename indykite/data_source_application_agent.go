@@ -96,7 +96,7 @@ func dataAppAgentReadContext(ctx context.Context, data *schema.ResourceData, met
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
 	resp, err := clientCtx.GetClient().ReadApplicationAgent(ctx, req)
-	if hasFailed(&d, err) {
+	if readHasFailed(&d, err, data) {
 		return d
 	}
 
@@ -135,7 +135,7 @@ func dataAppAgentListContext(ctx context.Context, data *schema.ResourceData, met
 		Match:      match,
 		Bookmarks:  clientCtx.GetBookmarks(),
 	})
-	if hasFailed(&d, err) {
+	if HasFailed(&d, err) {
 		return d
 	}
 
@@ -146,7 +146,7 @@ func dataAppAgentListContext(ctx context.Context, data *schema.ResourceData, met
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			hasFailed(&d, err)
+			HasFailed(&d, err)
 			return d
 		}
 		allApplicationAgents = append(allApplicationAgents, map[string]any{

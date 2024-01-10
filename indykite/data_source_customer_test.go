@@ -89,8 +89,7 @@ var _ = Describe("Data Source customer", func() {
 					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Name": Equal("acme")})),
 					"Bookmarks":  ConsistOf(mockedBookmark),
 				})))).
-				Return(nil, status.Error(codes.NotFound, "unknown name")),
-
+				Return(nil, status.Error(codes.Unknown, "unknown name")),
 			mockConfigClient.EXPECT().
 				ReadCustomer(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Id": Equal(customerID)})),

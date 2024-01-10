@@ -68,9 +68,10 @@ func dataSourceCustomerRead(ctx context.Context, data *schema.ResourceData, meta
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
 	resp, err := clientCtx.GetClient().ReadCustomer(ctx, req)
-	if hasFailed(&d, err) {
+	if HasFailed(&d, err) {
 		return d
 	}
+
 	if resp.Customer == nil {
 		return append(d, buildPluginError("empty response from server"))
 	}

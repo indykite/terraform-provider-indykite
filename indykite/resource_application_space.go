@@ -62,7 +62,7 @@ func resAppSpaceCreateContext(ctx context.Context, data *schema.ResourceData, me
 		Description: optionalString(data, descriptionKey),
 		Bookmarks:   clientCtx.GetBookmarks(),
 	})
-	if hasFailed(&d, err) {
+	if HasFailed(&d, err) {
 		return d
 	}
 	data.SetId(resp.Id)
@@ -85,9 +85,10 @@ func resAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta
 		},
 		Bookmarks: clientCtx.GetBookmarks(),
 	})
-	if hasFailed(&d, err) {
+	if readHasFailed(&d, err, data) {
 		return d
 	}
+
 	if resp.GetAppSpace() == nil {
 		return diag.Diagnostics{buildPluginError("empty ApplicationSpace response")}
 	}
@@ -125,7 +126,7 @@ func resAppSpaceUpdateContext(ctx context.Context, data *schema.ResourceData, me
 	}
 
 	resp, err := clientCtx.GetClient().UpdateApplicationSpace(ctx, req)
-	if hasFailed(&d, err) {
+	if HasFailed(&d, err) {
 		return d
 	}
 	clientCtx.AddBookmarks(resp.GetBookmark())
@@ -147,7 +148,7 @@ func resAppSpaceDeleteContext(ctx context.Context, data *schema.ResourceData, me
 		Id:        data.Id(),
 		Bookmarks: clientCtx.GetBookmarks(),
 	})
-	hasFailed(&d, err)
+	HasFailed(&d, err)
 	clientCtx.AddBookmarks(resp.GetBookmark())
 	return d
 }

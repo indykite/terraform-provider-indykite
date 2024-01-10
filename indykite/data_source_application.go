@@ -94,7 +94,7 @@ func dataApplicationReadContext(ctx context.Context, data *schema.ResourceData, 
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
 	resp, err := clientCtx.GetClient().ReadApplication(ctx, req)
-	if hasFailed(&d, err) {
+	if readHasFailed(&d, err, data) {
 		return d
 	}
 
@@ -132,7 +132,7 @@ func dataApplicationListContext(ctx context.Context, data *schema.ResourceData, 
 		Match:      match,
 		Bookmarks:  clientCtx.GetBookmarks(),
 	})
-	if hasFailed(&d, err) {
+	if HasFailed(&d, err) {
 		return d
 	}
 
@@ -143,7 +143,7 @@ func dataApplicationListContext(ctx context.Context, data *schema.ResourceData, 
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			hasFailed(&d, err)
+			HasFailed(&d, err)
 			return d
 		}
 		allApplications = append(allApplications, map[string]any{

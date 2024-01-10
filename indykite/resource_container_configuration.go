@@ -195,7 +195,7 @@ func resCustomerConfigCreateUpdateContext(
 		},
 		Bookmarks: clientCtx.GetBookmarks(),
 	})
-	if hasFailed(&d, err) {
+	if HasFailed(&d, err) {
 		return d
 	}
 	data.SetId(buildContainerID(resp.Id))
@@ -221,7 +221,7 @@ func resCustomerConfigReadContext(
 		Id:        data.Get(customerIDKey).(string),
 		Bookmarks: clientCtx.GetBookmarks(),
 	})
-	if hasFailed(&d, err) {
+	if readHasFailed(&d, err, data) {
 		return d
 	}
 
@@ -272,7 +272,7 @@ func resApplicationSpaceConfigCreateUpdateContext(
 		Config:    cfg,
 		Bookmarks: clientCtx.GetBookmarks(),
 	})
-	if hasFailed(&d, err) {
+	if HasFailed(&d, err) {
 		return d
 	}
 	data.SetId(buildContainerID(resp.Id))
@@ -298,7 +298,7 @@ func resApplicationSpaceConfigReadContext(
 		Id:        data.Get(appSpaceIDKey).(string),
 		Bookmarks: clientCtx.GetBookmarks(),
 	})
-	if hasFailed(&d, err) {
+	if readHasFailed(&d, err, data) {
 		return d
 	}
 
@@ -344,7 +344,7 @@ func resTenantConfigCreateUpdateContext(
 		Config:    cfg,
 		Bookmarks: clientCtx.GetBookmarks(),
 	})
-	if hasFailed(&d, err) {
+	if HasFailed(&d, err) {
 		return d
 	}
 	data.SetId(buildContainerID(resp.Id))
@@ -370,7 +370,7 @@ func resTenantConfigReadContext(
 		Id:        data.Get(tenantIDKey).(string),
 		Bookmarks: clientCtx.GetBookmarks(),
 	})
-	if hasFailed(&d, err) {
+	if readHasFailed(&d, err, data) {
 		return d
 	}
 

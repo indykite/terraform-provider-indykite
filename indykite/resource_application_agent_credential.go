@@ -139,7 +139,7 @@ func resAppAgentCredCreate(ctx context.Context, data *schema.ResourceData, meta 
 	}
 
 	resp, err := clientCtx.GetClient().RegisterApplicationAgentCredential(ctx, req)
-	if hasFailed(&d, err) {
+	if HasFailed(&d, err) {
 		return d
 	}
 	data.SetId(resp.Id)
@@ -193,7 +193,7 @@ func resAppAgentCredRead(ctx context.Context, data *schema.ResourceData, meta an
 			Id:        data.Id(),
 			Bookmarks: clientCtx.GetBookmarks(),
 		})
-	if hasFailed(&d, err) {
+	if readHasFailed(&d, err, data) {
 		return d
 	}
 
@@ -231,7 +231,7 @@ func resAppAgentCredDelete(ctx context.Context, data *schema.ResourceData, meta 
 			Bookmarks: clientCtx.GetBookmarks(),
 		},
 	)
-	hasFailed(&d, err)
+	HasFailed(&d, err)
 	clientCtx.AddBookmarks(resp.GetBookmark())
 	return d
 }

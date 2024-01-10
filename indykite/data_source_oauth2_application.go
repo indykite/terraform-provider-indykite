@@ -76,7 +76,7 @@ func dataOAuth2ApplicationReadContext(ctx context.Context,
 		Id:        data.Get(oauth2ApplicationIDKey).(string),
 		Bookmarks: clientCtx.GetBookmarks(),
 	})
-	if hasFailed(&d, err) {
+	if readHasFailed(&d, err, data) {
 		return d
 	}
 

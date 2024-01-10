@@ -77,7 +77,7 @@ func configCreateContextFunc(configBuilder preBuildConfig, read schema.ReadConte
 		}
 
 		resp, err := invokeCreateConfigNode(ctx, data, clientCtx, builder)
-		if hasFailed(&d, err) {
+		if HasFailed(&d, err) {
 			return d
 		}
 		data.SetId(resp.Id)
@@ -98,7 +98,7 @@ func configReadContextFunc(flatten postFlattenConfig) schema.ReadContextFunc {
 		}
 
 		resp, err := invokeReadConfigNode(ctx, data, clientCtx, builder)
-		if hasFailed(&d, err) {
+		if readHasFailed(&d, err, data) {
 			return d
 		}
 		if resp.ConfigNode == nil {
@@ -159,7 +159,7 @@ func configUpdateContextFunc(configBuilder preBuildConfig, read schema.ReadConte
 		}
 
 		resp, err := invokeUpdateConfigNode(ctx, data, clientCtx, builder)
-		if hasFailed(&d, err) {
+		if HasFailed(&d, err) {
 			return d
 		}
 		data.SetId(resp.Id)
@@ -192,7 +192,7 @@ func configDeleteContextFunc() schema.DeleteContextFunc {
 					return nil
 				}
 			}
-			hasFailed(&d, err)
+			HasFailed(&d, err)
 		}
 		return d
 	}
