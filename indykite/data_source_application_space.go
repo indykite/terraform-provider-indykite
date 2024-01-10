@@ -94,7 +94,7 @@ func dataAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, met
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
 	resp, err := clientCtx.GetClient().ReadApplicationSpace(ctx, req)
-	if hasFailed(&d, err) {
+	if readHasFailed(&d, err, data) {
 		return d
 	}
 
@@ -136,7 +136,7 @@ func dataAppSpaceListContext(ctx context.Context, data *schema.ResourceData, met
 		Match:      match,
 		Bookmarks:  clientCtx.GetBookmarks(),
 	})
-	if hasFailed(&d, err) {
+	if HasFailed(&d, err) {
 		return d
 	}
 
@@ -147,7 +147,7 @@ func dataAppSpaceListContext(ctx context.Context, data *schema.ResourceData, met
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			hasFailed(&d, err)
+			HasFailed(&d, err)
 			return d
 		}
 		allAppSpaces = append(allAppSpaces, map[string]any{

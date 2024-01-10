@@ -96,7 +96,7 @@ func dataTenantReadContext(ctx context.Context, data *schema.ResourceData, meta 
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
 	resp, err := clientCtx.GetClient().ReadTenant(ctx, req)
-	if hasFailed(&d, err) {
+	if readHasFailed(&d, err, data) {
 		return d
 	}
 
@@ -134,7 +134,7 @@ func dataTenantListContext(ctx context.Context, data *schema.ResourceData, meta 
 		Match:      match,
 		Bookmarks:  clientCtx.GetBookmarks(),
 	})
-	if hasFailed(&d, err) {
+	if HasFailed(&d, err) {
 		return d
 	}
 
@@ -145,7 +145,7 @@ func dataTenantListContext(ctx context.Context, data *schema.ResourceData, meta 
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			hasFailed(&d, err)
+			HasFailed(&d, err)
 			return d
 		}
 		allTenants = append(allTenants, map[string]any{

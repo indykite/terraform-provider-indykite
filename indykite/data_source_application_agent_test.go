@@ -102,7 +102,7 @@ var _ = Describe("DataSource ApplicationAgent", func() {
 					})),
 					"Bookmarks": ConsistOf(mockedBookmark),
 				})))).
-				Return(nil, status.Error(codes.NotFound, "unknown name")),
+				Return(nil, status.Error(codes.Unknown, "unknown name")),
 
 			mockConfigClient.EXPECT().
 				ReadApplicationAgent(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{

@@ -100,7 +100,7 @@ var _ = Describe("DataSource Application Space", func() {
 					})),
 					"Bookmarks": ConsistOf(mockedBookmark),
 				})))).
-				Return(nil, status.Error(codes.NotFound, "unknown name")),
+				Return(nil, status.Error(codes.Unknown, "unknown name")),
 
 			mockConfigClient.EXPECT().
 				ReadApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{

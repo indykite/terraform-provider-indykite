@@ -314,18 +314,38 @@ func hasDeleteProtection(d *diag.Diagnostics, data *schema.ResourceData) bool {
 	return false
 }
 
-func hasFailed(d *diag.Diagnostics, err error) bool {
-	if err != nil {
-		if sdkerrors.IsServiceError(err) {
-			*d = append(*d, diag.Diagnostic{
-				Severity: diag.Error,
-				Summary:  "Communication with IndyKite failed, please try again later",
-				Detail:   err.Error(),
-			})
-		} else {
-			*d = append(*d, buildPluginError(err.Error()))
-		}
+// HasFailed checks if error is not nil and if it is, it will add it to diagnostics.
+func HasFailed(d *diag.Diagnostics, err error) bool {
+	switch {
+	case err == nil:
+		return false
 
+	case sdkerrors.IsServiceError(err):
+		*d = append(*d, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Communication with IndyKite failed, please try again later",
+			Detail:   err.Error(),
+		})
+
+	case sdkerrors.IsNotFoundError(err):
+		*d = append(*d, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  "Resource not found",
+			Detail:   err.Error(),
+		})
+
+	default:
+		*d = append(*d, buildPluginError(err.Error()))
+	}
+
+	return true
+}
+
+func readHasFailed(d *diag.Diagnostics, err error, data *schema.ResourceData) bool {
+	if HasFailed(d, err) {
+		if sdkerrors.IsNotFoundError(err) {
+			_ = schema.RemoveFromState(data, nil)
+		}
 		return true
 	}
 	return false

@@ -15,8 +15,13 @@
 package indykite_test
 
 import (
+	"errors"
+
 	"github.com/hashicorp/go-cty/cty"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	sdkerrors "github.com/indykite/indykite-sdk-go/errors"
+	"google.golang.org/grpc/codes"
 
 	"github.com/indykite/terraform-provider-indykite/indykite"
 
@@ -66,4 +71,47 @@ var _ = Describe("Utilities", func() {
 		Entry("Display name is same as name", "display_name", "abc", "abc", "", BeTrue()),
 		Entry("Display name is different than name", "display_name", "abc", "jkl", "", BeFalse()),
 	)
+})
+
+var _ = Describe("HasFailed", func() {
+	var diagnostics *diag.Diagnostics
+
+	BeforeEach(func() {
+		diagnostics = new(diag.Diagnostics)
+	})
+
+	Context("when the error is a service error", func() {
+		It("should log a service error and return true", func() {
+			err := sdkerrors.New(codes.Internal, "internal")
+			Expect(indykite.HasFailed(diagnostics, err)).To(BeTrue())
+			Expect(*diagnostics).To(HaveLen(1))
+			Expect((*diagnostics)[0].Severity).To(Equal(diag.Error))
+			Expect((*diagnostics)[0].Summary).To(Equal("Communication with IndyKite failed, please try again later"))
+		})
+	})
+
+	Context("when the error is a not-found error", func() {
+		It("should log a not-found warning and return true", func() {
+			err := sdkerrors.New(codes.NotFound, "not found")
+			Expect(indykite.HasFailed(diagnostics, err)).To(BeTrue())
+			Expect(*diagnostics).To(HaveLen(1))
+			Expect((*diagnostics)[0].Severity).To(Equal(diag.Warning))
+			Expect((*diagnostics)[0].Summary).To(Equal("Resource not found"))
+		})
+	})
+
+	Context("when the error is of another type", func() {
+		It("should log a generic error and return true", func() {
+			err := errors.New("generic error")
+			Expect(indykite.HasFailed(diagnostics, err)).To(BeTrue())
+			Expect(*diagnostics).To(HaveLen(1))
+		})
+	})
+
+	Context("when the error is nil", func() {
+		It("should not log any errors and return false", func() {
+			Expect(indykite.HasFailed(diagnostics, nil)).To(BeFalse())
+			Expect(*diagnostics).To(BeEmpty())
+		})
+	})
 })

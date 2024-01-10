@@ -63,7 +63,7 @@ func dataOAuth2ProviderReadContext(ctx context.Context,
 		Id:        data.Get(oauth2ProviderIDKey).(string),
 		Bookmarks: clientCtx.GetBookmarks(),
 	})
-	if hasFailed(&d, err) {
+	if readHasFailed(&d, err, data) {
 		return d
 	}
 

@@ -59,7 +59,6 @@ var _ = Describe("Resource Authorization Policy config", func() {
 		// Bookmark must be longer than 40 chars - have just 1 added before the first write to test all cases
 		mockedBookmark = "for-authz-policy" + uuid.NewRandom().String()
 		bmOnce := &sync.Once{}
-
 		provider = indykite.Provider()
 		cfgFunc := provider.ConfigureContextFunc
 		provider.ConfigureContextFunc =

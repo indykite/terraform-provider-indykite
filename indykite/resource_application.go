@@ -62,7 +62,7 @@ func resApplicationCreate(ctx context.Context, data *schema.ResourceData, meta a
 		Description: optionalString(data, descriptionKey),
 		Bookmarks:   clientCtx.GetBookmarks(),
 	})
-	if hasFailed(&d, err) {
+	if HasFailed(&d, err) {
 		return d
 	}
 	data.SetId(resp.Id)
@@ -85,7 +85,7 @@ func resApplicationRead(ctx context.Context, data *schema.ResourceData, meta any
 		},
 		Bookmarks: clientCtx.GetBookmarks(),
 	})
-	if hasFailed(&d, err) {
+	if readHasFailed(&d, err, data) {
 		return d
 	}
 
@@ -126,7 +126,7 @@ func resApplicationUpdate(ctx context.Context, data *schema.ResourceData, meta a
 	}
 
 	resp, err := clientCtx.GetClient().UpdateApplication(ctx, req)
-	if hasFailed(&d, err) {
+	if HasFailed(&d, err) {
 		return d
 	}
 	clientCtx.AddBookmarks(resp.GetBookmark())
@@ -148,7 +148,7 @@ func resApplicationDelete(ctx context.Context, data *schema.ResourceData, meta a
 		Id:        data.Id(),
 		Bookmarks: clientCtx.GetBookmarks(),
 	})
-	hasFailed(&d, err)
+	HasFailed(&d, err)
 	clientCtx.AddBookmarks(resp.GetBookmark())
 	return d
 }

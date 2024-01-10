@@ -136,7 +136,7 @@ func resOAuth2ApplicationCreateContext(ctx context.Context,
 	}
 
 	resp, err := clientCtx.GetClient().CreateOAuth2Application(ctx, request)
-	if hasFailed(&d, err) {
+	if HasFailed(&d, err) {
 		return d
 	}
 	data.SetId(resp.Id)
@@ -163,9 +163,10 @@ func resOAuth2ApplicationReadContext(ctx context.Context,
 		Id:        data.Id(),
 		Bookmarks: clientCtx.GetBookmarks(),
 	})
-	if hasFailed(&d, err) {
+	if readHasFailed(&d, err, data) {
 		return d
 	}
+
 	if resp.GetOauth2Application().GetConfig() == nil {
 		return diag.Diagnostics{buildPluginError("empty OAuth2Application response")}
 	}
@@ -270,7 +271,7 @@ func resOAuth2ApplicationUpdateContext(ctx context.Context,
 	}
 
 	resp, err := clientCtx.GetClient().UpdateOAuth2Application(ctx, req)
-	if hasFailed(&d, err) {
+	if HasFailed(&d, err) {
 		return d
 	}
 	clientCtx.AddBookmarks(resp.GetBookmark())
@@ -293,7 +294,7 @@ func resOAuth2ApplicationDeleteContext(ctx context.Context,
 		Id:        data.Id(),
 		Bookmarks: clientCtx.GetBookmarks(),
 	})
-	hasFailed(&d, err)
+	HasFailed(&d, err)
 	clientCtx.AddBookmarks(resp.GetBookmark())
 	return d
 }
