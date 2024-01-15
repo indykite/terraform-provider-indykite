@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.4.0...v0.4.1) (2024-01-15)
+
+
+### Miscellaneous Chores
+
+* adds recreate support for deleted configs ([2213fb8](https://github.com/indykite/terraform-provider-indykite/commit/2213fb87e762d1ecad0f1843248a8e02dcc075aa))
+* update readme ([69e2d20](https://github.com/indykite/terraform-provider-indykite/commit/69e2d20ebd9bc9e27456d7d1c46a8429b1cf25f4))
+
 ## [0.4.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.3.0...v0.4.0) (2023-12-07)
 
 
