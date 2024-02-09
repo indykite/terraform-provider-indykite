@@ -18,12 +18,12 @@ jobs:
               uses: actions/checkout@v4
 
             - name: Set up Go
-              uses: actions/setup-go@v4
+              uses: actions/setup-go@v5
               with:
                   go-version-file: go.mod
 
             - name: Run GolangCI-Lint Scanner
-              uses: golangci/golangci-lint-action@v3
+              uses: golangci/golangci-lint-action@v4
               with:
                   # Required: the version of golangci-lint is required and must be specified without patch version.
                   version: v1.55.2
