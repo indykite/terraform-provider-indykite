@@ -24,7 +24,7 @@ jobs:
                   token: ${{ secrets.REPO_PAT }}
 
             - name: Set up Go
-              uses: actions/setup-go@v4
+              uses: actions/setup-go@v5
               with:
                   go-version-file: go.mod
 
@@ -33,7 +33,7 @@ jobs:
                   make install-tools tfdocs_generate
 
             - name: Fix trailing whitespace & EOF in generated docs
-              uses: pre-commit/action@v3.0.0
+              uses: pre-commit/action@v3.0.1
               # ignoring errors, as pre-commit will fail if files were modified
               continue-on-error: true
               with:
@@ -41,7 +41,7 @@ jobs:
 
 
             - name: Temporarily disable "include administrators" branch protection
-              uses: benjefferies/branch-protection-bot@1.0.9
+              uses: benjefferies/branch-protection-bot@v1.1.2
               if: always()
               with:
                   access_token: ${{ secrets.REPO_PAT }}
@@ -57,7 +57,7 @@ jobs:
                   commit_options: --no-verify --signoff
 
             - name: Enable "include administrators" branch protection
-              uses: benjefferies/branch-protection-bot@1.0.9
+              uses: benjefferies/branch-protection-bot@v1.1.2
               if: always()    # Force to always run this step to ensure "include administrators" is always turned back on
               with:
                   access_token: ${{ secrets.REPO_PAT }}
