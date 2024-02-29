@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/indykite/terraform-provider-indykite/compare/v0.4.1...v0.4.2) (2024-02-29)
+
+
+### Miscellaneous Chores
+
+* **deps:** update everything ([061625d](https://github.com/indykite/terraform-provider-indykite/commit/061625dd782902b847e455d57b3c4a2a0711078d))
+
 ## [0.4.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.4.0...v0.4.1) (2024-01-15)
 
 
