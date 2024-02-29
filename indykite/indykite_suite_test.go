@@ -28,7 +28,6 @@ import (
 	. "github.com/onsi/gomega/gstruct"
 )
 
-// #nosec G101
 const (
 	customerID     = "gid:AAAAAWluZHlraURlgAAAAAAAAA8"
 	appSpaceID     = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
@@ -36,7 +35,7 @@ const (
 	tenantID       = "gid:AAAAA2luZHlraURlgAADDwAAAAE"
 	applicationID  = "gid:AAAABGluZHlraURlgAACDwAAAAA"
 	appAgentID     = "gid:AAAABWluZHlraURlgAAFDwAAAAA"
-	appAgentCredID = "gid:AAAABt7z4hZzpkbAtZXbIEYsT9Q"
+	appAgentCredID = "gid:AAAABt7z4hZzpkbAtZXbIEYsT9Q" // #nosec G101
 	// sampleID is plain empty ID just for responses.
 	sampleID  = "gid:AAAAAAAAAAAAAAAAAAAAAAAAAAA"
 	sampleID2 = "gid:AAAAAAAAAAAAAAAAAAAAAAAAAAB"

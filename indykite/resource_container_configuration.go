@@ -113,7 +113,7 @@ when AppSpace is created, and deleted when AppSpace is deleted.`
 				Type:             schema.TypeMap,
 				Optional:         true,
 				ValidateDiagFunc: resContainerCfgUniqueConstraintValidation,
-				DiffSuppressFunc: func(k, oldValue, newValue string, d *schema.ResourceData) bool {
+				DiffSuppressFunc: func(k, oldValue, newValue string, _ *schema.ResourceData) bool {
 					// DiffSuppressFunc is called also with key ending with '.%'. That is length of map.
 					if strings.HasSuffix(k, ".%") {
 						return oldValue == newValue

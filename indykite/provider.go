@@ -171,7 +171,7 @@ func (x *ClientContext) GetBookmarks() []string {
 
 	b := make([]string, 0, x.bookmarks.count)
 	x.bookmarks.queueRing.Do(func(a any) {
-		if v, _ := a.(string); len(v) > 0 {
+		if v, _ := a.(string); v != "" {
 			b = append(b, v)
 		}
 	})
