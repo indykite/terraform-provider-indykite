@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.4.2...v0.5.0) (2024-03-14)
+
+
+### Features
+
+* update dependencies ([22826ec](https://github.com/indykite/terraform-provider-indykite/commit/22826ecc88b5015f92cd3791199006b1a660a4a5))
+* update dependencies ([898188d](https://github.com/indykite/terraform-provider-indykite/commit/898188de55c32ac16350f1ea0c4eb43dab6efdd8))
+
 ## [0.4.2](https://github.com/indykite/terraform-provider-indykite/compare/v0.4.1...v0.4.2) (2024-02-29)
 
 
