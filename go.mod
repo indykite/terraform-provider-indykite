@@ -7,8 +7,8 @@ require (
 	github.com/hashicorp/terraform-plugin-go v0.22.1
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.33.0
 	github.com/indykite/indykite-sdk-go v0.24.0
-	github.com/onsi/ginkgo/v2 v2.16.0
-	github.com/onsi/gomega v1.31.1
+	github.com/onsi/ginkgo/v2 v2.17.1
+	github.com/onsi/gomega v1.32.0
 	github.com/pborman/uuid v1.2.1
 	go.uber.org/mock v0.4.0
 	google.golang.org/grpc v1.62.1
