@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   extends: ["@commitlint/config-conventional"],
   rules: {
     //   0 - Disabled, 1 - Warning, 2 - Error

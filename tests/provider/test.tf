@@ -6,7 +6,7 @@ locals {
 }
 
 data indykite_customer customer {
-	name = "terraform-pipeline-customer"
+	name = "terraform-pipeline"
 }
 
 resource indykite_application_space appspace {
