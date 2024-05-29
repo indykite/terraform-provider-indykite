@@ -15,46 +15,33 @@
 package indykite
 
 import (
-	"regexp"
-
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
 const (
-	nameKey                = "name"
-	displayNameKey         = "display_name"
-	descriptionKey         = "description"
-	locationKey            = "location"
-	customerIDKey          = "customer_id"
-	appSpaceIDKey          = "app_space_id"
-	applicationIDKey       = "application_id"
-	tenantIDKey            = "tenant_id"
-	issuerIDKey            = "issuer_id"
-	appAgentIDKey          = "app_agent_id"
-	oauth2ProviderIDKey    = "oauth2_provider_id"
-	oauth2ApplicationIDKey = "oauth2_application_id"
-	createTimeKey          = "create_time"
-	updateTimeKey          = "update_time"
-	deletionProtectionKey  = "deletion_protection"
-	filterKey              = "filter"
-
-	oauth2GrantTypeKey         = "grant_types"
-	oauth2ResponseTypeKey      = "response_types"
-	oauth2ScopesKey            = "scopes"
-	oauth2ClientSubjectTypeKey = "subject_type"
+	nameKey               = "name"
+	displayNameKey        = "display_name"
+	descriptionKey        = "description"
+	locationKey           = "location"
+	customerIDKey         = "customer_id"
+	appSpaceIDKey         = "app_space_id"
+	applicationIDKey      = "application_id"
+	issuerIDKey           = "issuer_id"
+	appAgentIDKey         = "app_agent_id"
+	createTimeKey         = "create_time"
+	updateTimeKey         = "update_time"
+	deletionProtectionKey = "deletion_protection"
+	filterKey             = "filter"
 )
 
 const (
-	locationDescription            = `identifier of Location, where to create resource`
-	customerIDDescription          = `identifier of Customer`
-	appSpaceIDDescription          = `identifier of Application Space`
-	issuerIDDescription            = `identifier of Issuer`
-	applicationIDDescription       = `identifier of Application`
-	tenantIDDescription            = `identifier of Tenant`
-	appAgentIDDescription          = `identifier of Application Agent`
-	oauth2ProviderIDDescription    = `identifier of OAuth2 Provider`
-	oauth2ApplicationIDDescription = `identifier of OAuth Application`
+	locationDescription      = `identifier of Location, where to create resource`
+	customerIDDescription    = `identifier of Customer`
+	appSpaceIDDescription    = `identifier of Application Space`
+	issuerIDDescription      = `identifier of Issuer`
+	applicationIDDescription = `identifier of Application`
+	appAgentIDDescription    = `identifier of Application Agent`
 
 	nameDescription = `Unique client assigned immutable identifier. Can not be updated without creating a new resource.`
 )
@@ -140,17 +127,15 @@ func nameSchema() *schema.Schema {
 		Type:             schema.TypeString,
 		ValidateDiagFunc: ValidateName,
 		Required:         true,
-		ForceNew:         true,
 		Description:      nameDescription,
 	}
 }
 
-func baseIDSchema(description string, forceNew bool) *schema.Schema {
+func baseIDSchema(description string) *schema.Schema {
 	return &schema.Schema{
 		Type:             schema.TypeString,
 		ValidateDiagFunc: ValidateGID,
 		Required:         true,
-		ForceNew:         forceNew,
 		Description:      description,
 	}
 }
@@ -166,55 +151,26 @@ func exactNameFilterSchema() *schema.Schema {
 }
 
 func locationSchema() *schema.Schema {
-	return baseIDSchema(locationDescription, true)
+	return baseIDSchema(locationDescription)
 }
 
 func customerIDSchema() *schema.Schema {
-	return baseIDSchema(customerIDDescription, true)
+	return baseIDSchema(customerIDDescription)
 }
 
 func appSpaceIDSchema() *schema.Schema {
-	return baseIDSchema(appSpaceIDDescription, true)
+	return baseIDSchema(appSpaceIDDescription)
 }
 func applicationIDSchema() *schema.Schema {
-	return baseIDSchema(applicationIDDescription, true)
+	return baseIDSchema(applicationIDDescription)
 }
 
 func issuerIDSchema() *schema.Schema {
-	return baseIDSchema(issuerIDDescription, true)
-}
-
-func tenantIDSchema() *schema.Schema {
-	return baseIDSchema(tenantIDDescription, true)
+	return baseIDSchema(issuerIDDescription)
 }
 
 func appAgentIDSchema() *schema.Schema {
-	return baseIDSchema(appAgentIDDescription, true)
-}
-
-func oauth2ProviderIDSchema() *schema.Schema {
-	return baseIDSchema(oauth2ProviderIDDescription, true)
-}
-
-func oauth2ApplicationIDSchema() *schema.Schema {
-	return baseIDSchema(oauth2ApplicationIDDescription, true)
-}
-
-func oauth2ScopesSchema() *schema.Schema {
-	return &schema.Schema{
-		Type:     schema.TypeList,
-		Required: true,
-		MinItems: 1,
-		Elem: &schema.Schema{
-			Type: schema.TypeString,
-			ValidateFunc: validation.StringMatch(
-				//nolint:gosimple // Keep escaped version as it is copy from spec
-				regexp.MustCompile("^[\\x21\\x23-\\x5b\\x5d-\\x7e]+$"),
-				"Scope does not pass validation according to Section 3.3 of OAuth 2.0 [RFC6749]",
-			),
-			Description: `The oauth2 scopes`,
-		},
-	}
+	return baseIDSchema(appAgentIDDescription)
 }
 
 func deletionProtectionSchema() *schema.Schema {

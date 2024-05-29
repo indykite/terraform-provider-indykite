@@ -38,15 +38,7 @@ var (
 
 	// TODO improve the regexp pattern.
 	emailRegex = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$") //nolint:lll
-
-	// pemRegex defines regex to match PEM Private key format.
-	pemRegex = regexp.MustCompile(`^-----BEGIN PRIVATE KEY-----(?:(?s).*)-----END PRIVATE KEY-----(?:\n)?$`)
 )
-
-var supportedSigningAlgs = []string{
-	"RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384",
-	"ES512", "ES256K", "HS256", "HS384", "HS512", "EdDSA",
-}
 
 // ValidateName is Terraform validation helper to verify value is valid name.
 func ValidateName(i any, path cty.Path) diag.Diagnostics {
@@ -212,31 +204,12 @@ func optionalString(data *schema.ResourceData, key string) *wrapperspb.StringVal
 	return wrapperspb.String(v)
 }
 
-func stringOrEmpty(data *schema.ResourceData, key string) string {
-	v, _ := data.Get(key).(string)
-	return v
-}
-
 // flattenOptionalString returns String if v is not nil and v is not empty else returns nil.
 func flattenOptionalString(v *wrapperspb.StringValue) any {
 	if v != nil && v.Value != "" {
 		return v.Value
 	}
 	return nil
-}
-
-func flattenOptionalMap(data map[string]string) map[string]string {
-	if len(data) == 0 {
-		return nil
-	}
-	return data
-}
-
-func flattenOptionalArray(data []string) []string {
-	if len(data) == 0 {
-		return nil
-	}
-	return data
 }
 
 func updateOptionalString(data *schema.ResourceData, key string) *wrapperspb.StringValue {
@@ -363,25 +336,6 @@ func rawArrayToStringArray(rawData any) []string {
 	return strArr
 }
 
-// rawMapToStringMap casts raw data to map[string]any and next convert to map[string]string.
-func rawMapToStringMap(rawData any) map[string]string {
-	out := make(map[string]string)
-	for i, el := range rawData.(map[string]any) {
-		out[i] = el.(string)
-	}
-	if len(out) == 0 {
-		return nil
-	}
-	return out
-}
-
-func stringToOptionalStringWrapper(in string) *wrapperspb.StringValue {
-	if in == "" {
-		return nil
-	}
-	return wrapperspb.String(in)
-}
-
 func buildPluginError(summary string) diag.Diagnostic {
 	return diag.Diagnostic{
 		Severity: diag.Error,
@@ -418,42 +372,6 @@ func ReverseProtoEnumMap[Key, Value comparable](in map[Key]Value) map[Value]Key 
 	}
 	return reversed
 }
-
-// OAuth2GrantTypes defines all supported GrantTypes and its mapping.
-var OAuth2GrantTypes = map[string]configpb.GrantType{
-	"authorization_code": configpb.GrantType_GRANT_TYPE_AUTHORIZATION_CODE,
-	"implicit":           configpb.GrantType_GRANT_TYPE_IMPLICIT,
-	"password":           configpb.GrantType_GRANT_TYPE_PASSWORD,
-	"client_credentials": configpb.GrantType_GRANT_TYPE_CLIENT_CREDENTIALS,
-	"refresh_token":      configpb.GrantType_GRANT_TYPE_REFRESH_TOKEN,
-}
-
-// OAuth2ResponseTypes defines all supported ResponseTypes and its mapping.
-var OAuth2ResponseTypes = map[string]configpb.ResponseType{
-	"token":    configpb.ResponseType_RESPONSE_TYPE_TOKEN,
-	"code":     configpb.ResponseType_RESPONSE_TYPE_CODE,
-	"id_token": configpb.ResponseType_RESPONSE_TYPE_ID_TOKEN,
-}
-
-// OAuth2TokenEndpointAuthMethods defines all supported Token Endpoint Auth Methods and its mapping.
-var OAuth2TokenEndpointAuthMethods = map[string]configpb.TokenEndpointAuthMethod{
-	"client_secret_basic": configpb.TokenEndpointAuthMethod_TOKEN_ENDPOINT_AUTH_METHOD_CLIENT_SECRET_BASIC,
-	"client_secret_post":  configpb.TokenEndpointAuthMethod_TOKEN_ENDPOINT_AUTH_METHOD_CLIENT_SECRET_POST,
-	"private_key_jwt":     configpb.TokenEndpointAuthMethod_TOKEN_ENDPOINT_AUTH_METHOD_PRIVATE_KEY_JWT,
-	"none":                configpb.TokenEndpointAuthMethod_TOKEN_ENDPOINT_AUTH_METHOD_NONE,
-}
-
-// OAuth2TokenEndpointAuthMethodsReverse defines all supported Token Endpoint Auth Methods and its reversed mapping.
-var OAuth2TokenEndpointAuthMethodsReverse = ReverseProtoEnumMap(OAuth2TokenEndpointAuthMethods)
-
-// OAuth2ClientSubjectTypes defines all supported Client Subjects and its mapping.
-var OAuth2ClientSubjectTypes = map[string]configpb.ClientSubjectType{
-	"public":   configpb.ClientSubjectType_CLIENT_SUBJECT_TYPE_PUBLIC,
-	"pairwise": configpb.ClientSubjectType_CLIENT_SUBJECT_TYPE_PAIRWISE,
-}
-
-// OAuth2ClientSubjectTypesReverse defines all supported Client Subjects and its reversed mapping.
-var OAuth2ClientSubjectTypesReverse = ReverseProtoEnumMap(OAuth2ClientSubjectTypes)
 
 // AuthorizationPolicyStatusTypes defines all supported StatusTypes and its mapping.
 var AuthorizationPolicyStatusTypes = map[string]configpb.AuthorizationPolicyConfig_Status{

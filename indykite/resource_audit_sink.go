@@ -52,7 +52,6 @@ func resourceAuditSink() *schema.Resource {
 			locationKey:   locationSchema(),
 			customerIDKey: setComputed(customerIDSchema()),
 			appSpaceIDKey: setComputed(appSpaceIDSchema()),
-			tenantIDKey:   setComputed(tenantIDSchema()),
 
 			nameKey:        nameSchema(),
 			displayNameKey: displayNameSchema(),

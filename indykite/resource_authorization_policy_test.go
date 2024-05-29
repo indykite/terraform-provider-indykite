@@ -79,7 +79,6 @@ var _ = Describe("Resource Authorization Policy config", func() {
 			ConfigNode: &configpb.ConfigNode{
 				CustomerId:  customerID,
 				AppSpaceId:  appSpaceID,
-				TenantId:    tenantID,
 				Id:          sampleID,
 				Name:        "wonka-authorization-policy-config",
 				DisplayName: "Wonka Authorization for chocolate receipts",
@@ -97,13 +96,12 @@ var _ = Describe("Resource Authorization Policy config", func() {
 		}
 
 		authzPolicyInvalidResponse := proto.Clone(authzPolicyConfigResp).(*configpb.ReadConfigNodeResponse)
-		authzPolicyInvalidResponse.ConfigNode.Config = &configpb.ConfigNode_AuthFlowConfig{}
+		authzPolicyInvalidResponse.ConfigNode.Config = &configpb.ConfigNode_AuditSinkConfig{}
 
 		authzPolicyConfigUpdateResp := &configpb.ReadConfigNodeResponse{
 			ConfigNode: &configpb.ConfigNode{
 				CustomerId:  customerID,
 				AppSpaceId:  appSpaceID,
-				TenantId:    tenantID,
 				Id:          sampleID,
 				Name:        "wonka-authorization-policy-config",
 				Description: wrapperspb.String("Description of the best Authz Policies by Wonka inc."),
@@ -132,7 +130,7 @@ var _ = Describe("Resource Authorization Policy config", func() {
 					authzPolicyConfigResp.ConfigNode.DisplayName,
 				)})),
 				"Description": BeNil(),
-				"Location":    Equal(tenantID),
+				"Location":    Equal(appSpaceID),
 				"Config": PointTo(MatchFields(IgnoreExtras, Fields{"AuthorizationPolicyConfig": test.EqualProto(
 					authzPolicyConfigResp.ConfigNode.GetAuthorizationPolicyConfig(),
 				)})),
@@ -268,19 +266,6 @@ var _ = Describe("Resource Authorization Policy config", func() {
 				},
 				{
 					Config: `resource "indykite_authorization_policy" "wonka" {
-						location = "` + customerID + `"
-						tenant_id = "69857924-098e-4f11-8800-62b10bb188ea"
-						name = "wonka-authorization-policy-config"
-						status = "active"
-
-						json = "{}"
-					}
-					`,
-					ExpectError: regexp.MustCompile(
-						`Can't configure a value for "tenant_id": its value will be decided`),
-				},
-				{
-					Config: `resource "indykite_authorization_policy" "wonka" {
 						location = "something-invalid"
 						name = "wonka-authorization-policy-config"
 						status = "active"
@@ -321,13 +306,23 @@ var _ = Describe("Resource Authorization Policy config", func() {
 					`,
 					ExpectError: regexp.MustCompile(`"json" contains an invalid JSON`),
 				},
+				{
+					Config: `resource "indykite_authorization_policy" "wonka" {
+						location = ""
+						name = "wonka-authorization-policy-config"
+						status = "active"
+						json = "{}"
+					}
+					`,
+					ExpectError: regexp.MustCompile(`expected to have 'gid:' prefix`),
+				},
 
 				// ---- Run mocked tests here ----
 				// Minimal config - Checking Create and Read (authzPolicyConfigResp)
 				{
 					//nolint:lll
 					Config: `resource "indykite_authorization_policy" "wonka" {
-						location = "` + tenantID + `"
+						location = "` + appSpaceID + `"
 						name = "wonka-authorization-policy-config"
 						display_name = "Wonka Authorization for chocolate receipts"
 						status = "active"
@@ -359,7 +354,7 @@ var _ = Describe("Resource Authorization Policy config", func() {
 				{
 					//nolint:lll
 					Config: `resource "indykite_authorization_policy" "wonka" {
-						location = "` + tenantID + `"
+						location = "` + appSpaceID + `"
 						name = "wonka-authorization-policy-config"
 						description = "Description of the best Authz Policies by Wonka inc."
 						status = "active"
@@ -410,7 +405,6 @@ func testAuthorizationPolicyResourceDataExists(
 			"location":     Not(BeEmpty()), // Response does not return this
 			"customer_id":  Equal(data.ConfigNode.CustomerId),
 			"app_space_id": Equal(data.ConfigNode.AppSpaceId),
-			"tenant_id":    Equal(data.ConfigNode.TenantId),
 			"name":         Equal(data.ConfigNode.Name),
 			"display_name": Equal(data.ConfigNode.DisplayName),
 			"description":  Equal(data.ConfigNode.GetDescription().GetValue()),

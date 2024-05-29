@@ -35,7 +35,6 @@ description: |-
 - `create_time` (String) Timestamp when the Resource was created. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
 - `customer_id` (String) identifier of Customer
 - `id` (String) The ID of this resource.
-- `tenant_id` (String) identifier of Tenant
 - `update_time` (String) Timestamp when the Resource was last updated. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
 
 <a id="nestedblock--timeouts"></a>

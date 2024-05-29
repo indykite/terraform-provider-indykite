@@ -244,7 +244,6 @@ var _ = Describe("Resource AuditSink", func() {
 					"location":     Equal(data.ConfigNode.AppSpaceId), // Audit Sink is always on AppSpace level
 					"customer_id":  Equal(data.ConfigNode.CustomerId),
 					"app_space_id": Equal(data.ConfigNode.AppSpaceId),
-					"tenant_id":    Equal(""), // Audit sink is always on AppSpace level
 					"name":         Equal(data.ConfigNode.Name),
 					"display_name": Equal(data.ConfigNode.DisplayName),
 					"description":  Equal(data.ConfigNode.GetDescription().GetValue()),

@@ -95,22 +95,6 @@ var _ = Describe("Terraform", func() {
 		})))
 	})
 
-	It("ReadTenant", func() {
-		resp, err := client.ReadTenant(context.Background(),
-			&configpb.ReadTenantRequest{
-				Identifier: &configpb.ReadTenantRequest_Id{Id: myResult["tenant"]},
-			},
-		)
-		Expect(err).To(Succeed())
-		Expect(resp).NotTo(BeNil())
-
-		Expect(resp).To(PointTo(MatchFields(IgnoreExtras, Fields{
-			"Tenant": PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(myResult["tenant"]),
-			})),
-		})))
-	})
-
 	It("ReadApplication", func() {
 		resp, err := client.ReadApplication(context.Background(),
 			&configpb.ReadApplicationRequest{
@@ -172,90 +156,5 @@ var _ = Describe("Terraform", func() {
 				"Config": Not(BeNil()),
 			})),
 		})))
-	})
-
-	It("ReadEmail", func() {
-		configNodeRequest, err := config.NewRead(myResult["email_conf"])
-		Expect(err).To(Succeed())
-		resp, err := client.ReadConfigNode(context.Background(), configNodeRequest)
-		Expect(err).To(Succeed())
-		Expect(resp).NotTo(BeNil())
-
-		Expect(resp).To(PointTo(MatchFields(IgnoreExtras, Fields{
-			"ConfigNode": PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id":     Equal(myResult["email_conf"]),
-				"Config": Not(BeNil()),
-			})),
-		})))
-	})
-
-	It("ReadOAuth2Provider", func() {
-		resp, err := client.ReadOAuth2Provider(context.Background(),
-			&configpb.ReadOAuth2ProviderRequest{
-				Id: myResult["oauth2_provider"],
-			},
-		)
-		Expect(err).To(Succeed())
-		Expect(resp).NotTo(BeNil())
-		Expect(resp.Oauth2Provider.Id).To(Equal(myResult["oauth2_provider"]))
-	})
-
-	It("ReadOAuth2Application", func() {
-		resp, err := client.ReadOAuth2Application(context.Background(),
-			&configpb.ReadOAuth2ApplicationRequest{
-				Id: myResult["oauth2_app"],
-			},
-		)
-		Expect(err).To(Succeed())
-		Expect(resp).NotTo(BeNil())
-		Expect(resp.Oauth2Application.Id).To(Equal(myResult["oauth2_app"]))
-	})
-
-	It("ReadOAuth2Client", func() {
-		configNodeRequest, err := config.NewRead(myResult["oauth2_client"])
-		Expect(err).To(Succeed())
-		resp, err := client.ReadConfigNode(context.Background(), configNodeRequest)
-		Expect(err).To(Succeed())
-		Expect(resp).NotTo(BeNil())
-
-		Expect(resp).To(PointTo(MatchFields(IgnoreExtras, Fields{
-			"ConfigNode": PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id":     Equal(myResult["oauth2_client"]),
-				"Config": Not(BeNil()),
-			})),
-		})))
-	})
-
-	It("ReadCustomerConfig", func() {
-		resp, err := client.ReadCustomerConfig(context.Background(),
-			&configpb.ReadCustomerConfigRequest{
-				Id: myResult["customer"],
-			},
-		)
-		Expect(err).To(Succeed())
-		Expect(resp).NotTo(BeNil())
-		Expect(resp.Id).To(Equal(myResult["customer"]))
-	})
-
-	It("ReadAppSpaceConfig", func() {
-		resp, err := client.ReadApplicationSpaceConfig(context.Background(),
-			&configpb.ReadApplicationSpaceConfigRequest{
-				Id: myResult["appspace"],
-			},
-		)
-		Expect(err).To(Succeed())
-		Expect(resp).NotTo(BeNil())
-		Expect(resp.Id).To(Equal(myResult["appspace"]))
-	})
-
-	It("ReadTenantConfig", func() {
-		resp, err := client.ReadTenantConfig(context.Background(),
-			&configpb.ReadTenantConfigRequest{
-				Id: myResult["tenant"],
-			},
-		)
-		Expect(err).To(Succeed())
-		Expect(resp).NotTo(BeNil())
-		Expect(resp.Id).To(Equal(myResult["tenant"]))
 	})
 })
