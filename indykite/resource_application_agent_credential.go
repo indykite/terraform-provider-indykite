@@ -30,12 +30,11 @@ import (
 )
 
 const (
-	publicKeyPEMKey  = "public_key_pem"
-	publicKeyJWKKey  = "public_key_jwk"
-	expireTimeKey    = "expire_time"
-	defaultTenantKey = "default_tenant_id"
-	kidKey           = "kid"
-	agentConfigKey   = "agent_config"
+	publicKeyPEMKey = "public_key_pem"
+	publicKeyJWKKey = "public_key_jwk"
+	expireTimeKey   = "expire_time"
+	kidKey          = "kid"
+	agentConfigKey  = "agent_config"
 )
 
 func resourceApplicationAgentCredential() *schema.Resource {
@@ -91,12 +90,6 @@ func resourceApplicationAgentCredential() *schema.Resource {
 				ValidateFunc: validation.IsRFC3339Time,
 				Description:  "Optional date-time when credentials are going to expire",
 			},
-			defaultTenantKey: {
-				Type:             schema.TypeString,
-				ValidateDiagFunc: ValidateGID,
-				Optional:         true,
-				Description:      "Default TenantID is only returned in generated agent_config",
-			},
 			kidKey:         {Type: schema.TypeString, Computed: true},
 			agentConfigKey: {Type: schema.TypeString, Computed: true, Sensitive: true},
 			createTimeKey:  createTimeSchema(),
@@ -116,7 +109,6 @@ func resAppAgentCredCreate(ctx context.Context, data *schema.ResourceData, meta 
 	req := &config.RegisterApplicationAgentCredentialRequest{
 		ApplicationAgentId: data.Get(appAgentIDKey).(string),
 		DisplayName:        data.Get(displayNameKey).(string),
-		DefaultTenantId:    data.Get(defaultTenantKey).(string),
 		Bookmarks:          clientCtx.GetBookmarks(),
 	}
 
@@ -151,9 +143,6 @@ func resAppAgentCredCreate(ctx context.Context, data *schema.ResourceData, meta 
 
 func resAppAgentCredUpdate(_ context.Context, data *schema.ResourceData, _ any) diag.Diagnostics {
 	var d diag.Diagnostics
-	if data.HasChangeExcept(defaultTenantKey) {
-		return append(d, buildPluginError("All fields except '"+defaultTenantKey+"' must be set to forceNew:true."))
-	}
 
 	agentConfig, ok := data.Get(agentConfigKey).(string)
 	// AgentConfig is empty (nil) and cannot be casted to string
@@ -167,8 +156,6 @@ func resAppAgentCredUpdate(_ context.Context, data *schema.ResourceData, _ any) 
 	if err != nil {
 		return append(d, buildPluginErrorWithAttrName(err.Error(), agentConfigKey))
 	}
-
-	mapCfg["defaultTenantId"] = data.Get(defaultTenantKey).(string)
 
 	var byteCfg []byte
 	byteCfg, err = json.Marshal(mapCfg)

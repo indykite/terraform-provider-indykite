@@ -53,11 +53,11 @@ func configCreateContextFunc(configBuilder preBuildConfig, read schema.ReadConte
 			builder.WithDescription(v.(string))
 		}
 
-		if data.HasChanges(customerIDKey, appSpaceIDKey, tenantIDKey) {
+		if data.HasChanges(customerIDKey, appSpaceIDKey) {
 			// This is error shouldn't happen as those fields should be marked as read-only in definition
 			return append(d, buildPluginError(fmt.Sprintf(
-				"properties %s, %s and %s are readonly, use %s instead and report to us",
-				customerIDKey, appSpaceIDKey, tenantIDKey, locationKey,
+				"properties %s and %s are readonly, use %s instead and report to us",
+				customerIDKey, appSpaceIDKey, locationKey,
 			)))
 		}
 
@@ -107,11 +107,8 @@ func configReadContextFunc(flatten postFlattenConfig) schema.ReadContextFunc {
 		data.SetId(resp.ConfigNode.Id)
 		setData(&d, data, customerIDKey, resp.ConfigNode.CustomerId)
 		setData(&d, data, appSpaceIDKey, resp.ConfigNode.AppSpaceId)
-		setData(&d, data, tenantIDKey, resp.ConfigNode.TenantId)
 
 		switch {
-		case resp.ConfigNode.TenantId != "":
-			setData(&d, data, locationKey, resp.ConfigNode.TenantId)
 		case resp.ConfigNode.AppSpaceId != "":
 			setData(&d, data, locationKey, resp.ConfigNode.AppSpaceId)
 		case resp.ConfigNode.CustomerId != "":

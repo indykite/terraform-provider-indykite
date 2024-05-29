@@ -94,7 +94,7 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 		}
 		// just a placeholder
 		appAgentConfig :=
-			`{"defaultTenantId": "%s", "appAgentId": "%s", "privateKeyJWK": {"kty":"EC", "use":"sig", "kid":"..."}}`
+			`{"appAgentId": "%s", "privateKeyJWK": {"kty":"EC", "use":"sig", "kid":"..."}}`
 
 		appAgentPEMCredResp := &configpb.ApplicationAgentCredential{
 			CustomerId:         customerID,
@@ -116,7 +116,6 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 			RegisterApplicationAgentCredential(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
 				"ApplicationAgentId": Equal(appAgentID),
 				"DisplayName":        BeEmpty(),
-				"DefaultTenantId":    Equal(tenantID),
 				"ExpireTime":         Not(BeNil()),
 				"PublicKey": PointTo(MatchFields(IgnoreExtras, Fields{
 					"Jwk": HaveLen(226),
@@ -127,7 +126,7 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 				Id:                 appAgentJWKCredResp.Id,
 				ApplicationAgentId: appAgentID,
 				Kid:                appAgentJWKCredResp.Kid,
-				AgentConfig:        []byte(fmt.Sprintf(appAgentConfig, tenantID, appAgentID)),
+				AgentConfig:        []byte(fmt.Sprintf(appAgentConfig, appAgentID)),
 				Bookmark:           createBM,
 			}, nil)
 
@@ -135,7 +134,6 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 			RegisterApplicationAgentCredential(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
 				"ApplicationAgentId": Equal(appAgentID),
 				"DisplayName":        Equal(appAgentPEMCredResp.DisplayName),
-				"DefaultTenantId":    BeEmpty(),
 				"ExpireTime":         BeNil(),
 				"PublicKey": PointTo(MatchFields(IgnoreExtras, Fields{
 					"Pem": HaveLen(271),
@@ -146,7 +144,7 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 				Id:                 appAgentPEMCredResp.Id,
 				ApplicationAgentId: appAgentID,
 				Kid:                appAgentPEMCredResp.Kid,
-				AgentConfig:        []byte(fmt.Sprintf(appAgentConfig, "", appAgentID)),
+				AgentConfig:        []byte(fmt.Sprintf(appAgentConfig, appAgentID)),
 				Bookmark:           createBM2,
 			}, nil)
 
@@ -249,17 +247,15 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 						}
 						EOT
 						expire_time = "`+time.Now().Add(time.Hour).UTC().Format(time.RFC3339)+`"
-						default_tenant_id = "`+tenantID+`"
 						`),
 					Check: resource.ComposeTestCheckFunc(
 						testAppAgentCredResourceDataExists(
 							resourceName,
 							appAgentJWKCredResp,
 							Keys{
-								"expire_time":       Not(BeEmpty()), // Is string, do not compare with BeTemporarily
-								"public_key_jwk":    ContainSubstring("xuyd5-9bT0L09mi810mycfREAxBG3KnpctlGQCYtCdM"),
-								"default_tenant_id": Equal(tenantID),
-								"agent_config":      MatchJSON(fmt.Sprintf(appAgentConfig, tenantID, appAgentID)),
+								"expire_time":    Not(BeEmpty()), // Is string, do not compare with BeTemporarily
+								"public_key_jwk": ContainSubstring("xuyd5-9bT0L09mi810mycfREAxBG3KnpctlGQCYtCdM"),
+								"agent_config":   MatchJSON(fmt.Sprintf(appAgentConfig, appAgentID)),
 							},
 						),
 						func(s *terraform.State) error {
@@ -268,8 +264,8 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 								return fmt.Errorf("not found: %s", resourceName)
 							}
 							v, has := rs.Primary.Attributes["agent_config"]
-							if !has || !strings.Contains(v, tenantID) {
-								return fmt.Errorf("failed to find default_tenant id in agent config: %s", v)
+							if !has || !strings.Contains(v, appAgentID) {
+								return fmt.Errorf("failed to find appAgentID id in agent config: %s", v)
 							}
 							return nil
 						},
@@ -277,7 +273,6 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 				},
 				{
 					// Performs in-place update without calling BE
-					// Only change here is default_tenant_id
 					// However, tests always do double-check so READ is executed twice here too
 					Config: fmt.Sprintf(tfConfigDef, "", `public_key_jwk = <<-EOT
 						{
@@ -291,17 +286,15 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 						}
 						EOT
 						expire_time = "`+time.Now().Add(time.Hour).UTC().Format(time.RFC3339)+`"
-						default_tenant_id = "`+sampleID+`"
 						`),
 					Check: resource.ComposeTestCheckFunc(
 						testAppAgentCredResourceDataExists(
 							resourceName,
 							appAgentJWKCredResp,
 							Keys{
-								"expire_time":       Not(BeEmpty()), // Is string, do not compare with BeTemporarily
-								"public_key_jwk":    ContainSubstring("xuyd5-9bT0L09mi810mycfREAxBG3KnpctlGQCYtCdM"),
-								"default_tenant_id": Equal(sampleID),
-								"agent_config":      MatchJSON(fmt.Sprintf(appAgentConfig, sampleID, appAgentID)),
+								"expire_time":    Not(BeEmpty()), // Is string, do not compare with BeTemporarily
+								"public_key_jwk": ContainSubstring("xuyd5-9bT0L09mi810mycfREAxBG3KnpctlGQCYtCdM"),
+								"agent_config":   MatchJSON(fmt.Sprintf(appAgentConfig, appAgentID)),
 							},
 						),
 						func(s *terraform.State) error {
@@ -310,9 +303,9 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 								return fmt.Errorf("not found: %s", resourceName)
 							}
 							v, has := rs.Primary.Attributes["agent_config"]
-							if !has || strings.Contains(v, tenantID) || !strings.Contains(v, sampleID) {
+							if !has || !strings.Contains(v, appAgentID) {
 								return fmt.Errorf(
-									"agent config contains old/does not contain new default_tenant_id: %s", v)
+									"agent config contains old/does not contain new appAgentID: %s", v)
 							}
 							return nil
 						},
@@ -340,7 +333,7 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 							appAgentPEMCredResp,
 							Keys{
 								"public_key_pem": ContainSubstring("-----BEGIN PUBLIC KEY-----"),
-								"agent_config":   MatchJSON(fmt.Sprintf(appAgentConfig, "", appAgentID)),
+								"agent_config":   MatchJSON(fmt.Sprintf(appAgentConfig, appAgentID)),
 							},
 						),
 					),
@@ -378,7 +371,6 @@ func testAppAgentCredResourceDataExists(
 			"create_time":    Not(BeEmpty()),
 
 			// "expire_time":       Not(BeEmpty()),
-			// "default_tenant_id": Not(BeEmpty()),
 			// "agent_config":   MatchJSON(agentConfig),
 			// "public_key_jwk": ContainSubstring(`"P-256"`), // It is only defined by user, not from response
 		}
