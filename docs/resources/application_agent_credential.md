@@ -22,6 +22,7 @@ description: |-
 - `app_agent_id` (String) identifier of Application Agent
 
 ### Optional
+
 - `display_name` (String)
 - `expire_time` (String) Optional date-time when credentials are going to expire
 - `public_key_jwk` (String) Provide your onw Public key in JWK format, otherwise new pair is generated
