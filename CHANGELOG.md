@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.4.2...v0.5.0) (2024-05-30)
+
+
+### Features
+
+* remove authn related features ([a062572](https://github.com/indykite/terraform-provider-indykite/commit/a0625725edc16303d173888c444806a4840f049d))
+* update dependencies ([22826ec](https://github.com/indykite/terraform-provider-indykite/commit/22826ecc88b5015f92cd3791199006b1a660a4a5))
+* update dependencies ([898188d](https://github.com/indykite/terraform-provider-indykite/commit/898188de55c32ac16350f1ea0c4eb43dab6efdd8))
+
+
+### Bug Fixes
+
+* change customer and update version ([054c34d](https://github.com/indykite/terraform-provider-indykite/commit/054c34dd5e1a9fa51034689c2e3bedc04392bc49))
+
 ## [0.4.2](https://github.com/indykite/terraform-provider-indykite/compare/v0.4.1...v0.4.2) (2024-02-29)
 
 
