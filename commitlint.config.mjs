@@ -1,5 +1,6 @@
 export default {
   extends: ["@commitlint/config-conventional"],
+  ignores: [(message) => /^chore\([a-z-]+\): update (everything|module \S+( to \S+)?(?: \[.*])?)$/m.test(message)],
   rules: {
     //   0 - Disabled, 1 - Warning, 2 - Error
     "body-max-line-length": [2, "always", 72],
