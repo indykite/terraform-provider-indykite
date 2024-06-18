@@ -23,13 +23,10 @@ jobs:
                   go-version-file: go.mod
 
             - name: Run GolangCI-Lint Scanner
-              uses: golangci/golangci-lint-action@v5
+              uses: golangci/golangci-lint-action@v6
               with:
                   # Required: the version of golangci-lint is required and must be specified without patch version.
-                  version: v1.57
+                  version: v1.59
 
                   # Optional: golangci-lint command line arguments.
                   args: --out-format=colored-line-number --timeout 2m00s
-
-                  # https://github.com/golangci/golangci-lint-action/issues/135
-                  skip-pkg-cache: true
