@@ -43,6 +43,8 @@ linters:
         - gosec
         - gosmopolitan
         - grouper
+        - inamedparam
+        - intrange
         - lll
         - loggercheck
         - makezero
@@ -55,8 +57,10 @@ linters:
         - nolintlint
         - nonamedreturns
         - nosprintfhostport
+        - perfsprint
         - prealloc
         - predeclared
+        # - protogetter # TODO enable
         - reassign
         - revive
         - tagalign
@@ -88,7 +92,7 @@ linters-settings:
         checks: [all]
 
     govet:
-        check-shadowing: true
+        shadow: true
         enable-all: true
 
     gocritic:
@@ -100,12 +104,14 @@ linters-settings:
             - opinionated
         disabled-checks:
             - whyNoLint # Is checked by nolintlint with excluding lll much easier
+            - deferInLoop # Checked by revive already
+            - dupBranchBody # Checked by revive already
 
     goheader:
         values:
             regexp:
                 # As long we decide which format of YEAR in copyright we want, add this hack
-                our_year: 202[2-3] # Just change to 202[2-3] or other when changed
+                our_year: 202[2-4] # Just change to 202[2-3] or other when changed
         template: |-
             Copyright (c) {{OUR_YEAR}} IndyKite
 
@@ -120,6 +126,9 @@ linters-settings:
             WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
             See the License for the specific language governing permissions and
             limitations under the License.
+
+    ginkgolinter:
+        forbid-focus-container: true
 
     nakedret:
         max-func-lines: 8 # Counting also declaration, not just body
@@ -198,7 +207,10 @@ linters-settings:
             # - name: unchecked-type-assertion # Probably not in TF providers
             - name: unconditional-recursion
             - name: unexported-naming
-            - name: unhandled-error
+            - name: unhandled-error # It is OK not to check errors from some specific cases
+              arguments:
+                  - (?i)fmt\.(F|S)?Print(ln|f)?
+                  - (bytes\.Buffer|strings\.Builder)\.Write(Byte|String|Rune)?
             - name: unnecessary-stmt
             - name: unused-receiver
             - name: use-any
@@ -207,7 +219,6 @@ linters-settings:
 
     usestdlibvars:
         default-rpc-path: true
-        os-dev-null: true
         sql-isolation-level: true
 
 issues:
