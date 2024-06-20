@@ -47,7 +47,7 @@ type terraformGomockTestReporter struct {
 
 type GomockTestCleanuper interface {
 	gomock.TestHelper
-	Cleanup(func())
+	Cleanup(fn func())
 }
 
 func TestIndykite(t *testing.T) {

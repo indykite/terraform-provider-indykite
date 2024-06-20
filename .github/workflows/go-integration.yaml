@@ -1,32 +1,32 @@
 ---
 name: Integration Tests
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-    branches:
-      - master
-  workflow_dispatch:
+    pull_request:
+        types: [opened, synchronize, reopened, ready_for_review]
+        branches:
+            - master
+    workflow_dispatch:
 concurrency:
-  group: integration-${{ github.ref }}
-  cancel-in-progress: true
+    group: integration-${{ github.ref }}
+    cancel-in-progress: true
 
 jobs:
-  test-integration:
-    name: Integration Tests
-    runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false
-    env:
-      INDYKITE_APPLICATION_CREDENTIALS: ${{ secrets.SERVICE_ACCOUNT_CREDENTIALS }}
-      CUSTOMER_ID: ${{secrets.CUSTOMER_ID}}
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v4
+    test-integration:
+        name: Integration Tests
+        runs-on: ubuntu-latest
+        if: github.event.pull_request.draft == false
+        env:
+            INDYKITE_APPLICATION_CREDENTIALS: ${{ secrets.SERVICE_ACCOUNT_CREDENTIALS }}
+            CUSTOMER_ID: ${{secrets.CUSTOMER_ID}}
+        steps:
+            - name: Check out code
+              uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
+            - name: Set up Go
+              uses: actions/setup-go@v5
+              with:
+                  go-version-file: go.mod
 
-      - name: Terraform Init and Apply
-        run: |
-          make build_test_local_plugin integration
+            - name: Terraform Init and Apply
+              run: |
+                  make build_test_local_plugin integration

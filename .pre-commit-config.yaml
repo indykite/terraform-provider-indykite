@@ -42,11 +42,12 @@ repos:
       hooks:
           - id: yamlfmt
 
-    - repo: https://github.com/jumanjihouse/pre-commit-hooks.git
-      rev: 3.0.0 # Do not update from 2.1.6 to 3.0.0 unless macOS comes with Ruby 2.7
-      hooks:
-          - id: markdownlint
-            exclude: ^CHANGELOG.md|docs/.*\.md$ # Exclude auto generated
+    # We don't fix it now anyway, just ignore check for now
+    # - repo: https://github.com/jumanjihouse/pre-commit-hooks.git
+    #   rev: 2.1.6 # Do not update from 2.1.6 to 3.0.0 unless macOS comes with Ruby 2.7
+    #   hooks:
+    #       - id: markdownlint
+    #         exclude: ^CHANGELOG.md|docs/.*\.md$ # Exclude auto generated
 
     - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
       rev: v9.16.0

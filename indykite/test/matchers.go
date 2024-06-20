@@ -16,6 +16,7 @@
 package test
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/onsi/gomega/format"
@@ -49,7 +50,7 @@ func (m *matcherWrapper) Matches(x any) bool {
 }
 
 func (m *matcherWrapper) String() string {
-	return fmt.Sprintf("Wrapped Gomega fail message: %s", m.matcher.FailureMessage(m.actual))
+	return "Wrapped Gomega fail message: %s" + m.matcher.FailureMessage(m.actual)
 }
 
 // EqualProto uses proto.Equal to compare actual with expected.  Equal is strict about
@@ -74,7 +75,7 @@ func (matcher *equalProtoMatcher) GomegaString() string {
 func (matcher *equalProtoMatcher) Match(actual any) (bool, error) {
 	if actual == nil && matcher.Expected == nil {
 		//nolint:lll
-		return false, fmt.Errorf("refusing to compare <nil> to <nil>.\nBe explicit and use BeNil() instead. This is to avoid mistakes where both sides of an assertion are erroneously uninitialized")
+		return false, errors.New("refusing to compare <nil> to <nil>.\nBe explicit and use BeNil() instead. This is to avoid mistakes where both sides of an assertion are erroneously uninitialized")
 	}
 	var err error
 	if a, ok := actual.(*anypb.Any); ok {
