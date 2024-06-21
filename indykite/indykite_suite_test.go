@@ -85,13 +85,13 @@ func (t terraformGomockTestReporter) Cleanup(callback func()) {
 	t.ginkgoT.Cleanup(callback)
 }
 
-func addStringArrayToKeys(keys Keys, key string, value []string) {
+func addStringArrayToKeys[T string | []byte](keys Keys, key string, value []T) {
 	if len(value) == 0 {
 		return
 	}
 	keys[key+".#"] = Equal(strconv.Itoa(len(value)))
 	for i, v := range value {
-		keys[key+"."+strconv.Itoa(i)] = Equal(v)
+		keys[key+"."+strconv.Itoa(i)] = Equal(string(v))
 	}
 }
 
@@ -113,4 +113,16 @@ func convertOmegaMatcherToError(matcher OmegaMatcher, actual any) error {
 	}
 
 	return nil
+}
+
+func addStringMapMatcherToKeys(keys Keys, key string, data map[string]string, includeEmpty bool) {
+	if len(data) == 0 && !includeEmpty {
+		return
+	}
+
+	keys[key+".%"] = Equal(strconv.Itoa(len(data)))
+
+	for k, v := range data {
+		keys[key+"."+k] = Equal(v)
+	}
 }

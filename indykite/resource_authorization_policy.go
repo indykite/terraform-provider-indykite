@@ -112,7 +112,7 @@ func authorizationPolicyConfigBuilder(data *schema.ResourceData) *configpb.Autho
 	cfg := &configpb.AuthorizationPolicyConfig{
 		Policy: data.Get(authzJSONConfigKey).(string),
 		Status: AuthorizationPolicyStatusTypes[data.Get(authzStatusKey).(string)],
-		Tags:   rawArrayToStringArray(data.Get(authzTagsKey).([]any)),
+		Tags:   rawArrayToTypedArray[string](data.Get(authzTagsKey).([]any)),
 	}
 	return cfg
 }
