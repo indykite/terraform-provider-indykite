@@ -324,14 +324,14 @@ func readHasFailed(d *diag.Diagnostics, err error, data *schema.ResourceData) bo
 	return false
 }
 
-// rawArrayToStringArray casts raw data to []any and next to []string.
-func rawArrayToStringArray(rawData any) []string {
-	strArr := make([]string, len(rawData.([]any)))
+// rawArrayToTypedArray casts raw data to []any and next to []string.
+func rawArrayToTypedArray[T string | []byte](rawData any) []T {
+	strArr := make([]T, len(rawData.([]any)))
 	if len(strArr) == 0 {
 		return nil
 	}
 	for i, el := range rawData.([]any) {
-		strArr[i] = el.(string)
+		strArr[i] = T(el.(string)) // always cast to string and then to type, because Terraform returns string always
 	}
 	return strArr
 }

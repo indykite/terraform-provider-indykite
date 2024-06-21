@@ -132,7 +132,7 @@ func resourceAuditSinkBuild(
 		_ = mapVal
 		cfg.Provider = &configpb.AuditSinkConfig_Kafka{
 			Kafka: &configpb.KafkaSinkConfig{
-				Brokers:       rawArrayToStringArray(mapVal[auditSinkKafkaBrokersKey]),
+				Brokers:       rawArrayToTypedArray[string](mapVal[auditSinkKafkaBrokersKey]),
 				Topic:         mapVal[auditSinkKafkaTopicKey].(string),
 				Username:      mapVal[auditSinkKafkaUsernameKey].(string),
 				Password:      mapVal[auditSinkKafkaPasswordKey].(string),
