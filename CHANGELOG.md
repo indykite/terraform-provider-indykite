@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.6.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.5.0...v0.6.0) (2024-06-24)
+
+
+### Features
+
+* add token introspect support ([50f0214](https://github.com/indykite/terraform-provider-indykite/commit/50f0214ffb96f611d2532e89febeeb2b2db40b8b))
+* change go sdk version ([c97625e](https://github.com/indykite/terraform-provider-indykite/commit/c97625ef0f6054cb0d83743d84f1593f2c13f5a4))
+
+
+### Miscellaneous Chores
+
+* apply pre-commit rules ([eb985f0](https://github.com/indykite/terraform-provider-indykite/commit/eb985f077f9ce307580437408673669f66016c43))
+* **deps:** update everything ([8f09f6c](https://github.com/indykite/terraform-provider-indykite/commit/8f09f6c4cc183d9fb9e27766205286a9de25aab4))
+
 ## [0.5.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.4.2...v0.5.0) (2024-05-30)
 
 
