@@ -88,6 +88,7 @@ func Provider() *schema.Provider {
 			"indykite_authorization_policy":         resourceAuthorizationPolicy(),
 			"indykite_token_introspect":             resourceTokenIntrospect(),
 			"indykite_ingest_pipeline":              resourceIngestPipeline(),
+			"indykite_consent":                      resourceConsent(),
 		},
 	}
 
