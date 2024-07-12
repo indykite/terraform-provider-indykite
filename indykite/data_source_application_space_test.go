@@ -80,7 +80,6 @@ var _ = Describe("DataSource Application Space", func() {
 		appSpaceResp := &configpb.ApplicationSpace{
 			CustomerId:  customerID,
 			Id:          appSpaceID,
-			IssuerId:    issuerID,
 			Name:        "acme",
 			DisplayName: "Some Cool Display name",
 			Description: wrapperspb.String("Just some AppSpace description"),
@@ -180,7 +179,6 @@ var _ = Describe("DataSource Application Space", func() {
 		appSpaceResp := &configpb.ApplicationSpace{
 			CustomerId:  customerID,
 			Id:          appSpaceID,
-			IssuerId:    issuerID,
 			Name:        "acme",
 			DisplayName: "Some Cool Display name",
 			Description: wrapperspb.String("Just some AppSpace description"),
@@ -190,7 +188,6 @@ var _ = Describe("DataSource Application Space", func() {
 		appSpaceResp2 := &configpb.ApplicationSpace{
 			CustomerId: customerID,
 			Id:         sampleID,
-			IssuerId:   issuerID,
 			Name:       "wonka",
 			CreateTime: timestamppb.Now(),
 			UpdateTime: timestamppb.Now(),
@@ -298,7 +295,6 @@ func testAppSpaceDataExists(n string, data *configpb.ApplicationSpace, appSpaceI
 			"%":  Not(BeEmpty()), // This is Terraform helper
 
 			"customer_id":  Equal(data.CustomerId),
-			"issuer_id":    Equal(data.IssuerId),
 			"name":         Equal(data.Name),
 			"display_name": Equal(data.DisplayName),
 			"description":  Equal(data.Description.GetValue()),
@@ -347,7 +343,6 @@ func testAppSpaceListDataExists(n string, data ...*configpb.ApplicationSpace) re
 			keys[k+"name"] = Equal(d.Name)
 			keys[k+"display_name"] = Equal(d.GetDisplayName())
 			keys[k+"description"] = Equal(d.GetDescription().GetValue())
-			keys[k+"issuer_id"] = Equal(d.IssuerId)
 		}
 
 		return convertOmegaMatcherToError(MatchAllKeys(keys), rs.Primary.Attributes)

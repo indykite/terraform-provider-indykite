@@ -59,7 +59,7 @@ repos:
                 - commitlint-plugin-function-rules
 
     - repo: https://github.com/antonbabenko/pre-commit-terraform.git
-      rev: v1.91.0
+      rev: v1.92.0
       hooks:
           - id: terraform_fmt
 

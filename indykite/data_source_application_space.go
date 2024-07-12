@@ -35,7 +35,6 @@ func dataSourceAppSpace() *schema.Resource {
 			customerIDKey:  setRequiredWith(customerIDSchema(), nameKey),
 			displayNameKey: displayNameSchema(),
 			descriptionKey: descriptionSchema(),
-			issuerIDKey:    setComputed(issuerIDSchema()),
 			createTimeKey:  createTimeSchema(),
 			updateTimeKey:  updateTimeSchema(),
 		},
@@ -59,7 +58,6 @@ func dataSourceAppSpaceList() *schema.Resource {
 						nameKey:        nameSchema(),
 						displayNameKey: displayNameSchema(),
 						descriptionKey: descriptionSchema(),
-						issuerIDKey:    setComputed(issuerIDSchema()),
 					},
 				},
 			},
@@ -111,7 +109,6 @@ func dataAppSpaceFlatten(data *schema.ResourceData, resp *configpb.ApplicationSp
 	setData(&d, data, nameKey, resp.Name)
 	setData(&d, data, displayNameKey, resp.DisplayName)
 	setData(&d, data, descriptionKey, resp.Description)
-	setData(&d, data, issuerIDKey, resp.IssuerId)
 	setData(&d, data, createTimeKey, resp.CreateTime)
 	setData(&d, data, updateTimeKey, resp.UpdateTime)
 	return d
@@ -156,7 +153,6 @@ func dataAppSpaceListContext(ctx context.Context, data *schema.ResourceData, met
 			nameKey:        appSpace.GetAppSpace().GetName(),
 			displayNameKey: appSpace.GetAppSpace().GetDisplayName(),
 			descriptionKey: flattenOptionalString(appSpace.GetAppSpace().GetDescription()),
-			issuerIDKey:    appSpace.GetAppSpace().GetIssuerId(),
 		})
 	}
 	setData(&d, data, "app_spaces", allAppSpaces)

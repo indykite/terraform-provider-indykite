@@ -31,7 +31,6 @@ import (
 const (
 	customerID     = "gid:AAAAAWluZHlraURlgAAAAAAAAA8"
 	appSpaceID     = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
-	issuerID       = "gid:AAAAD2luZHlraURlgAAEDwAAAAA"
 	applicationID  = "gid:AAAABGluZHlraURlgAACDwAAAAA"
 	appAgentID     = "gid:AAAABWluZHlraURlgAAFDwAAAAA"
 	appAgentCredID = "gid:AAAABt7z4hZzpkbAtZXbIEYsT9Q" // #nosec G101

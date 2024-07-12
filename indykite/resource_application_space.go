@@ -37,7 +37,6 @@ func resourceApplicationSpace() *schema.Resource {
 			nameKey:               nameSchema(),
 			displayNameKey:        displayNameSchema(),
 			descriptionKey:        descriptionSchema(),
-			issuerIDKey:           setComputed(issuerIDSchema()),
 			createTimeKey:         createTimeSchema(),
 			updateTimeKey:         updateTimeSchema(),
 			deletionProtectionKey: deletionProtectionSchema(),
@@ -98,7 +97,6 @@ func resAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta
 	setData(&d, data, nameKey, resp.AppSpace.Name)
 	setData(&d, data, displayNameKey, resp.AppSpace.DisplayName)
 	setData(&d, data, descriptionKey, resp.AppSpace.Description)
-	setData(&d, data, issuerIDKey, resp.AppSpace.IssuerId)
 	setData(&d, data, createTimeKey, resp.AppSpace.CreateTime)
 	setData(&d, data, updateTimeKey, resp.AppSpace.UpdateTime)
 	return d

@@ -47,5 +47,4 @@ Read-Only:
 - `description` (String)
 - `display_name` (String)
 - `id` (String)
-- `issuer_id` (String)
 - `name` (String)

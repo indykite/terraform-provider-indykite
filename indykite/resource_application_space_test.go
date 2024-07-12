@@ -88,7 +88,6 @@ var _ = Describe("Resource Application Space", func() {
 		initialAppSpaceResp := &configpb.ApplicationSpace{
 			CustomerId:  customerID,
 			Id:          appSpaceID,
-			IssuerId:    issuerID,
 			Name:        "acme",
 			DisplayName: "acme",
 			Description: wrapperspb.String("Just some AppSpace description"),
@@ -99,7 +98,6 @@ var _ = Describe("Resource Application Space", func() {
 		readAfter1stUpdateResp := &configpb.ApplicationSpace{
 			CustomerId:  customerID,
 			Id:          initialAppSpaceResp.Id,
-			IssuerId:    initialAppSpaceResp.IssuerId,
 			Name:        "acme",
 			DisplayName: "acme",
 			Description: wrapperspb.String("Another AppSpace description"),
@@ -109,7 +107,6 @@ var _ = Describe("Resource Application Space", func() {
 		readAfter2ndUpdateResp := &configpb.ApplicationSpace{
 			CustomerId:  customerID,
 			Id:          initialAppSpaceResp.Id,
-			IssuerId:    initialAppSpaceResp.IssuerId,
 			Name:        "acme",
 			DisplayName: "Some new display name",
 			Description: nil,
@@ -200,10 +197,6 @@ var _ = Describe("Resource Application Space", func() {
 			Steps: []resource.TestStep{
 				// Errors cases must be always first
 				{
-					Config:      fmt.Sprintf(tfConfigDef, "", "", `issuer_id = "`+issuerID+`"`),
-					ExpectError: regexp.MustCompile("Value for unconfigurable attribute"),
-				},
-				{
 					// Checking Create and Read (initialAppSpaceResp)
 					Config: fmt.Sprintf(tfConfigDef, "", initialAppSpaceResp.Description.Value, ""),
 					Check: resource.ComposeTestCheckFunc(
@@ -261,7 +254,6 @@ func testAppSpaceResourceDataExists(n string, data *configpb.ApplicationSpace) r
 			"%":  Not(BeEmpty()), // This is Terraform helper
 
 			"customer_id":         Equal(data.CustomerId),
-			"issuer_id":           Equal(data.IssuerId),
 			"name":                Equal(data.Name),
 			"display_name":        Equal(data.DisplayName),
 			"description":         Equal(data.Description.GetValue()),
