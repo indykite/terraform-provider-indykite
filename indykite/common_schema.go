@@ -27,7 +27,6 @@ const (
 	customerIDKey         = "customer_id"
 	appSpaceIDKey         = "app_space_id"
 	applicationIDKey      = "application_id"
-	issuerIDKey           = "issuer_id"
 	appAgentIDKey         = "app_agent_id"
 	createTimeKey         = "create_time"
 	updateTimeKey         = "update_time"
@@ -39,7 +38,6 @@ const (
 	locationDescription      = `identifier of Location, where to create resource`
 	customerIDDescription    = `identifier of Customer`
 	appSpaceIDDescription    = `identifier of Application Space`
-	issuerIDDescription      = `identifier of Issuer`
 	applicationIDDescription = `identifier of Application`
 	appAgentIDDescription    = `identifier of Application Agent`
 
@@ -163,10 +161,6 @@ func appSpaceIDSchema() *schema.Schema {
 }
 func applicationIDSchema() *schema.Schema {
 	return baseIDSchema(applicationIDDescription)
-}
-
-func issuerIDSchema() *schema.Schema {
-	return baseIDSchema(issuerIDDescription)
 }
 
 func appAgentIDSchema() *schema.Schema {
