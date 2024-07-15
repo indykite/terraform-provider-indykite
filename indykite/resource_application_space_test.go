@@ -83,6 +83,7 @@ var _ = Describe("Resource Application Space", func() {
 				name = "acme"
 				display_name = "%s"
 				description = "%s"
+				region = "europe-west1"
 				%s
 			}`
 		initialAppSpaceResp := &configpb.ApplicationSpace{
@@ -93,6 +94,7 @@ var _ = Describe("Resource Application Space", func() {
 			Description: wrapperspb.String("Just some AppSpace description"),
 			CreateTime:  timestamppb.Now(),
 			UpdateTime:  timestamppb.Now(),
+			Region:      "europe-west1",
 		}
 
 		readAfter1stUpdateResp := &configpb.ApplicationSpace{
@@ -103,6 +105,7 @@ var _ = Describe("Resource Application Space", func() {
 			Description: wrapperspb.String("Another AppSpace description"),
 			CreateTime:  initialAppSpaceResp.CreateTime,
 			UpdateTime:  timestamppb.Now(),
+			Region:      "europe-west1",
 		}
 		readAfter2ndUpdateResp := &configpb.ApplicationSpace{
 			CustomerId:  customerID,
@@ -112,6 +115,7 @@ var _ = Describe("Resource Application Space", func() {
 			Description: nil,
 			CreateTime:  initialAppSpaceResp.CreateTime,
 			UpdateTime:  timestamppb.Now(),
+			Region:      "europe-west1",
 		}
 
 		createBM := "created-app-space" + uuid.NewRandom().String()
@@ -129,6 +133,7 @@ var _ = Describe("Resource Application Space", func() {
 					"Value": Equal(initialAppSpaceResp.Description.Value),
 				})),
 				"Bookmarks": ConsistOf(mockedBookmark),
+				"Region":    Equal(initialAppSpaceResp.Region),
 			})))).
 			Return(&configpb.CreateApplicationSpaceResponse{Id: initialAppSpaceResp.Id, Bookmark: createBM}, nil)
 
@@ -260,6 +265,7 @@ func testAppSpaceResourceDataExists(n string, data *configpb.ApplicationSpace) r
 			"create_time":         Not(BeEmpty()),
 			"update_time":         Not(BeEmpty()),
 			"deletion_protection": Not(BeEmpty()),
+			"region":              Equal(data.Region),
 		}
 
 		return convertOmegaMatcherToError(MatchAllKeys(keys), rs.Primary.Attributes)

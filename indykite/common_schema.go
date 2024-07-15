@@ -32,6 +32,7 @@ const (
 	updateTimeKey         = "update_time"
 	deletionProtectionKey = "deletion_protection"
 	filterKey             = "filter"
+	regionKey             = "region"
 )
 
 const (
@@ -43,6 +44,17 @@ const (
 
 	nameDescription = `Unique client assigned immutable identifier. Can not be updated without creating a new resource.`
 )
+
+func regionSchema() *schema.Schema {
+	return &schema.Schema{
+		Type:        schema.TypeString,
+		Required:    true,
+		Description: `Region where the application space is located.`,
+		ValidateFunc: validation.StringInSlice([]string{
+			"europe-west1", "us-east1",
+		}, false),
+	}
+}
 
 func convertToOptional(in *schema.Schema) *schema.Schema {
 	in.Required = false
