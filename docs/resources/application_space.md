@@ -19,6 +19,7 @@ description: |-
 
 - `customer_id` (String) identifier of Customer
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
+- `region` (String) Region where the application space is located.
 
 ### Optional
 

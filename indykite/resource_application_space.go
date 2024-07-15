@@ -40,6 +40,7 @@ func resourceApplicationSpace() *schema.Resource {
 			createTimeKey:         createTimeSchema(),
 			updateTimeKey:         updateTimeSchema(),
 			deletionProtectionKey: deletionProtectionSchema(),
+			regionKey:             regionSchema(),
 		},
 	}
 }
@@ -60,6 +61,7 @@ func resAppSpaceCreateContext(ctx context.Context, data *schema.ResourceData, me
 		DisplayName: optionalString(data, displayNameKey),
 		Description: optionalString(data, descriptionKey),
 		Bookmarks:   clientCtx.GetBookmarks(),
+		Region:      data.Get(regionKey).(string),
 	})
 	if HasFailed(&d, err) {
 		return d
@@ -99,6 +101,7 @@ func resAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta
 	setData(&d, data, descriptionKey, resp.AppSpace.Description)
 	setData(&d, data, createTimeKey, resp.AppSpace.CreateTime)
 	setData(&d, data, updateTimeKey, resp.AppSpace.UpdateTime)
+	setData(&d, data, regionKey, resp.AppSpace.Region)
 	return d
 }
 

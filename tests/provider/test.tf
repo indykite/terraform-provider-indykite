@@ -13,6 +13,7 @@ resource "indykite_application_space" "appspace" {
   name         = local.app_space_name
   display_name = "Terraform appspace ${time_static.example.unix}"
   description  = "Application space for terraform pipeline"
+  region       = "europe-west1"
   lifecycle {
     create_before_destroy = true
   }
