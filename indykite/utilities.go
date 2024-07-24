@@ -389,6 +389,21 @@ type ProtoValidateError interface {
 	ErrorName() string
 }
 
+// IngestPipelineOperationTypes defines all supported IngestPipelineOperationTypes and its mapping.
+//
+//nolint:lll
+var IngestPipelineOperationTypes = map[string]configpb.IngestPipelineOperation{
+	"OPERATION_UPSERT_NODE":                  configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_UPSERT_NODE,
+	"OPERATION_UPSERT_RELATIONSHIP":          configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_UPSERT_RELATIONSHIP,
+	"OPERATION_DELETE_NODE":                  configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_DELETE_NODE,
+	"OPERATION_DELETE_RELATIONSHIP":          configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_DELETE_RELATIONSHIP,
+	"OPERATION_DELETE_NODE_PROPERTY":         configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_DELETE_NODE_PROPERTY,
+	"OPERATION_DELETE_RELATIONSHIP_PROPERTY": configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_DELETE_RELATIONSHIP_PROPERTY,
+}
+
+// IngestPipelineOperationTypesReverse is reverse mapping of IngestPipelineOperationTypes.
+var IngestPipelineOperationTypesReverse = ReverseProtoEnumMap(IngestPipelineOperationTypes)
+
 func betterValidationErrorWithPath(err error) error {
 	var protoValidErr ProtoValidateError
 	if errors.As(err, &protoValidErr) {

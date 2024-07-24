@@ -87,6 +87,7 @@ func Provider() *schema.Provider {
 			"indykite_application_agent_credential": resourceApplicationAgentCredential(),
 			"indykite_authorization_policy":         resourceAuthorizationPolicy(),
 			"indykite_token_introspect":             resourceTokenIntrospect(),
+			"indykite_ingest_pipeline":              resourceIngestPipeline(),
 		},
 	}
 

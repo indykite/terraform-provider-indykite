@@ -26,3 +26,6 @@ dist
 
 .idea
 /local/
+
+# Mac OS
+.DS_Store
