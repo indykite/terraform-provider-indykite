@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.6.0...v0.7.0) (2024-07-26)
+
+
+### Features
+
+* add ingest pipeline config ([c5ca131](https://github.com/indykite/terraform-provider-indykite/commit/c5ca13134bc357497e3753b90287392099489fd3))
+* implement tda consent configuration support ([11e39c4](https://github.com/indykite/terraform-provider-indykite/commit/11e39c45c169708be401e6144ef8bb585a8457b2))
+
 ## [0.6.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.5.0...v0.6.0) (2024-07-16)
 
 
