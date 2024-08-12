@@ -83,7 +83,7 @@ resource "indykite_consent" "basic-user-data" {
   description = "This consent will allow third parties to access the location and name of the user"
 
   purpose          = "To send you your order you need to share your location and name with the delivery service"
-  application_id = indykite_application.application.id
+  application_id   = indykite_application.application.id
   validity_period  = 96400
   revoke_after_use = false
   data_points = [
@@ -97,22 +97,22 @@ resource "indykite_consent" "advance-user-data" {
   description = "Allow servicing company to access car model and manufacturer name"
 
   purpose          = "Share you car model and manufacturer name with the car service"
-  application_id = indykite_application.application.id
+  application_id   = indykite_application.application.id
   validity_period  = 96400
   revoke_after_use = false
   data_points = [jsonencode(
     {
-      "query": "->[:BELONGS]-(c:CAR)-[:MADEBY]->(o:MANUFACTURER)",
-      "returns": [
+      "query" : "->[:BELONGS]-(c:CAR)-[:MADEBY]->(o:MANUFACTURER)",
+      "returns" : [
         {
-          "variable": "c",
-          "properties": [
+          "variable" : "c",
+          "properties" : [
             "Model"
           ]
         },
         {
-          "variable": "o",
-          "properties": [
+          "variable" : "o",
+          "properties" : [
             "Name"
           ]
         }
