@@ -94,6 +94,7 @@ func resourceIngestPipeline() *schema.Resource {
 			ingestPipelineAppAgentTokenTypeKey: {
 				Type:        schema.TypeString,
 				Description: "Application agent token is used to identify the application space in IndyKite APIs.",
+				Sensitive:   true,
 				Required:    true,
 				ValidateFunc: validation.StringMatch(
 					ingestPipelineAppAgentTokenRegex, "must be valid application agent token.",
@@ -109,7 +110,6 @@ func resourceIngestPipelineFlatten(
 ) diag.Diagnostics {
 	var d diag.Diagnostics
 	ipCfg := resp.GetConfigNode().GetIngestPipelineConfig()
-	setData(&d, data, ingestPipelineAppAgentTokenTypeKey, ipCfg.GetAppAgentToken())
 
 	operationsMapping := make([]string, len(ipCfg.GetOperations()))
 	for i, intOp := range ipCfg.GetOperations() {

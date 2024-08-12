@@ -101,7 +101,7 @@ var _ = Describe("Resource IngestPipeline", func() {
 							configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_UPSERT_NODE,
 							configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_UPSERT_RELATIONSHIP,
 						},
-						AppAgentToken: appAgentToken,
+						AppAgentToken: "", // Empty sensitive data
 					},
 				},
 			},
@@ -123,7 +123,7 @@ var _ = Describe("Resource IngestPipeline", func() {
 							configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_UPSERT_RELATIONSHIP,
 							configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_DELETE_NODE,
 						},
-						AppAgentToken: appAgentToken,
+						AppAgentToken: "", // Empty sensitive data
 					},
 				},
 			},
@@ -140,7 +140,14 @@ var _ = Describe("Resource IngestPipeline", func() {
 				"Location":    Equal(appSpaceID),
 				"Config": PointTo(MatchFields(IgnoreExtras, Fields{
 					"IngestPipelineConfig": test.EqualProto(
-						expectedResp.GetConfigNode().GetIngestPipelineConfig(),
+						&configpb.IngestPipelineConfig{
+							Sources: []string{"source1", "source2"},
+							Operations: []configpb.IngestPipelineOperation{
+								configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_UPSERT_NODE,
+								configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_UPSERT_RELATIONSHIP,
+							},
+							AppAgentToken: appAgentToken,
+						},
 					),
 				})),
 				"Bookmarks": ConsistOf(mockedBookmark),
@@ -161,7 +168,15 @@ var _ = Describe("Resource IngestPipeline", func() {
 				)})),
 				"Config": PointTo(MatchFields(IgnoreExtras, Fields{
 					"IngestPipelineConfig": test.EqualProto(
-						expectedUpdatedResp.GetConfigNode().GetIngestPipelineConfig(),
+						&configpb.IngestPipelineConfig{
+							Sources: []string{"source1", "source2", "source3"},
+							Operations: []configpb.IngestPipelineOperation{
+								configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_UPSERT_NODE,
+								configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_UPSERT_RELATIONSHIP,
+								configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_DELETE_NODE,
+							},
+							AppAgentToken: appAgentToken,
+						},
 					),
 				})),
 			})))).
@@ -194,6 +209,7 @@ var _ = Describe("Resource IngestPipeline", func() {
 		testResourceDataExists := func(
 			n string,
 			data *configpb.ReadConfigNodeResponse,
+			token string,
 		) resource.TestCheckFunc {
 			return func(s *terraform.State) error {
 				rs, ok := s.RootModule().Resources[n]
@@ -218,7 +234,7 @@ var _ = Describe("Resource IngestPipeline", func() {
 					"create_time":  Not(BeEmpty()),
 					"update_time":  Not(BeEmpty()),
 
-					"app_agent_token": Equal(data.GetConfigNode().GetIngestPipelineConfig().GetAppAgentToken()),
+					"app_agent_token": Equal(token),
 				}
 
 				operations := data.GetConfigNode().GetIngestPipelineConfig().GetOperations()
@@ -296,7 +312,7 @@ var _ = Describe("Resource IngestPipeline", func() {
 						`+validSettings+``,
 					),
 					Check: resource.ComposeTestCheckFunc(
-						testResourceDataExists(resourceName, expectedResp),
+						testResourceDataExists(resourceName, expectedResp, appAgentToken),
 					),
 				},
 				{
@@ -312,7 +328,7 @@ var _ = Describe("Resource IngestPipeline", func() {
 						`+validSettingsUpdate+``,
 					),
 					Check: resource.ComposeTestCheckFunc(
-						testResourceDataExists(resourceName, expectedUpdatedResp),
+						testResourceDataExists(resourceName, expectedUpdatedResp, appAgentToken),
 					),
 				},
 			},

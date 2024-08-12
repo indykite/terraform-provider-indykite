@@ -17,7 +17,7 @@ Ingest pipeline configuration adds support for 3rd party data sources, which can
 
 ### Required
 
-- `app_agent_token` (String) Application agent token is used to identify the application space in IndyKite APIs.
+- `app_agent_token` (String, Sensitive) Application agent token is used to identify the application space in IndyKite APIs.
 - `location` (String) identifier of Location, where to create resource
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 - `operations` (List of String) List of operations which will be allowed to be used in the ingest pipeline.
