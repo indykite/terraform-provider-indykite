@@ -25,17 +25,17 @@ resource "indykite_consent" "basic-user-data" {
   data_points = [
     jsonencode(
       {
-        "query": "->[:BELONGS]-(c:CAR)-[:MADEBY]->(o:MANUFACTURER)",
-        "returns": [
+        "query" : "->[:BELONGS]-(c:CAR)-[:MADEBY]->(o:MANUFACTURER)",
+        "returns" : [
           {
-            "variable": "c",
-            "properties": [
+            "variable" : "c",
+            "properties" : [
               "Model"
             ]
           },
           {
-            "variable": "o",
-            "properties": [
+            "variable" : "o",
+            "properties" : [
               "Name"
             ]
           }
