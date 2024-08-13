@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.7.0...v0.7.1) (2024-08-13)
+
+
+### Bug Fixes
+
+* ingestion pipeline token ([28d599c](https://github.com/indykite/terraform-provider-indykite/commit/28d599cc35d2c989c65c13fa925457ccc275afbe))
+
 ## [0.7.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.6.0...v0.7.0) (2024-07-26)
 
 
