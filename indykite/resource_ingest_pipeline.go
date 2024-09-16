@@ -17,6 +17,7 @@ package indykite
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -42,6 +43,9 @@ var (
 		"OPERATION_DELETE_NODE_PROPERTY",
 		"OPERATION_DELETE_RELATIONSHIP_PROPERTY",
 	}
+	//nolint:lll // long description
+	ingestPipelineOperationsDescription = "List of operations which will be allowed to be used in the ingest pipeline. Valid values are: \n  - \"" +
+		strings.Join(ingestPipelineAllowedOperations, "\" \n  - \"") + "\"\n"
 )
 
 func resourceIngestPipeline() *schema.Resource {
@@ -82,7 +86,7 @@ func resourceIngestPipeline() *schema.Resource {
 			},
 			ingestPipelineOperationsTypeKey: {
 				Type:        schema.TypeList,
-				Description: "List of operations which will be allowed to be used in the ingest pipeline.",
+				Description: ingestPipelineOperationsDescription,
 				Required:    true,
 				Elem: &schema.Schema{
 					Type:         schema.TypeString,
