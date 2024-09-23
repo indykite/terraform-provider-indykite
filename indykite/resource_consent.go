@@ -15,6 +15,8 @@
 package indykite
 
 import (
+	"reflect"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/structure"
@@ -104,17 +106,52 @@ func resourceConsentFlatten(
 }
 
 func resourceConsentBuild(
-	_ *diag.Diagnostics,
+	diagnostics *diag.Diagnostics,
 	data *schema.ResourceData,
 	_ *ClientContext,
 	builder *config.NodeRequest,
 ) {
+	validityPeriod := getUint64FromInterface(data.Get(consentValidityPeriodKey), consentValidityPeriodKey, diagnostics)
+	if diagnostics.HasError() {
+		return
+	}
+
 	cfg := &configpb.ConsentConfiguration{
 		Purpose:        data.Get(consentPurposeKey).(string),
 		ApplicationId:  data.Get(consentApplicationIDKey).(string),
-		ValidityPeriod: uint64(data.Get(consentValidityPeriodKey).(int)),
+		ValidityPeriod: validityPeriod,
 		RevokeAfterUse: data.Get(consentRevokeAfterUseKey).(bool),
 		DataPoints:     rawArrayToTypedArray[string](data.Get(consentDataPointsKey)),
 	}
 	builder.WithConsentConfig(cfg)
+}
+
+func addError(diagnostics *diag.Diagnostics, summary, detail string) {
+	*diagnostics = append(*diagnostics, diag.Diagnostic{
+		Severity: diag.Error,
+		Summary:  summary,
+		Detail:   detail,
+	})
+}
+
+func getUint64FromInterface(val any, key string, diagnostics *diag.Diagnostics) uint64 {
+	switch v := val.(type) {
+	case int:
+		if v < 0 {
+			addError(diagnostics, "Invalid Value", key+" cannot be negative")
+			return 0
+		}
+		return uint64(v)
+	case int64:
+		if v < 0 {
+			addError(diagnostics, "Invalid Value", key+" cannot be negative")
+			return 0
+		}
+		return uint64(v)
+	case uint64:
+		return v
+	default:
+		addError(diagnostics, "Invalid Type", "unsupported type for "+key+": "+reflect.TypeOf(v).String())
+		return 0
+	}
 }

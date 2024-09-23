@@ -404,6 +404,16 @@ var IngestPipelineOperationTypes = map[string]configpb.IngestPipelineOperation{
 // IngestPipelineOperationTypesReverse is reverse mapping of IngestPipelineOperationTypes.
 var IngestPipelineOperationTypesReverse = ReverseProtoEnumMap(IngestPipelineOperationTypes)
 
+// ExternalDataResolverConfigContentType defines all supported ContentTypes and its mapping.
+var ExternalDataResolverConfigContentType = map[string]configpb.ExternalDataResolverConfig_ContentType{
+	"json": configpb.ExternalDataResolverConfig_CONTENT_TYPE_JSON,
+}
+
+var externalDataResolverContentTypeToString = map[configpb.ExternalDataResolverConfig_ContentType]string{
+	configpb.ExternalDataResolverConfig_CONTENT_TYPE_INVALID: "invalid",
+	configpb.ExternalDataResolverConfig_CONTENT_TYPE_JSON:    "json",
+}
+
 func betterValidationErrorWithPath(err error) error {
 	var protoValidErr ProtoValidateError
 	if errors.As(err, &protoValidErr) {

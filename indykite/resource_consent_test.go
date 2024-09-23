@@ -402,7 +402,7 @@ func testConsentResourceDataExists(
 			"update_time":      Not(BeEmpty()),
 			"purpose":          Equal(expectedJSON.GetPurpose()),
 			"application_id":   Equal(expectedJSON.GetApplicationId()),
-			"validity_period":  Equal(strconv.Itoa(int(expectedJSON.GetValidityPeriod()))),
+			"validity_period":  Equal(strconv.FormatUint(expectedJSON.GetValidityPeriod(), 10)),
 			"revoke_after_use": Equal(strconv.FormatBool(expectedJSON.GetRevokeAfterUse())),
 		}
 
