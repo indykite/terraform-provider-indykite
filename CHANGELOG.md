@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.8.0...v0.8.1) (2024-09-25)
+
+
+### Bug Fixes
+
+* update ext data resolver validation ([8bdec1e](https://github.com/indykite/terraform-provider-indykite/commit/8bdec1eb76837603c5ddcc6b0c1dbf19bdc5b092))
+
 ## [0.8.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.7.2...v0.8.0) (2024-09-24)
 
 
