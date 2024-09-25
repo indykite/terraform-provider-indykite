@@ -144,6 +144,10 @@ linters-settings:
             - map
         default-signifies-exhaustive: true
 
+    gosec:
+        excludes:
+            - G115 # Integer overflow by conversion**
+
     revive:
         # When listed some additional rules, it overrides defaults as well.
         # Put manually all default ones from https://github.com/mgechev/revive/blob/master/defaults.toml

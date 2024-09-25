@@ -80,7 +80,7 @@ func resourceExternalDataResolver() *schema.Resource {
 				Required: true,
 				ValidateFunc: validation.All(
 					validation.StringIsNotEmpty,
-					validation.StringInSlice([]string{"GET"}, true),
+					validation.StringInSlice([]string{"GET", "POST", "PUT", "PATCH"}, true),
 				),
 				Description: "HTTP method to be used for the request",
 			},
@@ -225,11 +225,7 @@ func getHeaders(data *schema.ResourceData) map[string]*configpb.ExternalDataReso
 	for _, h := range headersSet.List() {
 		headerData := h.(map[string]any)
 		name := headerData["name"].(string)
-		valuesInterface := headerData["values"].([]any)
-		values := make([]string, len(valuesInterface))
-		for i, v := range valuesInterface {
-			values[i] = v.(string)
-		}
+		values := rawArrayToTypedArray[string](headerData["values"])
 		headers[name] = &configpb.ExternalDataResolverConfig_Header{Values: values}
 	}
 	return headers
