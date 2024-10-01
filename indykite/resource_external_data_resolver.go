@@ -147,17 +147,10 @@ func resourceExternalDataResolverFlatten(
 ) diag.Diagnostics {
 	var d diag.Diagnostics
 	resolver := resp.GetConfigNode().GetExternalDataResolverConfig()
-
 	url := resolver.GetUrl()
-	if url == "" {
-		return append(d, buildPluginError("url is not valid in ExternalDataResolverConfig"))
-	}
 	setData(&d, data, externalDataResolverURLKey, url)
 
 	method := resolver.GetMethod()
-	if method == "" {
-		return append(d, buildPluginError("method is not valid in ExternalDataResolverConfig"))
-	}
 	setData(&d, data, externalDataResolverMethodKey, method)
 
 	headerNames := make([]string, 0, len(resolver.GetHeaders()))
@@ -178,18 +171,12 @@ func resourceExternalDataResolverFlatten(
 	setData(&d, data, externalDataResolverHeadersKey, headersList)
 
 	requestType := resolver.GetRequestType()
-	if requestType == configpb.ExternalDataResolverConfig_CONTENT_TYPE_INVALID {
-		return append(d, buildPluginError("requestType is not valid in ExternalDataResolverConfig"))
-	}
 	setData(&d, data, externalDataResolverRequestTypeKey, externalDataResolverContentTypeToString[requestType])
 
 	requestPayload := resolver.GetRequestPayload()
 	setData(&d, data, externalDataResolverRequestPayloadKey, string(requestPayload))
 
 	responseType := resolver.GetResponseType()
-	if responseType == configpb.ExternalDataResolverConfig_CONTENT_TYPE_INVALID {
-		return append(d, buildPluginError("responseType is not valid in ExternalDataResolverConfig"))
-	}
 	setData(&d, data, externalDataResolverResponseTypeKey, externalDataResolverContentTypeToString[responseType])
 
 	responseSelector := resolver.GetResponseSelector()
