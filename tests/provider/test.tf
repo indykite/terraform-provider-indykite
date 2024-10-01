@@ -121,11 +121,11 @@ resource "indykite_consent" "advance-user-data" {
   )]
 }
 
-resource "indykite_external_data_resolver" "get-resolver" { 
+resource "indykite_external_data_resolver" "get-resolver" {
   name         = "terraform-resolver-get-${time_static.example.unix}"
-  display_name = "Terraform external data resolver get ${time_static.example.unix}" 
-  description  = "External data resolver for terraform pipeline" 
-  location    = indykite_application_space.appspace.id 
+  display_name = "Terraform external data resolver get ${time_static.example.unix}"
+  description  = "External data resolver for terraform pipeline"
+  location    = indykite_application_space.appspace.id
 
   url = "https://www.example.com/sourceresolver"
 	method = "GET"
@@ -145,7 +145,7 @@ resource "indykite_external_data_resolver" "post-resolver" {
   name         = "terraform-resolver-post-${time_static.example.unix}"
   display_name = "Terraform external data resolver post ${time_static.example.unix}"
   description  = "External data resolver for terraform pipeline"
-  location    = indykite_application_space.appspace.id 
+  location    = indykite_application_space.appspace.id
 
   url = "https://example.com/sourceresolver2"
 	method = "POST"
