@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.8.1...v0.9.0) (2024-10-01)
+
+
+### Features
+
+* add entity matching temp solution ([5cf1564](https://github.com/indykite/terraform-provider-indykite/commit/5cf1564e10b74b2584556011d5bf039c405fda97))
+* add tests and minor modifications ([2fb488f](https://github.com/indykite/terraform-provider-indykite/commit/2fb488ffef67f6373c57ddccd4ba665045ab5557))
+
 ## [0.8.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.8.0...v0.8.1) (2024-09-25)
 
 
