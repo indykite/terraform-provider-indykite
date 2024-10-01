@@ -17,6 +17,7 @@ jobs:
         if: github.event.pull_request.draft == false
         env:
             INDYKITE_APPLICATION_CREDENTIALS: ${{ secrets.SERVICE_ACCOUNT_CREDENTIALS }}
+            INDYKITE_SERVICE_ACCOUNT_CREDENTIALS: ${{ secrets.SERVICE_ACCOUNT_CREDENTIALS }}
             CUSTOMER_ID: ${{secrets.CUSTOMER_ID}}
         steps:
             - name: Check out code

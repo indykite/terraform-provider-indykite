@@ -184,7 +184,7 @@ func (*tfConfig) getClient(ctx context.Context) (*config.Client, diag.Diagnostic
 	// This can be called multiple times, because it is called from ConfigureContextFunc,
 	// which is called for each resource.
 	conn, err := config.NewClient(ctx,
-		api.WithServiceAccount(), api.WithCredentialsLoader(apicfg.DefaultEnvironmentLoader))
+		api.WithServiceAccount(), api.WithCredentialsLoader(apicfg.DefaultEnvironmentLoaderConfig))
 	if err != nil {
 		return nil, diag.Diagnostics{{
 			Severity: diag.Error,
