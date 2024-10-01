@@ -125,18 +125,18 @@ resource "indykite_external_data_resolver" "get-resolver" {
   name         = "terraform-resolver-get-${time_static.example.unix}"
   display_name = "Terraform external data resolver get ${time_static.example.unix}"
   description  = "External data resolver for terraform pipeline"
-  location    = indykite_application_space.appspace.id
+  location     = indykite_application_space.appspace.id
 
-  url = "https://www.example.com/sourceresolver"
-	method = "GET"
+  url    = "https://www.example.com/sourceresolver"
+  method = "GET"
   headers {
     name   = "Authorization"
     values = ["Bearer edolkUTY"]
   }
-  request_type = "json"
-  response_type = "json"
-	response_selector = "."
-   lifecycle {
+  request_type      = "json"
+  response_type     = "json"
+  response_selector = "."
+  lifecycle {
     create_before_destroy = true
   }
 }
@@ -145,23 +145,23 @@ resource "indykite_external_data_resolver" "post-resolver" {
   name         = "terraform-resolver-post-${time_static.example.unix}"
   display_name = "Terraform external data resolver post ${time_static.example.unix}"
   description  = "External data resolver for terraform pipeline"
-  location    = indykite_application_space.appspace.id
+  location     = indykite_application_space.appspace.id
 
-  url = "https://example.com/sourceresolver2"
-	method = "POST"
+  url    = "https://example.com/sourceresolver2"
+  method = "POST"
   headers {
     name   = "Authorization"
     values = ["Bearer edokLoPnb6VfcRRTkUTY"]
   }
   headers {
-		  name   = "Content-Type"
-		  values = ["application/json"]
-		}
-	request_type = "json"
-	request_payload  = "{\"key\": \"value\"}"
-	response_type = "json"
-	response_selector = "."
-   lifecycle {
+    name   = "Content-Type"
+    values = ["application/json"]
+  }
+  request_type      = "json"
+  request_payload   = "{\"key\": \"value\"}"
+  response_type     = "json"
+  response_selector = "."
+  lifecycle {
     create_before_destroy = true
   }
 }
