@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/indykite/indykite-sdk-go/config"
+	"github.com/indykite/indykite-sdk-go/entitymatching"
 	api "github.com/indykite/indykite-sdk-go/grpc"
 	apicfg "github.com/indykite/indykite-sdk-go/grpc/config"
 )
@@ -35,9 +36,9 @@ type (
 	// ClientContext defines structure returned by ConfigureContextFunc,
 	// which is passed into resources as meta arguemnt.
 	ClientContext struct {
-		client    *config.Client
-		config    *tfConfig
-		bookmarks *clientBookmarks
+		configClient *config.Client
+		config       *tfConfig
+		bookmarks    *clientBookmarks
 	}
 
 	clientBookmarks struct {
@@ -90,6 +91,7 @@ func Provider() *schema.Provider {
 			"indykite_ingest_pipeline":              resourceIngestPipeline(),
 			"indykite_external_data_resolver":       resourceExternalDataResolver(),
 			"indykite_consent":                      resourceConsent(),
+			"indykite_entity_matching_pipeline":     resourceRunEntityMatchingPipeline(),
 		},
 	}
 
@@ -107,14 +109,14 @@ func providerConfigure(
 	version string,
 ) (any, diag.Diagnostics) {
 	cfg := &tfConfig{terraformVersion: version}
-	c, err := cfg.getClient(ctx)
+	c, err := cfg.getConfigClient(ctx)
 	if err.HasError() {
 		return nil, err
 	}
 	return &ClientContext{
-		client:    c,
-		config:    cfg,
-		bookmarks: bookmarks,
+		configClient: c,
+		config:       cfg,
+		bookmarks:    bookmarks,
 	}, nil
 }
 
@@ -129,7 +131,7 @@ func getClientContext(d *diag.Diagnostics, meta any) *ClientContext {
 
 // GetClient returns Config client, which exposes the whole config API.
 func (x *ClientContext) GetClient() *config.Client {
-	return x.client
+	return x.configClient
 }
 
 // AddBookmarks adds new bookmarks to round queue.
@@ -175,8 +177,8 @@ func WithClient(ctx context.Context, c *config.Client) context.Context {
 	return context.WithValue(ctx, clientContextKey, c)
 }
 
-// getClient configures and returns a fully initialized getClient.
-func (*tfConfig) getClient(ctx context.Context) (*config.Client, diag.Diagnostics) {
+// getConfigClient configures and returns a fully initialized getConfigClient.
+func (*tfConfig) getConfigClient(ctx context.Context) (*config.Client, diag.Diagnostics) {
 	if client, ok := ctx.Value(clientContextKey).(*config.Client); ok {
 		return client, nil
 	}
@@ -188,7 +190,27 @@ func (*tfConfig) getClient(ctx context.Context) (*config.Client, diag.Diagnostic
 	if err != nil {
 		return nil, diag.Diagnostics{{
 			Severity: diag.Error,
-			Summary:  "Unable to create IndyKite client",
+			Summary:  "Unable to create IndyKite Config client",
+			Detail:   err.Error(),
+		}}
+	}
+	return conn, nil
+}
+
+// getEntityMatchingClient configures and returns a fully initialized entity matching client.
+func getEntityMatchingClient(ctx context.Context) (*entitymatching.Client, diag.Diagnostics) {
+	if client, ok := ctx.Value(clientContextKey).(*entitymatching.Client); ok {
+		return client, nil
+	}
+
+	// This can be called multiple times, because it is called from ConfigureContextFunc,
+	// which is called for each resource.
+	conn, err := entitymatching.NewClient(ctx,
+		api.WithRetryOptions(), api.WithCredentialsLoader(apicfg.DefaultEnvironmentLoader))
+	if err != nil {
+		return nil, diag.Diagnostics{{
+			Severity: diag.Error,
+			Summary:  "Unable to create IndyKite Entity Matching client",
 			Detail:   err.Error(),
 		}}
 	}
