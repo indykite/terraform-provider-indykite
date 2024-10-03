@@ -23,7 +23,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/indykite/indykite-sdk-go/config"
-	"github.com/indykite/indykite-sdk-go/entitymatching"
 	api "github.com/indykite/indykite-sdk-go/grpc"
 	apicfg "github.com/indykite/indykite-sdk-go/grpc/config"
 )
@@ -91,7 +90,6 @@ func Provider() *schema.Provider {
 			"indykite_ingest_pipeline":              resourceIngestPipeline(),
 			"indykite_external_data_resolver":       resourceExternalDataResolver(),
 			"indykite_consent":                      resourceConsent(),
-			"indykite_entity_matching_pipeline":     resourceRunEntityMatchingPipeline(),
 		},
 	}
 
@@ -109,15 +107,15 @@ func providerConfigure(
 	version string,
 ) (any, diag.Diagnostics) {
 	cfg := &tfConfig{terraformVersion: version}
-	c, err := cfg.getConfigClient(ctx)
-	if err.HasError() {
-		return nil, err
+	c, diags := cfg.getConfigClient(ctx) // Rename 'err' to 'diags' for clarity
+	if diags.HasError() {
+		return nil, diags
 	}
 	return &ClientContext{
 		configClient: c,
 		config:       cfg,
 		bookmarks:    bookmarks,
-	}, nil
+	}, diags // Return diagnostics even if they contain only warnings
 }
 
 // getClientContext converts meta into ClientContext structure.
@@ -188,30 +186,19 @@ func (*tfConfig) getConfigClient(ctx context.Context) (*config.Client, diag.Diag
 	conn, err := config.NewClient(ctx,
 		api.WithServiceAccount(), api.WithCredentialsLoader(apicfg.DefaultEnvironmentLoaderConfig))
 	if err != nil {
-		return nil, diag.Diagnostics{{
-			Severity: diag.Error,
-			Summary:  "Unable to create IndyKite Config client",
-			Detail:   err.Error(),
-		}}
-	}
-	return conn, nil
-}
-
-// getEntityMatchingClient configures and returns a fully initialized entity matching client.
-func getEntityMatchingClient(ctx context.Context) (*entitymatching.Client, diag.Diagnostics) {
-	if client, ok := ctx.Value(clientContextKey).(*entitymatching.Client); ok {
-		return client, nil
-	}
-
-	// This can be called multiple times, because it is called from ConfigureContextFunc,
-	// which is called for each resource.
-	conn, err := entitymatching.NewClient(ctx,
-		api.WithRetryOptions(), api.WithCredentialsLoader(apicfg.DefaultEnvironmentLoader))
-	if err != nil {
-		return nil, diag.Diagnostics{{
-			Severity: diag.Error,
-			Summary:  "Unable to create IndyKite Entity Matching client",
-			Detail:   err.Error(),
+		conn, err = config.NewClient(ctx,
+			api.WithServiceAccount(), api.WithCredentialsLoader(apicfg.DefaultEnvironmentLoader))
+		if err != nil {
+			return nil, diag.Diagnostics{{
+				Severity: diag.Error,
+				Summary:  "Unable to create IndyKite Config client",
+				Detail:   err.Error(),
+			}}
+		}
+		return conn, diag.Diagnostics{{
+			Severity: diag.Warning,
+			Summary: "Using deprecated environment variable for IndyKite Config client." +
+				" Please use INDYKITE_SERVICE_ACCOUNT_CREDENTIALS instead.",
 		}}
 	}
 	return conn, nil
