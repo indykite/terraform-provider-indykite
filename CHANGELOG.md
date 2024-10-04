@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.10.0...v0.11.0) (2024-10-04)
+
+
+### Features
+
+* add location for entitymatching in tf ([3b91d86](https://github.com/indykite/terraform-provider-indykite/commit/3b91d8649c02d3a84044556de3c1dc3ff14316f4))
+
 ## [0.10.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.9.0...v0.10.0) (2024-10-04)
 
 
