@@ -19,6 +19,7 @@ jobs:
             INDYKITE_APPLICATION_CREDENTIALS: ${{ secrets.SERVICE_ACCOUNT_CREDENTIALS }}
             INDYKITE_SERVICE_ACCOUNT_CREDENTIALS: ${{ secrets.SERVICE_ACCOUNT_CREDENTIALS }}
             CUSTOMER_ID: ${{secrets.CUSTOMER_ID}}
+            TF_VAR_LOCATION_ID: ${{secrets.LOCATION_ID}}
         steps:
             - name: Check out code
               uses: actions/checkout@v4
