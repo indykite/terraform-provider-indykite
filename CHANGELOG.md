@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.9.0...v0.10.0) (2024-10-04)
+
+
+### Features
+
+* remove resource for entity matching ([6ad5da3](https://github.com/indykite/terraform-provider-indykite/commit/6ad5da386127f80f0ca7a963cff953df04ba54c6))
+
 ## [0.9.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.8.1...v0.9.0) (2024-10-01)
 
 
