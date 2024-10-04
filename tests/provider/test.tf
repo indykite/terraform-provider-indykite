@@ -1,7 +1,13 @@
 resource "time_static" "example" {}
 
+variable "LOCATION_ID" {
+    type = string
+    description = "AppSpace for entitymatching"
+}
+
 locals {
   app_space_name = "terraform-pipeline-appspace-${time_static.example.unix}"
+  location_id =  var.LOCATION_ID
 }
 
 data "indykite_customer" "customer" {
@@ -161,6 +167,20 @@ resource "indykite_external_data_resolver" "post-resolver" {
   request_payload   = "{\"key\": \"value\"}"
   response_type     = "json"
   response_selector = "."
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "indykite_entity_matching_pipeline" "create-pipeline3" {
+  name         = "terraform-entitymatching-pipeline-${time_static.example.unix}"
+  display_name = "Terraform entitymatching pipeline  ${time_static.example.unix}"
+  description  = "External entitymatching pipeline for terraform"
+  location     = local.location_id
+
+  source_node_filter = ["Person"]
+	target_node_filter = ["Person"]
+	score = 0.9
   lifecycle {
     create_before_destroy = true
   }
