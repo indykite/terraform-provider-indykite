@@ -19,7 +19,6 @@ EntityMatchingPipeline is a configuration that allows run a pipeline to create r
 
 - `location` (String) identifier of Location, where to create resource
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
-- `score` (Number) Similarity score cutoff to be used in the entity matching pipeline.
 - `source_node_filter` (List of String) List od source node types to be used in the entity matching pipeline.
 - `target_node_filter` (List of String) List of target node types to be used in the entity matching pipeline.
 
