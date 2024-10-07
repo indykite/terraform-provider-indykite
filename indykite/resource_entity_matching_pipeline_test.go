@@ -85,7 +85,6 @@ var _ = Describe("Resource EntityMatchingPipeline", func() {
 		validSettings = `
 		source_node_filter = ["Person"]
 		target_node_filter = ["Person"]
-		score = 0.9
 		`
 	})
 
@@ -102,16 +101,7 @@ var _ = Describe("Resource EntityMatchingPipeline", func() {
 					},
 					{
 						Config: fmt.Sprintf(tfConfigDef, appSpaceID, "name",
-							`source_node_filter = ["Person"]
-							target_node_filter = ["Person"]
-						`),
-						ExpectError: regexp.MustCompile(
-							`The argument "score" is required, but no definition was found`),
-					},
-					{
-						Config: fmt.Sprintf(tfConfigDef, appSpaceID, "name",
 							`target_node_filter = ["Person"]
-							score = 0.9
 							`),
 						ExpectError: regexp.MustCompile(
 							`The argument "source_node_filter" is required, but no definition was found.`),
@@ -138,7 +128,6 @@ var _ = Describe("Resource EntityMatchingPipeline", func() {
 								SourceNodeTypes: []string{"Person"},
 								TargetNodeTypes: []string{"Person"},
 							},
-							SimilarityScoreCutoff: 1.0,
 						},
 					},
 				},
@@ -158,7 +147,6 @@ var _ = Describe("Resource EntityMatchingPipeline", func() {
 								SourceNodeTypes: []string{"Person"},
 								TargetNodeTypes: []string{"Car"},
 							},
-							SimilarityScoreCutoff: 1.0,
 						},
 					},
 				},
@@ -231,7 +219,6 @@ var _ = Describe("Resource EntityMatchingPipeline", func() {
 							`display_name = "Display name of EntityMatchingPipeline configuration"
 							source_node_filter = ["Person"]
 							target_node_filter = ["Person"]
-							score = 1
 							`,
 						),
 						Check: resource.ComposeTestCheckFunc(
@@ -244,7 +231,6 @@ var _ = Describe("Resource EntityMatchingPipeline", func() {
 							`display_name = "Display name of EntityMatchingPipeline configuration"
 							source_node_filter = ["Person"]
 							target_node_filter = ["Car"]
-							score = 1
 						`),
 						Check: resource.ComposeTestCheckFunc(
 							testResourceEntityMatchingPipelineExists(resourceName, expectedUpdatedResp),
@@ -281,7 +267,6 @@ func testResourceEntityMatchingPipelineExists(
 			"display_name": Equal(data.ConfigNode.DisplayName),
 			"create_time":  Not(BeEmpty()),
 			"update_time":  Not(BeEmpty()),
-			"score":        Not(BeEmpty()),
 		}
 		sourceNodeFilter := data.GetConfigNode().
 			GetEntityMatchingPipelineConfig().
