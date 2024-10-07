@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.12.0...v0.12.1) (2024-10-07)
+
+
+### Bug Fixes
+
+* generate documentation ([79f9abc](https://github.com/indykite/terraform-provider-indykite/commit/79f9abcdf3267a8c372911cad3520a88ca6a0473))
+
 ## [0.12.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.11.0...v0.12.0) (2024-10-07)
 
 
