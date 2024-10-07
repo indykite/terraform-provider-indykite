@@ -50,6 +50,7 @@ You can find Terraform examples in our [Provider documentation](https://registry
 A complete script example is available [test.tf](tests/provider/test.tf).
 
 ## Provider development
+
 ### GitHub workflows
 
 `tfplugindocs` GitHub workflow automatically re-generates the provider documentation once commit is pushed to `master`.
