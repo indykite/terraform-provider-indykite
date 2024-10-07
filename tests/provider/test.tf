@@ -180,7 +180,6 @@ resource "indykite_entity_matching_pipeline" "create-pipeline3" {
 
   source_node_filter = ["Person"]
 	target_node_filter = ["Person"]
-	score = 0.9
   lifecycle {
     create_before_destroy = true
   }

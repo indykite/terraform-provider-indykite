@@ -17,15 +17,13 @@ package indykite
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/indykite/indykite-sdk-go/config"
 	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 )
 
 const (
-	entityMatchingPipelineSourceNodeFilterKey      = "source_node_filter"
-	entityMatchingPipelineTargetNodeFilterKey      = "target_node_filter"
-	entityMatchingPipelineSimilarityScoreCutOffKey = "score"
+	entityMatchingPipelineSourceNodeFilterKey = "source_node_filter"
+	entityMatchingPipelineTargetNodeFilterKey = "target_node_filter"
 )
 
 func resourceEntityMatchingPipeline() *schema.Resource {
@@ -73,12 +71,6 @@ func resourceEntityMatchingPipeline() *schema.Resource {
 				},
 				MinItems: 1,
 			},
-			entityMatchingPipelineSimilarityScoreCutOffKey: {
-				Type:         schema.TypeFloat,
-				Description:  "Similarity score cutoff to be used in the entity matching pipeline.",
-				Required:     true,
-				ValidateFunc: validation.FloatBetween(0, 1),
-			},
 		},
 	}
 }
@@ -100,8 +92,6 @@ func resourceEntityMatchingPipelineFlatten(
 		targetTypes[i] = target
 	}
 	setData(&d, data, entityMatchingPipelineTargetNodeFilterKey, targetTypes)
-	score := entitymatching.GetSimilarityScoreCutoff()
-	setData(&d, data, entityMatchingPipelineSimilarityScoreCutOffKey, score)
 
 	return d
 }
@@ -112,7 +102,6 @@ func resourceEntityMatchingPipelineBuild(
 	_ *ClientContext,
 	builder *config.NodeRequest,
 ) {
-	similarityScoreCutoff := data.Get(entityMatchingPipelineSimilarityScoreCutOffKey).(float64)
 	sourceNoteTypes := rawArrayToTypedArray[string](data.Get(entityMatchingPipelineSourceNodeFilterKey))
 	targetNodeTypes := rawArrayToTypedArray[string](data.Get(entityMatchingPipelineTargetNodeFilterKey))
 
@@ -121,7 +110,6 @@ func resourceEntityMatchingPipelineBuild(
 			SourceNodeTypes: sourceNoteTypes,
 			TargetNodeTypes: targetNodeTypes,
 		},
-		SimilarityScoreCutoff: float32(similarityScoreCutoff),
 	}
 	builder.WithEntityMatchingPipelineConfig(cfg)
 }
