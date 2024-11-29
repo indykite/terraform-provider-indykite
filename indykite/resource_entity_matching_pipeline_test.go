@@ -145,6 +145,27 @@ var _ = Describe("Resource EntityMatchingPipeline", func() {
 						EntityMatchingPipelineConfig: &configpb.EntityMatchingPipelineConfig{
 							NodeFilter: &configpb.EntityMatchingPipelineConfig_NodeFilter{
 								SourceNodeTypes: []string{"Person"},
+								TargetNodeTypes: []string{"Person"},
+							},
+							RerunInterval: "1 day",
+						},
+					},
+				},
+			}
+
+			expectedUpdatedResp2 := &configpb.ReadConfigNodeResponse{
+				ConfigNode: &configpb.ConfigNode{
+					Id:          sampleID2,
+					Name:        "my-first-entity-matching-pipeline",
+					DisplayName: "Display name of EntityMatchingPipeline configuration",
+					CustomerId:  customerID,
+					AppSpaceId:  appSpaceID,
+					CreateTime:  expectedResp.ConfigNode.CreateTime,
+					UpdateTime:  timestamppb.Now(),
+					Config: &configpb.ConfigNode_EntityMatchingPipelineConfig{
+						EntityMatchingPipelineConfig: &configpb.EntityMatchingPipelineConfig{
+							NodeFilter: &configpb.EntityMatchingPipelineConfig_NodeFilter{
+								SourceNodeTypes: []string{"Person"},
 								TargetNodeTypes: []string{"Car"},
 							},
 						},
@@ -184,6 +205,32 @@ var _ = Describe("Resource EntityMatchingPipeline", func() {
 				})))).
 				Return(&configpb.UpdateConfigNodeResponse{Id: sampleID}, nil)
 
+			// Update2
+			mockConfigClient.EXPECT().
+				DeleteConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Id": Equal(sampleID),
+				})))).
+				Return(&configpb.DeleteConfigNodeResponse{}, nil)
+			mockConfigClient.EXPECT().
+				CreateConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Name": Equal(expectedUpdatedResp2.ConfigNode.Name),
+					"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal(
+						expectedUpdatedResp2.ConfigNode.DisplayName,
+					)})),
+					"Description": BeNil(),
+					"Location":    Equal(appSpaceID),
+					"Config": PointTo(MatchFields(IgnoreExtras, Fields{
+						"EntityMatchingPipelineConfig": test.EqualProto(
+							expectedUpdatedResp2.GetConfigNode().GetEntityMatchingPipelineConfig()),
+					})),
+					"Bookmarks": ConsistOf(mockedBookmark),
+				})))).
+				Return(&configpb.CreateConfigNodeResponse{
+					Id:         sampleID2,
+					CreateTime: timestamppb.Now(),
+					UpdateTime: timestamppb.Now(),
+				}, nil)
+
 			// Read in given order
 			gomock.InOrder(
 				mockConfigClient.EXPECT().
@@ -197,14 +244,21 @@ var _ = Describe("Resource EntityMatchingPipeline", func() {
 					ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
 						"Id": Equal(sampleID),
 					})))).
-					Times(2).
+					Times(3).
 					Return(expectedUpdatedResp, nil),
+
+				mockConfigClient.EXPECT().
+					ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
+						"Id": Equal(sampleID2),
+					})))).
+					Times(2).
+					Return(expectedUpdatedResp2, nil),
 			)
 
 			// Delete
 			mockConfigClient.EXPECT().
 				DeleteConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(sampleID),
+					"Id": Equal(sampleID2),
 				})))).
 				Return(&configpb.DeleteConfigNodeResponse{}, nil)
 
@@ -230,10 +284,24 @@ var _ = Describe("Resource EntityMatchingPipeline", func() {
 						Config: fmt.Sprintf(tfConfigDef, appSpaceID, "my-first-entity-matching-pipeline",
 							`display_name = "Display name of EntityMatchingPipeline configuration"
 							source_node_filter = ["Person"]
-							target_node_filter = ["Car"]
-						`),
+							target_node_filter = ["Person"]
+							rerun_interval = "1 day"
+							`),
 						Check: resource.ComposeTestCheckFunc(
 							testResourceEntityMatchingPipelineExists(resourceName, expectedUpdatedResp),
+						),
+					},
+					{
+						// Checking Recreate and Read
+						Config: fmt.Sprintf(tfConfigDef, appSpaceID, "my-first-entity-matching-pipeline",
+							`display_name = "Display name of EntityMatchingPipeline configuration"
+							source_node_filter = ["Person"]
+							target_node_filter = ["Car"]
+							`),
+						// ExpectError: regexp.MustCompile(
+						// "InvalidArgument desc = update source or target node is not allowed"),
+						Check: resource.ComposeTestCheckFunc(
+							testResourceEntityMatchingPipelineExists(resourceName, expectedUpdatedResp2),
 						),
 					},
 				},
@@ -268,6 +336,7 @@ func testResourceEntityMatchingPipelineExists(
 			"create_time":  Not(BeEmpty()),
 			"update_time":  Not(BeEmpty()),
 		}
+
 		sourceNodeFilter := data.GetConfigNode().
 			GetEntityMatchingPipelineConfig().
 			GetNodeFilter().
@@ -281,6 +350,11 @@ func testResourceEntityMatchingPipelineExists(
 			GetTargetNodeTypes()
 		keys["target_node_filter.#"] = Equal(strconv.Itoa(len(targetNodeFilter)))
 		addStringArrayToKeys(keys, "target_node_filter", targetNodeFilter)
+
+		rerunInterval := data.GetConfigNode().
+			GetEntityMatchingPipelineConfig().
+			GetRerunInterval()
+		keys["rerun_interval"] = Equal(rerunInterval)
 
 		return convertOmegaMatcherToError(MatchKeys(IgnoreExtras, keys), attrs)
 	}

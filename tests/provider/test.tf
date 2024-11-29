@@ -172,7 +172,7 @@ resource "indykite_external_data_resolver" "post-resolver" {
   }
 }
 
-resource "indykite_entity_matching_pipeline" "create-pipeline3" {
+resource "indykite_entity_matching_pipeline" "create-pipeline" {
   name         = "terraform-entitymatching-pipeline-${time_static.example.unix}"
   display_name = "Terraform entitymatching pipeline  ${time_static.example.unix}"
   description  = "External entitymatching pipeline for terraform"
