@@ -91,7 +91,6 @@ func configReadContextFunc(flatten postFlattenConfig) schema.ReadContextFunc {
 	return func(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
 		var d diag.Diagnostics
 		clientCtx := getClientContext(&d, meta)
-
 		builder, err := config.NewRead(data.Id())
 		if err != nil || clientCtx == nil {
 			return d

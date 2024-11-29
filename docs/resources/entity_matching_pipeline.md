@@ -3,12 +3,12 @@
 page_title: "indykite_entity_matching_pipeline Resource - IndyKite"
 subcategory: ""
 description: |-
-  EntityMatchingPipeline is a configuration that allows run a pipeline to create relationships from entity matching
+  The EntityMatchingPipeline facilitates the setup of a configuration to detect and match identical nodes in the Identity Knowledge Graph.
 ---
 
 # indykite_entity_matching_pipeline (Resource)
 
-EntityMatchingPipeline is a configuration that allows run a pipeline to create relationships from entity matching
+The EntityMatchingPipeline facilitates the setup of a configuration to detect and match identical nodes in the Identity Knowledge Graph.
 
 
 

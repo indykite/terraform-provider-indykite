@@ -35,7 +35,8 @@ const (
 	appAgentID     = "gid:AAAABWluZHlraURlgAAFDwAAAAA"
 	appAgentCredID = "gid:AAAABt7z4hZzpkbAtZXbIEYsT9Q" // #nosec G101
 	// sampleID is plain empty ID just for responses.
-	sampleID = "gid:AAAAAAAAAAAAAAAAAAAAAAAAAAA"
+	sampleID  = "gid:AAAAAAAAAAAAAAAAAAAAAAAAAAA"
+	sampleID2 = "gid:AAAAAAAAAAAAAAAAAAAAAAAAAAB"
 )
 
 type terraformGomockTestReporter struct {
