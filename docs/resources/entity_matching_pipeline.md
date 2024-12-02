@@ -19,13 +19,15 @@ The EntityMatchingPipeline facilitates the setup of a configuration to detect an
 
 - `location` (String) identifier of Location, where to create resource
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
-- `source_node_filter` (List of String) List od source node types to be used in the entity matching pipeline.
+- `source_node_filter` (List of String) List of source node types to be used in the entity matching pipeline.
 - `target_node_filter` (List of String) List of target node types to be used in the entity matching pipeline.
 
 ### Optional
 
 - `description` (String) Your own description of resource. Must be less than or equal to 256 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
+- `rerun_interval` (String) RerunInterval is the time between scheduled re-runs.
+- `similarity_score_cutoff` (Number) Similarity score cutoff to be used in the entity matching pipeline.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
