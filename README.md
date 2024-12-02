@@ -32,7 +32,7 @@ provider "indykite" {
 }
 ```
 
-And configured with one of the following environment variable:
+And configured with one of the following environment variables:
 - INDYKITE_SERVICE_ACCOUNT_CREDENTIALS_FILE with path to service account credentials file generated from our console.
 - INDYKITE_SERVICE_ACCOUNT_CREDENTIALS with content of service account credentials file generated from our console.
 

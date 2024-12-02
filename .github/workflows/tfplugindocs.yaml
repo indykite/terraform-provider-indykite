@@ -21,7 +21,7 @@ jobs:
             - name: Check out code
               uses: actions/checkout@v4
               with:
-                  token: ${{ secrets.REPO_PAT }}
+                  token: ${{ secrets.INDYKITEONE_PAT }}
 
             - name: Set up Go
               uses: actions/setup-go@v5
@@ -44,7 +44,7 @@ jobs:
               uses: benjefferies/branch-protection-bot@v1.1.2
               if: always()
               with:
-                  access_token: ${{ secrets.REPO_PAT }}
+                  access_token: ${{ secrets.INDYKITEONE_PAT }}
                   enforce_admins: false
 
             - name: Commit generated docs
@@ -60,5 +60,5 @@ jobs:
               uses: benjefferies/branch-protection-bot@v1.1.2
               if: always()    # Force to always run this step to ensure "include administrators" is always turned back on
               with:
-                  access_token: ${{ secrets.REPO_PAT }}
+                  access_token: ${{ secrets.INDYKITEONE_PAT }}
                   enforce_admins: true
