@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.13.0...v0.14.0) (2024-12-02)
+
+
+### Features
+
+* update PAT variable ([1c531db](https://github.com/indykite/terraform-provider-indykite/commit/1c531dbeaa0d93f630a20cbd8799cd36303ab9f0))
+
 ## [0.13.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.12.1...v0.13.0) (2024-12-02)
 
 
