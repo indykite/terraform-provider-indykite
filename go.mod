@@ -8,7 +8,7 @@ require (
 	github.com/hashicorp/go-cty v1.4.1-0.20200723130312-85980079f637
 	github.com/hashicorp/terraform-plugin-go v0.24.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.34.0
-	github.com/indykite/indykite-sdk-go v0.48.0
+	github.com/indykite/indykite-sdk-go v0.48.1
 	github.com/onsi/ginkgo/v2 v2.21.0
 	github.com/onsi/gomega v1.35.1
 	github.com/pborman/uuid v1.2.1
