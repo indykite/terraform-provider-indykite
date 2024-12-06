@@ -1,6 +1,22 @@
 # Changelog
 
 
+## [0.13.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.12.1...v0.13.0) (2024-12-06)
+
+
+### Features
+
+* update after EM modif on upd ([a03115f](https://github.com/indykite/terraform-provider-indykite/commit/a03115f22a8766c9c4f1b49e694c2db79618d1ac))
+* update dependencies ([b229a7a](https://github.com/indykite/terraform-provider-indykite/commit/b229a7ac6680ef04fede657d9c9f13c4326c8934))
+* update PAT variable ([1c531db](https://github.com/indykite/terraform-provider-indykite/commit/1c531dbeaa0d93f630a20cbd8799cd36303ab9f0))
+
+
+### Miscellaneous Chores
+
+* **deps:** update codecov/codecov-action action to v5 ([cc6a308](https://github.com/indykite/terraform-provider-indykite/commit/cc6a308d4724b6bcfab87349f8de7339bdf53a11))
+* **master:** release 0.13.0 ([27ad9af](https://github.com/indykite/terraform-provider-indykite/commit/27ad9af22c05e7db95338162f50921c9e67eac64))
+* **master:** release 0.14.0 ([0b1d5e2](https://github.com/indykite/terraform-provider-indykite/commit/0b1d5e2ed8ed684d60a9c32d38f91de709f519fc))
+
 ## [0.12.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.12.0...v0.12.1) (2024-10-07)
 
 
