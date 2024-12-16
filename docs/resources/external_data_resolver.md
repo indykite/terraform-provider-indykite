@@ -17,19 +17,19 @@ ExternalDataResolver is a configuration that allows to fetch data from external 
 
 ### Required
 
-- `headers` (Block Set, Min: 1) Headers to be sent with the request, including authorization if needed (see [below for nested schema](#nestedblock--headers))
 - `location` (String) identifier of Location, where to create resource
-- `method` (String) HTTP method to be used for the request
+- `method` (String) HTTP method to be used for the request. Valid values are: GET, POST, PUT, PATCH.
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
-- `request_type` (String) Request type specify format of request body payload and how to set Content-Type header
+- `request_type` (String) Request type specify format of request body payload and how to set Content-Type header. Currently only `json` is supported
 - `response_selector` (String) Selector to extract data from response. Should be in requested format based on Response Type.
-- `response_type` (String) Response Type specify expected Content-Type header of response. If mismatch with real response, it will fail
+- `response_type` (String) Response Type specify expected Content-Type header of response. If mismatch with real response, it will fail. Currently only `json` is supported
 - `url` (String) Full URL to endpoint that will be called
 
 ### Optional
 
 - `description` (String) Your own description of resource. Must be less than or equal to 256 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
+- `headers` (Block Set) Headers to be sent with the request, including authorization if needed (see [below for nested schema](#nestedblock--headers))
 - `request_payload` (String) Request payload to be sent to the endpoint. It should be in proper format based on request type
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 

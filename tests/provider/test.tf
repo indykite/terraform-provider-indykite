@@ -1,13 +1,13 @@
 resource "time_static" "example" {}
 
 variable "LOCATION_ID" {
-    type = string
-    description = "AppSpace for entitymatching"
+  type        = string
+  description = "AppSpace for entitymatching"
 }
 
 locals {
   app_space_name = "terraform-pipeline-appspace-${time_static.example.unix}"
-  location_id =  var.LOCATION_ID
+  location_id    = var.LOCATION_ID
 }
 
 data "indykite_customer" "customer" {
@@ -179,7 +179,7 @@ resource "indykite_entity_matching_pipeline" "create-pipeline" {
   location     = local.location_id
 
   source_node_filter = ["Person"]
-	target_node_filter = ["Person"]
+  target_node_filter = ["Person"]
   lifecycle {
     create_before_destroy = true
   }
