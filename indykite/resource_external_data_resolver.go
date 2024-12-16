@@ -82,11 +82,11 @@ func resourceExternalDataResolver() *schema.Resource {
 					validation.StringIsNotEmpty,
 					validation.StringInSlice([]string{"GET", "POST", "PUT", "PATCH"}, true),
 				),
-				Description: "HTTP method to be used for the request",
+				Description: "HTTP method to be used for the request. Valid values are: GET, POST, PUT, PATCH.",
 			},
 			externalDataResolverHeadersKey: {
 				Type:     schema.TypeSet,
-				Required: true,
+				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"name": {
@@ -98,6 +98,7 @@ func resourceExternalDataResolver() *schema.Resource {
 						"values": {
 							Type:     schema.TypeList,
 							Required: true,
+							MinItems: 1,
 							Elem: &schema.Schema{
 								Type:         schema.TypeString,
 								ValidateFunc: validation.StringLenBetween(1, 255),
@@ -115,7 +116,7 @@ func resourceExternalDataResolver() *schema.Resource {
 				DiffSuppressFunc: func(_, old, newStr string, _ *schema.ResourceData) bool {
 					return strings.EqualFold(old, newStr)
 				},
-				Description: "Request type specify format of request body payload and how to set Content-Type header",
+				Description: "Request type specify format of request body payload and how to set Content-Type header. Currently only `json` is supported",
 			},
 			externalDataResolverRequestPayloadKey: {
 				Type:        schema.TypeString,
@@ -129,7 +130,7 @@ func resourceExternalDataResolver() *schema.Resource {
 				DiffSuppressFunc: func(_, old, newStr string, _ *schema.ResourceData) bool {
 					return strings.EqualFold(old, newStr)
 				},
-				Description: "Response Type specify expected Content-Type header of response. If mismatch with real response, it will fail",
+				Description: "Response Type specify expected Content-Type header of response. If mismatch with real response, it will fail. Currently only `json` is supported",
 			},
 			externalDataResolverResponseSelectorKey: {
 				Type:         schema.TypeString,

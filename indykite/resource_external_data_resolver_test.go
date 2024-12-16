@@ -141,10 +141,16 @@ var _ = Describe("Resource ExternalDataResolver", func() {
 						Config: fmt.Sprintf(tfConfigDef, appSpaceID, "name",
 							`url = "https://example.com/source2"
 							method = "GET"
+							headers {
+							  name   = "Content-Type"
+							  values = []
+							}
+							request_type = "json"
+							response_type = "json"
 							response_selector = "."
 							`),
 						ExpectError: regexp.MustCompile(
-							`At least 1 "headers" blocks are required`),
+							`Attribute headers.0.values requires 1 item minimum, but config has only 0`),
 					},
 				},
 			})
