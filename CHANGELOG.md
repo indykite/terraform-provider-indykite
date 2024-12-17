@@ -1,6 +1,13 @@
 # Changelog
 
 
+## [0.13.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.13.0...v0.13.1) (2024-12-17)
+
+
+### Bug Fixes
+
+* don't require external data headers ([4c037ab](https://github.com/indykite/terraform-provider-indykite/commit/4c037abedb32c4a700a628cfefef37e88b19b17d))
+
 ## [0.13.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.12.1...v0.13.0) (2024-12-06)
 
 
