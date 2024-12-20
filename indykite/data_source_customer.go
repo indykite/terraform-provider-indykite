@@ -45,9 +45,7 @@ func dataSourceCustomerRead(ctx context.Context, data *schema.ResourceData, meta
 		return d
 	}
 
-	req := &configpb.ReadCustomerRequest{
-		Bookmarks: clientCtx.GetBookmarks(),
-	}
+	req := &configpb.ReadCustomerRequest{}
 	if name, exists := data.GetOk(nameKey); exists {
 		req.Identifier = &configpb.ReadCustomerRequest_Name{
 			Name: name.(string),

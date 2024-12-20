@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"sync"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -28,7 +27,6 @@ import (
 	"github.com/indykite/indykite-sdk-go/config"
 	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 	configm "github.com/indykite/indykite-sdk-go/test/config/v1beta1"
-	"github.com/pborman/uuid"
 	"go.uber.org/mock/gomock"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -47,16 +45,11 @@ var _ = Describe("Resource Application", func() {
 		mockCtrl         *gomock.Controller
 		mockConfigClient *configm.MockConfigManagementAPIClient
 		provider         *schema.Provider
-		mockedBookmark   string
 	)
 
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(TerraformGomockT(GinkgoT()))
 		mockConfigClient = configm.NewMockConfigManagementAPIClient(mockCtrl)
-
-		// Bookmark must be longer than 40 chars - have just 1 added before the first write to test all cases
-		mockedBookmark = "for-application" + uuid.NewRandom().String()
-		bmOnce := &sync.Once{}
 
 		provider = indykite.Provider()
 		cfgFunc := provider.ConfigureContextFunc
@@ -64,12 +57,7 @@ var _ = Describe("Resource Application", func() {
 			func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
 				client, _ := config.NewTestClient(ctx, mockConfigClient)
 				ctx = indykite.WithClient(ctx, client)
-				i, d := cfgFunc(ctx, data)
-				// ConfigureContextFunc is called repeatedly, add initial bookmark just once
-				bmOnce.Do(func() {
-					i.(*indykite.ClientContext).AddBookmarks(mockedBookmark)
-				})
-				return i, d
+				return cfgFunc(ctx, data)
 			}
 	})
 
@@ -117,11 +105,6 @@ var _ = Describe("Resource Application", func() {
 			UpdateTime:  timestamppb.Now(),
 		}
 
-		createBM := "created-application" + uuid.NewRandom().String()
-		updateBM := "updated-application" + uuid.NewRandom().String()
-		updateBM2 := "updated-application-2" + uuid.NewRandom().String()
-		deleteBM := "deleted-application" + uuid.NewRandom().String()
-
 		// Create
 		mockConfigClient.EXPECT().
 			CreateApplication(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
@@ -131,9 +114,8 @@ var _ = Describe("Resource Application", func() {
 				"Description": PointTo(MatchFields(IgnoreExtras, Fields{
 					"Value": Equal(initialApplicationResp.Description.Value),
 				})),
-				"Bookmarks": ConsistOf(mockedBookmark),
 			})))).
-			Return(&configpb.CreateApplicationResponse{Id: initialApplicationResp.Id, Bookmark: createBM}, nil)
+			Return(&configpb.CreateApplicationResponse{Id: initialApplicationResp.Id}, nil)
 
 		// 2x update
 		mockConfigClient.EXPECT().
@@ -143,9 +125,8 @@ var _ = Describe("Resource Application", func() {
 				"Description": PointTo(MatchFields(IgnoreExtras, Fields{
 					"Value": Equal(readAfter1stUpdateResp.Description.Value),
 				})),
-				"Bookmarks": ConsistOf(mockedBookmark, createBM),
 			})))).
-			Return(&configpb.UpdateApplicationResponse{Id: initialApplicationResp.Id, Bookmark: updateBM}, nil)
+			Return(&configpb.UpdateApplicationResponse{Id: initialApplicationResp.Id}, nil)
 
 		mockConfigClient.EXPECT().
 			UpdateApplication(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
@@ -154,16 +135,14 @@ var _ = Describe("Resource Application", func() {
 					"Value": Equal(readAfter2ndUpdateResp.DisplayName),
 				})),
 				"Description": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal("")})),
-				"Bookmarks":   ConsistOf(mockedBookmark, createBM, updateBM),
 			})))).
-			Return(&configpb.UpdateApplicationResponse{Id: initialApplicationResp.Id, Bookmark: updateBM2}, nil)
+			Return(&configpb.UpdateApplicationResponse{Id: initialApplicationResp.Id}, nil)
 
 		// Read in given order
 		gomock.InOrder(
 			mockConfigClient.EXPECT().
 				ReadApplication(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Id": Equal(initialApplicationResp.Id)})),
-					"Bookmarks":  ConsistOf(mockedBookmark, createBM),
 				})))).
 				Times(4).
 				Return(&configpb.ReadApplicationResponse{Application: initialApplicationResp}, nil),
@@ -171,7 +150,6 @@ var _ = Describe("Resource Application", func() {
 			mockConfigClient.EXPECT().
 				ReadApplication(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Id": Equal(initialApplicationResp.Id)})),
-					"Bookmarks":  ConsistOf(mockedBookmark, createBM, updateBM),
 				})))).
 				Times(3).
 				Return(&configpb.ReadApplicationResponse{Application: readAfter1stUpdateResp}, nil),
@@ -179,7 +157,6 @@ var _ = Describe("Resource Application", func() {
 			mockConfigClient.EXPECT().
 				ReadApplication(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Id": Equal(initialApplicationResp.Id)})),
-					"Bookmarks":  ConsistOf(mockedBookmark, createBM, updateBM, updateBM2),
 				})))).
 				Times(5).
 				Return(&configpb.ReadApplicationResponse{Application: readAfter2ndUpdateResp}, nil),
@@ -188,10 +165,9 @@ var _ = Describe("Resource Application", func() {
 		// Delete
 		mockConfigClient.EXPECT().
 			DeleteApplication(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id":        Equal(initialApplicationResp.Id),
-				"Bookmarks": ConsistOf(mockedBookmark, createBM, updateBM, updateBM2),
+				"Id": Equal(initialApplicationResp.Id),
 			})))).
-			Return(&configpb.DeleteApplicationResponse{Bookmark: deleteBM}, nil)
+			Return(&configpb.DeleteApplicationResponse{}, nil)
 
 		resource.Test(GinkgoT(), resource.TestCase{
 			Providers: map[string]*schema.Provider{

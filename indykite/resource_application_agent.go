@@ -61,13 +61,11 @@ func resAppAgentCreate(ctx context.Context, data *schema.ResourceData, meta any)
 		Name:          name,
 		DisplayName:   optionalString(data, displayNameKey),
 		Description:   optionalString(data, descriptionKey),
-		Bookmarks:     clientCtx.GetBookmarks(),
 	})
 	if HasFailed(&d, err) {
 		return d
 	}
 	data.SetId(resp.Id)
-	clientCtx.AddBookmarks(resp.GetBookmark())
 
 	return resAppAgentRead(ctx, data, meta)
 }
@@ -84,7 +82,6 @@ func resAppAgentRead(ctx context.Context, data *schema.ResourceData, meta any) d
 		Identifier: &config.ReadApplicationAgentRequest_Id{
 			Id: data.Id(),
 		},
-		Bookmarks: clientCtx.GetBookmarks(),
 	})
 	if readHasFailed(&d, err, data) {
 		return d
@@ -124,14 +121,12 @@ func resAppAgentUpdate(ctx context.Context, data *schema.ResourceData, meta any)
 		Id:          data.Id(),
 		DisplayName: updateOptionalString(data, displayNameKey),
 		Description: updateOptionalString(data, descriptionKey),
-		Bookmarks:   clientCtx.GetBookmarks(),
 	}
 
-	resp, err := clientCtx.GetClient().UpdateApplicationAgent(ctx, req)
+	_, err := clientCtx.GetClient().UpdateApplicationAgent(ctx, req)
 	if HasFailed(&d, err) {
 		return d
 	}
-	clientCtx.AddBookmarks(resp.GetBookmark())
 	return resAppAgentRead(ctx, data, meta)
 }
 
@@ -146,11 +141,9 @@ func resAppAgentDelete(ctx context.Context, data *schema.ResourceData, meta any)
 	if hasDeleteProtection(&d, data) {
 		return d
 	}
-	resp, err := clientCtx.GetClient().DeleteApplicationAgent(ctx, &config.DeleteApplicationAgentRequest{
-		Id:        data.Id(),
-		Bookmarks: clientCtx.GetBookmarks(),
+	_, err := clientCtx.GetClient().DeleteApplicationAgent(ctx, &config.DeleteApplicationAgentRequest{
+		Id: data.Id(),
 	})
 	HasFailed(&d, err)
-	clientCtx.AddBookmarks(resp.GetBookmark())
 	return d
 }
