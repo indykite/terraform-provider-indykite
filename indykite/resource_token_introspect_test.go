@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -30,7 +29,6 @@ import (
 	"github.com/indykite/indykite-sdk-go/config"
 	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 	configm "github.com/indykite/indykite-sdk-go/test/config/v1beta1"
-	"github.com/pborman/uuid"
 	"go.uber.org/mock/gomock"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -52,16 +50,11 @@ var _ = Describe("Resource TokenIntrospect", func() {
 		mockCtrl         *gomock.Controller
 		mockConfigClient *configm.MockConfigManagementAPIClient
 		provider         *schema.Provider
-		mockedBookmark   string
 	)
 
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(TerraformGomockT(GinkgoT()))
 		mockConfigClient = configm.NewMockConfigManagementAPIClient(mockCtrl)
-
-		// Bookmark must be longer than 40 chars - have just 1 added before the first write to test all cases
-		mockedBookmark = "for-token-introspect-cfg" + uuid.NewRandom().String()
-		bmOnce := &sync.Once{}
 
 		provider = indykite.Provider()
 		cfgFunc := provider.ConfigureContextFunc
@@ -69,12 +62,7 @@ var _ = Describe("Resource TokenIntrospect", func() {
 			func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
 				client, _ := config.NewTestClient(ctx, mockConfigClient)
 				ctx = indykite.WithClient(ctx, client)
-				i, d := cfgFunc(ctx, data)
-				// ConfigureContextFunc is called repeatedly, add initial bookmark just once
-				bmOnce.Do(func() {
-					i.(*indykite.ClientContext).AddBookmarks(mockedBookmark)
-				})
-				return i, d
+				return cfgFunc(ctx, data)
 			}
 	})
 
@@ -179,7 +167,6 @@ var _ = Describe("Resource TokenIntrospect", func() {
 				"Config": PointTo(MatchFields(IgnoreExtras, Fields{
 					"TokenIntrospectConfig": test.EqualProto(expectedResp.GetConfigNode().GetTokenIntrospectConfig()),
 				})),
-				"Bookmarks": ConsistOf(mockedBookmark),
 			})))).
 			Return(&configpb.CreateConfigNodeResponse{
 				Id:         sampleID,

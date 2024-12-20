@@ -60,13 +60,11 @@ func resApplicationCreate(ctx context.Context, data *schema.ResourceData, meta a
 		Name:        name,
 		DisplayName: optionalString(data, displayNameKey),
 		Description: optionalString(data, descriptionKey),
-		Bookmarks:   clientCtx.GetBookmarks(),
 	})
 	if HasFailed(&d, err) {
 		return d
 	}
 	data.SetId(resp.Id)
-	clientCtx.AddBookmarks(resp.GetBookmark())
 
 	return resApplicationRead(ctx, data, meta)
 }
@@ -83,7 +81,6 @@ func resApplicationRead(ctx context.Context, data *schema.ResourceData, meta any
 		Identifier: &config.ReadApplicationRequest_Id{
 			Id: data.Id(),
 		},
-		Bookmarks: clientCtx.GetBookmarks(),
 	})
 	if readHasFailed(&d, err, data) {
 		return d
@@ -122,14 +119,12 @@ func resApplicationUpdate(ctx context.Context, data *schema.ResourceData, meta a
 		Id:          data.Id(),
 		DisplayName: updateOptionalString(data, displayNameKey),
 		Description: updateOptionalString(data, descriptionKey),
-		Bookmarks:   clientCtx.GetBookmarks(),
 	}
 
-	resp, err := clientCtx.GetClient().UpdateApplication(ctx, req)
+	_, err := clientCtx.GetClient().UpdateApplication(ctx, req)
 	if HasFailed(&d, err) {
 		return d
 	}
-	clientCtx.AddBookmarks(resp.GetBookmark())
 	return resApplicationRead(ctx, data, meta)
 }
 
@@ -144,11 +139,9 @@ func resApplicationDelete(ctx context.Context, data *schema.ResourceData, meta a
 	if hasDeleteProtection(&d, data) {
 		return d
 	}
-	resp, err := clientCtx.GetClient().DeleteApplication(ctx, &config.DeleteApplicationRequest{
-		Id:        data.Id(),
-		Bookmarks: clientCtx.GetBookmarks(),
+	_, err := clientCtx.GetClient().DeleteApplication(ctx, &config.DeleteApplicationRequest{
+		Id: data.Id(),
 	})
 	HasFailed(&d, err)
-	clientCtx.AddBookmarks(resp.GetBookmark())
 	return d
 }

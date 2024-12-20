@@ -60,14 +60,12 @@ func resAppSpaceCreateContext(ctx context.Context, data *schema.ResourceData, me
 		Name:        name,
 		DisplayName: optionalString(data, displayNameKey),
 		Description: optionalString(data, descriptionKey),
-		Bookmarks:   clientCtx.GetBookmarks(),
 		Region:      data.Get(regionKey).(string),
 	})
 	if HasFailed(&d, err) {
 		return d
 	}
 	data.SetId(resp.Id)
-	clientCtx.AddBookmarks(resp.GetBookmark())
 
 	return resAppSpaceReadContext(ctx, data, meta)
 }
@@ -84,7 +82,6 @@ func resAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta
 		Identifier: &config.ReadApplicationSpaceRequest_Id{
 			Id: data.Id(),
 		},
-		Bookmarks: clientCtx.GetBookmarks(),
 	})
 	if readHasFailed(&d, err, data) {
 		return d
@@ -123,14 +120,12 @@ func resAppSpaceUpdateContext(ctx context.Context, data *schema.ResourceData, me
 		Id:          data.Id(),
 		DisplayName: updateOptionalString(data, displayNameKey),
 		Description: updateOptionalString(data, descriptionKey),
-		Bookmarks:   clientCtx.GetBookmarks(),
 	}
 
-	resp, err := clientCtx.GetClient().UpdateApplicationSpace(ctx, req)
+	_, err := clientCtx.GetClient().UpdateApplicationSpace(ctx, req)
 	if HasFailed(&d, err) {
 		return d
 	}
-	clientCtx.AddBookmarks(resp.GetBookmark())
 	return resAppSpaceReadContext(ctx, data, meta)
 }
 
@@ -145,11 +140,9 @@ func resAppSpaceDeleteContext(ctx context.Context, data *schema.ResourceData, me
 	if hasDeleteProtection(&d, data) {
 		return d
 	}
-	resp, err := clientCtx.GetClient().DeleteApplicationSpace(ctx, &config.DeleteApplicationSpaceRequest{
-		Id:        data.Id(),
-		Bookmarks: clientCtx.GetBookmarks(),
+	_, err := clientCtx.GetClient().DeleteApplicationSpace(ctx, &config.DeleteApplicationSpaceRequest{
+		Id: data.Id(),
 	})
 	HasFailed(&d, err)
-	clientCtx.AddBookmarks(resp.GetBookmark())
 	return d
 }

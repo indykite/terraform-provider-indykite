@@ -216,13 +216,7 @@ func invokeCreateConfigNode(
 	ctx, cancel := context.WithTimeout(parent, data.Timeout(schema.TimeoutCreate))
 	defer cancel()
 
-	b.WithBookmarks(clientCtx.GetBookmarks())
-	resp, err := clientCtx.GetClient().CreateConfigNode(ctx, b)
-	if err != nil {
-		return nil, err
-	}
-	clientCtx.AddBookmarks(resp.GetBookmark())
-	return resp, nil
+	return clientCtx.GetClient().CreateConfigNode(ctx, b)
 }
 
 func invokeReadConfigNode(
@@ -234,12 +228,7 @@ func invokeReadConfigNode(
 	ctx, cancel := context.WithTimeout(parent, data.Timeout(schema.TimeoutRead))
 	defer cancel()
 
-	b.WithBookmarks(clientCtx.GetBookmarks())
-	resp, err := clientCtx.GetClient().ReadConfigNode(ctx, b)
-	if err != nil {
-		return nil, err
-	}
-	return resp, nil
+	return clientCtx.GetClient().ReadConfigNode(ctx, b)
 }
 
 func invokeUpdateConfigNode(
@@ -251,13 +240,7 @@ func invokeUpdateConfigNode(
 	ctx, cancel := context.WithTimeout(parent, data.Timeout(schema.TimeoutUpdate))
 	defer cancel()
 
-	b.WithBookmarks(clientCtx.GetBookmarks())
-	resp, err := clientCtx.GetClient().UpdateConfigNode(ctx, b)
-	if err != nil {
-		return nil, err
-	}
-	clientCtx.AddBookmarks(resp.GetBookmark())
-	return resp, nil
+	return clientCtx.GetClient().UpdateConfigNode(ctx, b)
 }
 
 func invokeDeleteConfigNode(
@@ -269,11 +252,5 @@ func invokeDeleteConfigNode(
 	ctx, cancel := context.WithTimeout(parent, data.Timeout(schema.TimeoutDelete))
 	defer cancel()
 
-	b.WithBookmarks(clientCtx.GetBookmarks())
-	resp, err := clientCtx.GetClient().DeleteConfigNode(ctx, b)
-	if err != nil {
-		return nil, err
-	}
-	clientCtx.AddBookmarks(resp.GetBookmark())
-	return resp, nil
+	return clientCtx.GetClient().DeleteConfigNode(ctx, b)
 }

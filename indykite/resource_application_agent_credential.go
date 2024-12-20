@@ -109,7 +109,6 @@ func resAppAgentCredCreate(ctx context.Context, data *schema.ResourceData, meta 
 	req := &config.RegisterApplicationAgentCredentialRequest{
 		ApplicationAgentId: data.Get(appAgentIDKey).(string),
 		DisplayName:        data.Get(displayNameKey).(string),
-		Bookmarks:          clientCtx.GetBookmarks(),
 	}
 
 	if expRaw, ok := data.GetOk(expireTimeKey); ok {
@@ -136,7 +135,6 @@ func resAppAgentCredCreate(ctx context.Context, data *schema.ResourceData, meta 
 	}
 	data.SetId(resp.Id)
 	setData(&d, data, agentConfigKey, string(resp.AgentConfig))
-	clientCtx.AddBookmarks(resp.GetBookmark())
 
 	return resAppAgentCredRead(ctx, data, meta)
 }
@@ -177,8 +175,7 @@ func resAppAgentCredRead(ctx context.Context, data *schema.ResourceData, meta an
 	defer cancel()
 	resp, err := clientCtx.GetClient().
 		ReadApplicationAgentCredential(ctx, &config.ReadApplicationAgentCredentialRequest{
-			Id:        data.Id(),
-			Bookmarks: clientCtx.GetBookmarks(),
+			Id: data.Id(),
 		})
 	if readHasFailed(&d, err, data) {
 		return d
@@ -212,13 +209,11 @@ func resAppAgentCredDelete(ctx context.Context, data *schema.ResourceData, meta 
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutDelete))
 	defer cancel()
-	resp, err := clientCtx.GetClient().DeleteApplicationAgentCredential(ctx,
+	_, err := clientCtx.GetClient().DeleteApplicationAgentCredential(ctx,
 		&config.DeleteApplicationAgentCredentialRequest{
-			Id:        data.Id(),
-			Bookmarks: clientCtx.GetBookmarks(),
+			Id: data.Id(),
 		},
 	)
 	HasFailed(&d, err)
-	clientCtx.AddBookmarks(resp.GetBookmark())
 	return d
 }

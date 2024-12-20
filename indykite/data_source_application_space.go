@@ -73,9 +73,7 @@ func dataAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, met
 		return d
 	}
 
-	req := &configpb.ReadApplicationSpaceRequest{
-		Bookmarks: clientCtx.GetBookmarks(),
-	}
+	req := &configpb.ReadApplicationSpaceRequest{}
 	if name, exists := data.GetOk(nameKey); exists {
 		req.Identifier = &configpb.ReadApplicationSpaceRequest_Name{
 			Name: &configpb.UniqueNameIdentifier{
@@ -131,7 +129,6 @@ func dataAppSpaceListContext(ctx context.Context, data *schema.ResourceData, met
 	resp, err := clientCtx.GetClient().ListApplicationSpaces(ctx, &configpb.ListApplicationSpacesRequest{
 		CustomerId: data.Get(customerIDKey).(string),
 		Match:      match,
-		Bookmarks:  clientCtx.GetBookmarks(),
 	})
 	if HasFailed(&d, err) {
 		return d

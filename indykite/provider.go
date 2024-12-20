@@ -15,9 +15,7 @@
 package indykite
 
 import (
-	"container/ring"
 	"context"
-	"sync"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -37,13 +35,6 @@ type (
 	ClientContext struct {
 		configClient *config.Client
 		config       *tfConfig
-		bookmarks    *clientBookmarks
-	}
-
-	clientBookmarks struct {
-		queueRing *ring.Ring
-		count     int
-		sync.Mutex
 	}
 
 	contextKey int
@@ -51,22 +42,10 @@ type (
 
 const (
 	clientContextKey contextKey = 1
-
-	// parallelism sets how many concurrent resource Terraform can process in the same time.
-	// Default value is 10. If there is a way to get real value, use that instead of hardcoded value.
-	// DO NOT SET it too high, as this amount of bookmarks will be send in requests.
-	parallelism = 10
 )
 
 // Provider returns a terraform.ResourceProvider.
 func Provider() *schema.Provider {
-	// Bookmarks must be set globally on Provider level.
-	// Because ConfigureContextFunc is called multiple times per resource.
-	bookmarks := &clientBookmarks{
-		queueRing: ring.New(parallelism),
-		count:     0,
-	}
-
 	// The actual provider
 	provider := &schema.Provider{
 		DataSourcesMap: map[string]*schema.Resource{
@@ -96,7 +75,7 @@ func Provider() *schema.Provider {
 
 	provider.ConfigureContextFunc =
 		func(ctx context.Context, _ *schema.ResourceData) (any, diag.Diagnostics) {
-			return providerConfigure(ctx, bookmarks, provider.TerraformVersion)
+			return providerConfigure(ctx, provider.TerraformVersion)
 		}
 
 	return provider
@@ -104,7 +83,6 @@ func Provider() *schema.Provider {
 
 func providerConfigure(
 	ctx context.Context,
-	bookmarks *clientBookmarks,
 	version string,
 ) (any, diag.Diagnostics) {
 	cfg := &tfConfig{terraformVersion: version}
@@ -115,7 +93,6 @@ func providerConfigure(
 	return &ClientContext{
 		configClient: c,
 		config:       cfg,
-		bookmarks:    bookmarks,
 	}, diags // Return diagnostics even if they contain only warnings
 }
 
@@ -131,44 +108,6 @@ func getClientContext(d *diag.Diagnostics, meta any) *ClientContext {
 // GetClient returns Config client, which exposes the whole config API.
 func (x *ClientContext) GetClient() *config.Client {
 	return x.configClient
-}
-
-// AddBookmarks adds new bookmarks to round queue.
-// Calling repeatedly will add more and more bookmarks while remove old ones.
-// Size of queue should reflect Terraform parallelism and API restrictions.
-func (x *ClientContext) AddBookmarks(bookmarks ...string) {
-	if len(bookmarks) == 0 {
-		return
-	}
-	x.bookmarks.Lock()
-	defer x.bookmarks.Unlock()
-	for _, b := range bookmarks {
-		if b == "" {
-			continue
-		}
-
-		x.bookmarks.queueRing.Value = b
-		x.bookmarks.queueRing = x.bookmarks.queueRing.Next()
-		if x.bookmarks.count < parallelism {
-			x.bookmarks.count++
-		}
-	}
-}
-
-// GetBookmarks returns all stored bookmarks in the round queue.
-// Size of queue, and thus amount of bookmarks returned, should reflect Terraform parallelism and API restrictions.
-func (x *ClientContext) GetBookmarks() []string {
-	x.bookmarks.Lock()
-	defer x.bookmarks.Unlock()
-
-	b := make([]string, 0, x.bookmarks.count)
-	x.bookmarks.queueRing.Do(func(a any) {
-		if v, _ := a.(string); v != "" {
-			b = append(b, v)
-		}
-	})
-
-	return b
 }
 
 // WithClient stores the config client into the context.

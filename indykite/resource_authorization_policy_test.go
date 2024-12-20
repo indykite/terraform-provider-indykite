@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
-	"sync"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -29,7 +28,6 @@ import (
 	"github.com/indykite/indykite-sdk-go/config"
 	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 	configm "github.com/indykite/indykite-sdk-go/test/config/v1beta1"
-	"github.com/pborman/uuid"
 	"go.uber.org/mock/gomock"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -49,28 +47,19 @@ var _ = Describe("Resource Authorization Policy config", func() {
 		mockCtrl         *gomock.Controller
 		mockConfigClient *configm.MockConfigManagementAPIClient
 		provider         *schema.Provider
-		mockedBookmark   string
 	)
 
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(TerraformGomockT(GinkgoT()))
 		mockConfigClient = configm.NewMockConfigManagementAPIClient(mockCtrl)
 
-		// Bookmark must be longer than 40 chars - have just 1 added before the first write to test all cases
-		mockedBookmark = "for-authz-policy" + uuid.NewRandom().String()
-		bmOnce := &sync.Once{}
 		provider = indykite.Provider()
 		cfgFunc := provider.ConfigureContextFunc
 		provider.ConfigureContextFunc =
 			func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
 				client, _ := config.NewTestClient(ctx, mockConfigClient)
 				ctx = indykite.WithClient(ctx, client)
-				i, d := cfgFunc(ctx, data)
-				// ConfigureContextFunc is called repeatedly, add initial bookmark just once
-				bmOnce.Do(func() {
-					i.(*indykite.ClientContext).AddBookmarks(mockedBookmark)
-				})
-				return i, d
+				return cfgFunc(ctx, data)
 			}
 	})
 
@@ -118,10 +107,6 @@ var _ = Describe("Resource Authorization Policy config", func() {
 			},
 		}
 
-		createBM := "created-authz-policy" + uuid.NewRandom().String()
-		updateBM := "updated-authz-policy" + uuid.NewRandom().String()
-		deleteBM := "deleted-authz-policy" + uuid.NewRandom().String()
-
 		// Create
 		mockConfigClient.EXPECT().
 			CreateConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
@@ -134,13 +119,11 @@ var _ = Describe("Resource Authorization Policy config", func() {
 				"Config": PointTo(MatchFields(IgnoreExtras, Fields{"AuthorizationPolicyConfig": test.EqualProto(
 					authzPolicyConfigResp.ConfigNode.GetAuthorizationPolicyConfig(),
 				)})),
-				"Bookmarks": ConsistOf(mockedBookmark),
 			})))).
 			Return(&configpb.CreateConfigNodeResponse{
 				Id:         authzPolicyConfigResp.ConfigNode.Id,
 				CreateTime: timestamppb.Now(),
 				UpdateTime: timestamppb.Now(),
-				Bookmark:   createBM,
 			}, nil)
 
 		// update
@@ -156,41 +139,35 @@ var _ = Describe("Resource Authorization Policy config", func() {
 						authzPolicyConfigUpdateResp.ConfigNode.GetAuthorizationPolicyConfig(),
 					),
 				})),
-				"Bookmarks": ConsistOf(mockedBookmark, createBM),
 			})))).
 			Return(&configpb.UpdateConfigNodeResponse{
-				Id:       authzPolicyConfigResp.ConfigNode.Id,
-				Bookmark: updateBM,
+				Id: authzPolicyConfigResp.ConfigNode.Id,
 			}, nil)
 
 		// Read in given order
 		gomock.InOrder(
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id":        Equal(authzPolicyConfigResp.ConfigNode.Id),
-					"Bookmarks": ConsistOf(mockedBookmark, createBM),
+					"Id": Equal(authzPolicyConfigResp.ConfigNode.Id),
 				})))).
 				Times(3).
 				Return(authzPolicyConfigResp, nil),
 
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id":        Equal(authzPolicyConfigResp.ConfigNode.Id),
-					"Bookmarks": ConsistOf(mockedBookmark, createBM),
+					"Id": Equal(authzPolicyConfigResp.ConfigNode.Id),
 				})))).
 				Return(authzPolicyInvalidResponse, nil),
 
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id":        Equal(authzPolicyConfigResp.ConfigNode.Id),
-					"Bookmarks": ConsistOf(mockedBookmark, createBM),
+					"Id": Equal(authzPolicyConfigResp.ConfigNode.Id),
 				})))).
 				Return(authzPolicyConfigResp, nil),
 
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id":        Equal(authzPolicyConfigResp.ConfigNode.Id),
-					"Bookmarks": ConsistOf(mockedBookmark, createBM, updateBM),
+					"Id": Equal(authzPolicyConfigResp.ConfigNode.Id),
 				})))).
 				Times(2).
 				Return(authzPolicyConfigUpdateResp, nil),
@@ -199,12 +176,9 @@ var _ = Describe("Resource Authorization Policy config", func() {
 		// Delete
 		mockConfigClient.EXPECT().
 			DeleteConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id":        Equal(authzPolicyConfigResp.ConfigNode.Id),
-				"Bookmarks": ConsistOf(mockedBookmark, createBM, updateBM),
+				"Id": Equal(authzPolicyConfigResp.ConfigNode.Id),
 			})))).
-			Return(&configpb.DeleteConfigNodeResponse{
-				Bookmark: deleteBM,
-			}, nil)
+			Return(&configpb.DeleteConfigNodeResponse{}, nil)
 
 		resource.Test(GinkgoT(), resource.TestCase{
 			Providers: map[string]*schema.Provider{
