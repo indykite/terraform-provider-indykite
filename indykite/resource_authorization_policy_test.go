@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -94,7 +93,7 @@ var _ = Describe("Resource Authorization Policy config", func() {
 				Id:          sampleID,
 				Name:        "wonka-authorization-policy-config",
 				Description: wrapperspb.String("Description of the best Authz Policies by Wonka inc."),
-				CreateTime:  authzPolicyConfigResp.ConfigNode.CreateTime,
+				CreateTime:  authzPolicyConfigResp.GetConfigNode().GetCreateTime(),
 				UpdateTime:  timestamppb.Now(),
 				Config: &configpb.ConfigNode_AuthorizationPolicyConfig{
 					AuthorizationPolicyConfig: &configpb.AuthorizationPolicyConfig{
@@ -110,18 +109,18 @@ var _ = Describe("Resource Authorization Policy config", func() {
 		// Create
 		mockConfigClient.EXPECT().
 			CreateConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Name": Equal(authzPolicyConfigResp.ConfigNode.Name),
+				"Name": Equal(authzPolicyConfigResp.GetConfigNode().GetName()),
 				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal(
-					authzPolicyConfigResp.ConfigNode.DisplayName,
+					authzPolicyConfigResp.GetConfigNode().GetDisplayName(),
 				)})),
 				"Description": BeNil(),
 				"Location":    Equal(appSpaceID),
 				"Config": PointTo(MatchFields(IgnoreExtras, Fields{"AuthorizationPolicyConfig": test.EqualProto(
-					authzPolicyConfigResp.ConfigNode.GetAuthorizationPolicyConfig(),
+					authzPolicyConfigResp.GetConfigNode().GetAuthorizationPolicyConfig(),
 				)})),
 			})))).
 			Return(&configpb.CreateConfigNodeResponse{
-				Id:         authzPolicyConfigResp.ConfigNode.Id,
+				Id:         authzPolicyConfigResp.GetConfigNode().GetId(),
 				CreateTime: timestamppb.Now(),
 				UpdateTime: timestamppb.Now(),
 			}, nil)
@@ -129,45 +128,45 @@ var _ = Describe("Resource Authorization Policy config", func() {
 		// update
 		mockConfigClient.EXPECT().
 			UpdateConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id":          Equal(authzPolicyConfigResp.ConfigNode.Id),
+				"Id":          Equal(authzPolicyConfigResp.GetConfigNode().GetId()),
 				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{"Value": BeEmpty()})),
 				"Description": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal(
-					authzPolicyConfigUpdateResp.ConfigNode.Description.GetValue(),
+					authzPolicyConfigUpdateResp.GetConfigNode().GetDescription().GetValue(),
 				)})),
 				"Config": PointTo(MatchFields(IgnoreExtras, Fields{
 					"AuthorizationPolicyConfig": test.EqualProto(
-						authzPolicyConfigUpdateResp.ConfigNode.GetAuthorizationPolicyConfig(),
+						authzPolicyConfigUpdateResp.GetConfigNode().GetAuthorizationPolicyConfig(),
 					),
 				})),
 			})))).
 			Return(&configpb.UpdateConfigNodeResponse{
-				Id: authzPolicyConfigResp.ConfigNode.Id,
+				Id: authzPolicyConfigResp.GetConfigNode().GetId(),
 			}, nil)
 
 		// Read in given order
 		gomock.InOrder(
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(authzPolicyConfigResp.ConfigNode.Id),
+					"Id": Equal(authzPolicyConfigResp.GetConfigNode().GetId()),
 				})))).
 				Times(3).
 				Return(authzPolicyConfigResp, nil),
 
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(authzPolicyConfigResp.ConfigNode.Id),
+					"Id": Equal(authzPolicyConfigResp.GetConfigNode().GetId()),
 				})))).
 				Return(authzPolicyInvalidResponse, nil),
 
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(authzPolicyConfigResp.ConfigNode.Id),
+					"Id": Equal(authzPolicyConfigResp.GetConfigNode().GetId()),
 				})))).
 				Return(authzPolicyConfigResp, nil),
 
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(authzPolicyConfigResp.ConfigNode.Id),
+					"Id": Equal(authzPolicyConfigResp.GetConfigNode().GetId()),
 				})))).
 				Times(2).
 				Return(authzPolicyConfigUpdateResp, nil),
@@ -176,7 +175,7 @@ var _ = Describe("Resource Authorization Policy config", func() {
 		// Delete
 		mockConfigClient.EXPECT().
 			DeleteConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(authzPolicyConfigResp.ConfigNode.Id),
+				"Id": Equal(authzPolicyConfigResp.GetConfigNode().GetId()),
 			})))).
 			Return(&configpb.DeleteConfigNodeResponse{}, nil)
 
@@ -314,13 +313,13 @@ var _ = Describe("Resource Authorization Policy config", func() {
 					// Performs 1 read (authzPolicyConfigResp)
 					ResourceName:  resourceName,
 					ImportState:   true,
-					ImportStateId: authzPolicyConfigResp.ConfigNode.Id,
+					ImportStateId: authzPolicyConfigResp.GetConfigNode().GetId(),
 				},
 				{
 					// Performs 1 read (authzPolicyInvalidResponse)
 					ResourceName:  resourceName,
 					ImportState:   true,
-					ImportStateId: authzPolicyConfigResp.ConfigNode.Id,
+					ImportStateId: authzPolicyConfigResp.GetConfigNode().GetId(),
 					ExpectError: regexp.MustCompile(
 						`not valid AuthorizationPolicyConfig((?s).*)IndyKite plugin error, please report this issue`),
 				},
@@ -340,14 +339,11 @@ var _ = Describe("Resource Authorization Policy config", func() {
 					Check: resource.ComposeTestCheckFunc(testAuthorizationPolicyResourceDataExists(
 						resourceName,
 						authzPolicyConfigUpdateResp,
-						Keys{
-							"tags.#": Equal(strconv.Itoa(len(authzPolicyConfigUpdateResp.ConfigNode.
-								GetAuthorizationPolicyConfig().GetTags()))),
-							"tags.0": Equal(authzPolicyConfigUpdateResp.ConfigNode.GetAuthorizationPolicyConfig().
-								GetTags()[0]),
-							"tags.1": Equal(authzPolicyConfigUpdateResp.ConfigNode.GetAuthorizationPolicyConfig().
-								GetTags()[1]),
-						},
+						addStringArrayToKeys(
+							Keys{},
+							"tags",
+							authzPolicyConfigUpdateResp.GetConfigNode().GetAuthorizationPolicyConfig().GetTags(),
+						),
 					)),
 				},
 			},
@@ -365,28 +361,29 @@ func testAuthorizationPolicyResourceDataExists(
 		if !ok {
 			return fmt.Errorf("not found: %s", n)
 		}
-		if rs.Primary.ID != data.ConfigNode.Id {
+		if rs.Primary.ID != data.GetConfigNode().GetId() {
 			return errors.New("ID does not match")
 		}
 		attrs := rs.Primary.Attributes
 
-		expectedJSON := data.ConfigNode.GetAuthorizationPolicyConfig().GetPolicy()
+		expectedJSON := data.GetConfigNode().GetAuthorizationPolicyConfig().GetPolicy()
 
 		keys := Keys{
-			"id": Equal(data.ConfigNode.Id),
+			"id": Equal(data.GetConfigNode().GetId()),
 			"%":  Not(BeEmpty()), // This is Terraform helper
 
 			"location":     Not(BeEmpty()), // Response does not return this
-			"customer_id":  Equal(data.ConfigNode.CustomerId),
-			"app_space_id": Equal(data.ConfigNode.AppSpaceId),
-			"name":         Equal(data.ConfigNode.Name),
-			"display_name": Equal(data.ConfigNode.DisplayName),
-			"description":  Equal(data.ConfigNode.GetDescription().GetValue()),
+			"customer_id":  Equal(data.GetConfigNode().GetCustomerId()),
+			"app_space_id": Equal(data.GetConfigNode().GetAppSpaceId()),
+			"name":         Equal(data.GetConfigNode().GetName()),
+			"display_name": Equal(data.GetConfigNode().GetDisplayName()),
+			"description":  Equal(data.GetConfigNode().GetDescription().GetValue()),
 			"create_time":  Not(BeEmpty()),
 			"update_time":  Not(BeEmpty()),
 			"json":         MatchJSON(expectedJSON),
-			"status": Equal(indykite.ReverseProtoEnumMap(indykite.AuthorizationPolicyStatusTypes)[data.ConfigNode.
-				GetAuthorizationPolicyConfig().GetStatus()]),
+			"status": Equal(indykite.ReverseProtoEnumMap(
+				indykite.AuthorizationPolicyStatusTypes,
+			)[data.GetConfigNode().GetAuthorizationPolicyConfig().GetStatus()]),
 		}
 
 		for k, v := range extraKeys {

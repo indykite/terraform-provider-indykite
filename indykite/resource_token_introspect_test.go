@@ -110,7 +110,7 @@ var _ = Describe("Resource TokenIntrospect", func() {
 				Description: wrapperspb.String("token introspect description"),
 				CustomerId:  customerID,
 				AppSpaceId:  appSpaceID,
-				CreateTime:  expectedResp.ConfigNode.CreateTime,
+				CreateTime:  expectedResp.GetConfigNode().GetCreateTime(),
 				UpdateTime:  timestamppb.Now(),
 				Config: &configpb.ConfigNode_TokenIntrospectConfig{
 					TokenIntrospectConfig: &configpb.TokenIntrospectConfig{
@@ -135,7 +135,7 @@ var _ = Describe("Resource TokenIntrospect", func() {
 				Description: wrapperspb.String("token introspect description"),
 				CustomerId:  customerID,
 				AppSpaceId:  appSpaceID,
-				CreateTime:  expectedResp.ConfigNode.CreateTime,
+				CreateTime:  expectedResp.GetConfigNode().GetCreateTime(),
 				UpdateTime:  timestamppb.Now(),
 				Config: &configpb.ConfigNode_TokenIntrospectConfig{
 					TokenIntrospectConfig: &configpb.TokenIntrospectConfig{
@@ -161,9 +161,9 @@ var _ = Describe("Resource TokenIntrospect", func() {
 		// Create
 		mockConfigClient.EXPECT().
 			CreateConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Name": Equal(expectedResp.ConfigNode.Name),
+				"Name": Equal(expectedResp.GetConfigNode().GetName()),
 				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal(
-					expectedResp.ConfigNode.DisplayName,
+					expectedResp.GetConfigNode().GetDisplayName(),
 				)})),
 				"Description": BeNil(),
 				"Location":    Equal(appSpaceID),
@@ -183,7 +183,7 @@ var _ = Describe("Resource TokenIntrospect", func() {
 				"Id":          Equal(sampleID),
 				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{"Value": BeEmpty()})),
 				"Description": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal(
-					expectedUpdatedResp.ConfigNode.Description.GetValue(),
+					expectedUpdatedResp.GetConfigNode().GetDescription().GetValue(),
 				)})),
 				"Config": PointTo(MatchFields(IgnoreExtras, Fields{
 					"TokenIntrospectConfig": test.EqualProto(
@@ -244,21 +244,22 @@ var _ = Describe("Resource TokenIntrospect", func() {
 				if !ok {
 					return fmt.Errorf("not found: %s", n)
 				}
-				if rs.Primary.ID != data.ConfigNode.Id {
+				if rs.Primary.ID != data.GetConfigNode().GetId() {
 					return errors.New("ID does not match")
 				}
 				attrs := rs.Primary.Attributes
 
 				keys := Keys{
-					"id": Equal(data.ConfigNode.Id),
+					"id": Equal(data.GetConfigNode().GetId()),
 					"%":  Not(BeEmpty()), // This is Terraform helper
 
-					"location":     Equal(data.ConfigNode.AppSpaceId), // Token Introspect is always on AppSpace level
-					"customer_id":  Equal(data.ConfigNode.CustomerId),
-					"app_space_id": Equal(data.ConfigNode.AppSpaceId),
-					"name":         Equal(data.ConfigNode.Name),
-					"display_name": Equal(data.ConfigNode.DisplayName),
-					"description":  Equal(data.ConfigNode.GetDescription().GetValue()),
+					// TokenIntrospect is always on AppSpace level
+					"location":     Equal(data.GetConfigNode().GetAppSpaceId()),
+					"customer_id":  Equal(data.GetConfigNode().GetCustomerId()),
+					"app_space_id": Equal(data.GetConfigNode().GetAppSpaceId()),
+					"name":         Equal(data.GetConfigNode().GetName()),
+					"display_name": Equal(data.GetConfigNode().GetDisplayName()),
+					"description":  Equal(data.GetConfigNode().GetDescription().GetValue()),
 					"create_time":  Not(BeEmpty()),
 					"update_time":  Not(BeEmpty()),
 

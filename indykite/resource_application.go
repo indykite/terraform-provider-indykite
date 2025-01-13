@@ -64,7 +64,7 @@ func resApplicationCreate(ctx context.Context, data *schema.ResourceData, meta a
 	if HasFailed(&d, err) {
 		return d
 	}
-	data.SetId(resp.Id)
+	data.SetId(resp.GetId())
 
 	return resApplicationRead(ctx, data, meta)
 }
@@ -90,14 +90,14 @@ func resApplicationRead(ctx context.Context, data *schema.ResourceData, meta any
 		return diag.Diagnostics{buildPluginError("empty Application response")}
 	}
 
-	data.SetId(resp.Application.Id)
-	setData(&d, data, customerIDKey, resp.Application.CustomerId)
-	setData(&d, data, appSpaceIDKey, resp.Application.AppSpaceId)
-	setData(&d, data, nameKey, resp.Application.Name)
-	setData(&d, data, displayNameKey, resp.Application.DisplayName)
-	setData(&d, data, descriptionKey, resp.Application.Description)
-	setData(&d, data, createTimeKey, resp.Application.CreateTime)
-	setData(&d, data, updateTimeKey, resp.Application.UpdateTime)
+	data.SetId(resp.GetApplication().GetId())
+	setData(&d, data, customerIDKey, resp.GetApplication().GetCustomerId())
+	setData(&d, data, appSpaceIDKey, resp.GetApplication().GetAppSpaceId())
+	setData(&d, data, nameKey, resp.GetApplication().GetName())
+	setData(&d, data, displayNameKey, resp.GetApplication().GetDisplayName())
+	setData(&d, data, descriptionKey, resp.GetApplication().GetDescription())
+	setData(&d, data, createTimeKey, resp.GetApplication().GetCreateTime())
+	setData(&d, data, updateTimeKey, resp.GetApplication().GetUpdateTime())
 	return d
 }
 

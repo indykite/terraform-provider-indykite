@@ -206,8 +206,8 @@ func optionalString(data *schema.ResourceData, key string) *wrapperspb.StringVal
 
 // flattenOptionalString returns String if v is not nil and v is not empty else returns nil.
 func flattenOptionalString(v *wrapperspb.StringValue) any {
-	if v != nil && v.Value != "" {
-		return v.Value
+	if v.GetValue() != "" {
+		return v.GetValue()
 	}
 	return nil
 }

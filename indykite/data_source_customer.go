@@ -70,15 +70,15 @@ func dataSourceCustomerRead(ctx context.Context, data *schema.ResourceData, meta
 		return d
 	}
 
-	if resp.Customer == nil {
+	if resp.GetCustomer() == nil {
 		return append(d, buildPluginError("empty response from server"))
 	}
-	data.SetId(resp.Customer.Id)
-	setData(&d, data, nameKey, resp.Customer.Name)
-	setData(&d, data, displayNameKey, resp.Customer.DisplayName)
-	setData(&d, data, descriptionKey, resp.Customer.Description)
-	setData(&d, data, createTimeKey, resp.Customer.CreateTime)
-	setData(&d, data, updateTimeKey, resp.Customer.UpdateTime)
+	data.SetId(resp.GetCustomer().GetId())
+	setData(&d, data, nameKey, resp.GetCustomer().GetName())
+	setData(&d, data, displayNameKey, resp.GetCustomer().GetDisplayName())
+	setData(&d, data, descriptionKey, resp.GetCustomer().GetDescription())
+	setData(&d, data, createTimeKey, resp.GetCustomer().GetCreateTime())
+	setData(&d, data, updateTimeKey, resp.GetCustomer().GetUpdateTime())
 
 	return d
 }

@@ -98,14 +98,14 @@ func resourceEntityMatchingPipelineFlatten(
 	var d diag.Diagnostics
 	entitymatching := resp.GetConfigNode().GetEntityMatchingPipelineConfig()
 
-	sourceTypes := make([]string, len(entitymatching.NodeFilter.GetSourceNodeTypes()))
-	for i, source := range entitymatching.NodeFilter.GetSourceNodeTypes() {
+	sourceTypes := make([]string, len(entitymatching.GetNodeFilter().GetSourceNodeTypes()))
+	for i, source := range entitymatching.GetNodeFilter().GetSourceNodeTypes() {
 		sourceTypes[i] = source
 	}
 	setData(&d, data, entityMatchingPipelineSourceNodeFilterKey, sourceTypes)
 
-	targetTypes := make([]string, len(entitymatching.NodeFilter.GetTargetNodeTypes()))
-	for i, target := range entitymatching.NodeFilter.GetTargetNodeTypes() {
+	targetTypes := make([]string, len(entitymatching.GetNodeFilter().GetTargetNodeTypes()))
+	for i, target := range entitymatching.GetNodeFilter().GetTargetNodeTypes() {
 		targetTypes[i] = target
 	}
 	setData(&d, data, entityMatchingPipelineTargetNodeFilterKey, targetTypes)

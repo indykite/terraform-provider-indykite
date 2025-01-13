@@ -102,7 +102,7 @@ var _ = Describe("Resource AuditSink", func() {
 				Description: wrapperspb.String("sink for IK audit logs for internal monitoring"),
 				CustomerId:  customerID,
 				AppSpaceId:  appSpaceID,
-				CreateTime:  expectedResp.ConfigNode.CreateTime,
+				CreateTime:  expectedResp.GetConfigNode().GetCreateTime(),
 				UpdateTime:  timestamppb.Now(),
 				Config: &configpb.ConfigNode_AuditSinkConfig{
 					AuditSinkConfig: &configpb.AuditSinkConfig{
@@ -124,9 +124,9 @@ var _ = Describe("Resource AuditSink", func() {
 		// Create
 		mockConfigClient.EXPECT().
 			CreateConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Name": Equal(expectedResp.ConfigNode.Name),
+				"Name": Equal(expectedResp.GetConfigNode().GetName()),
 				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal(
-					expectedResp.ConfigNode.DisplayName,
+					expectedResp.GetConfigNode().GetDisplayName(),
 				)})),
 				"Description": BeNil(),
 				"Location":    Equal(appSpaceID),
@@ -153,7 +153,7 @@ var _ = Describe("Resource AuditSink", func() {
 				"Id":          Equal(sampleID),
 				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{"Value": BeEmpty()})),
 				"Description": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal(
-					expectedUpdatedResp.ConfigNode.Description.GetValue(),
+					expectedUpdatedResp.GetConfigNode().GetDescription().GetValue(),
 				)})),
 				"Config": PointTo(MatchFields(IgnoreExtras, Fields{
 					"AuditSinkConfig": test.EqualProto(&configpb.AuditSinkConfig{
@@ -207,36 +207,36 @@ var _ = Describe("Resource AuditSink", func() {
 				if !ok {
 					return fmt.Errorf("not found: %s", n)
 				}
-				if rs.Primary.ID != data.ConfigNode.Id {
+				if rs.Primary.ID != data.GetConfigNode().GetId() {
 					return errors.New("ID does not match")
 				}
 				attrs := rs.Primary.Attributes
 
-				kafkaCfg := data.ConfigNode.GetAuditSinkConfig().GetKafka()
+				kafkaCfg := data.GetConfigNode().GetAuditSinkConfig().GetKafka()
 
 				keys := Keys{
-					"id": Equal(data.ConfigNode.Id),
+					"id": Equal(data.GetConfigNode().GetId()),
 					"%":  Not(BeEmpty()), // This is Terraform helper
 
-					"location":     Equal(data.ConfigNode.AppSpaceId), // Audit Sink is always on AppSpace level
-					"customer_id":  Equal(data.ConfigNode.CustomerId),
-					"app_space_id": Equal(data.ConfigNode.AppSpaceId),
-					"name":         Equal(data.ConfigNode.Name),
-					"display_name": Equal(data.ConfigNode.DisplayName),
-					"description":  Equal(data.ConfigNode.GetDescription().GetValue()),
+					"location":     Equal(data.GetConfigNode().GetAppSpaceId()), // Audit Sink is always on AppSpace
+					"customer_id":  Equal(data.GetConfigNode().GetCustomerId()),
+					"app_space_id": Equal(data.GetConfigNode().GetAppSpaceId()),
+					"name":         Equal(data.GetConfigNode().GetName()),
+					"display_name": Equal(data.GetConfigNode().GetDisplayName()),
+					"description":  Equal(data.GetConfigNode().GetDescription().GetValue()),
 					"create_time":  Not(BeEmpty()),
 					"update_time":  Not(BeEmpty()),
 
 					"kafka.#":                 Equal("1"),     // Terraform helper - always max 1 kafka element
 					"kafka.0.%":               Not(BeEmpty()), // This is Terraform helper
-					"kafka.0.topic":           Equal(kafkaCfg.Topic),
-					"kafka.0.username":        Equal(kafkaCfg.Username),
+					"kafka.0.topic":           Equal(kafkaCfg.GetTopic()),
+					"kafka.0.username":        Equal(kafkaCfg.GetUsername()),
 					"kafka.0.password":        Equal(password),
-					"kafka.0.disable_tls":     Equal(strconv.FormatBool(kafkaCfg.DisableTls)),
-					"kafka.0.tls_skip_verify": Equal(strconv.FormatBool(kafkaCfg.TlsSkipVerify)),
+					"kafka.0.disable_tls":     Equal(strconv.FormatBool(kafkaCfg.GetDisableTls())),
+					"kafka.0.tls_skip_verify": Equal(strconv.FormatBool(kafkaCfg.GetTlsSkipVerify())),
 				}
 
-				addStringArrayToKeys(keys, "kafka.0.brokers", kafkaCfg.Brokers)
+				addStringArrayToKeys(keys, "kafka.0.brokers", kafkaCfg.GetBrokers())
 
 				return convertOmegaMatcherToError(MatchAllKeys(keys), attrs)
 			}

@@ -102,13 +102,13 @@ func dataAppSpaceFlatten(data *schema.ResourceData, resp *configpb.ApplicationSp
 	if resp == nil {
 		return diag.Diagnostics{buildPluginError("empty ApplicationSpace response")}
 	}
-	data.SetId(resp.Id)
-	setData(&d, data, customerIDKey, resp.CustomerId)
-	setData(&d, data, nameKey, resp.Name)
-	setData(&d, data, displayNameKey, resp.DisplayName)
-	setData(&d, data, descriptionKey, resp.Description)
-	setData(&d, data, createTimeKey, resp.CreateTime)
-	setData(&d, data, updateTimeKey, resp.UpdateTime)
+	data.SetId(resp.GetId())
+	setData(&d, data, customerIDKey, resp.GetCustomerId())
+	setData(&d, data, nameKey, resp.GetName())
+	setData(&d, data, displayNameKey, resp.GetDisplayName())
+	setData(&d, data, descriptionKey, resp.GetDescription())
+	setData(&d, data, createTimeKey, resp.GetCreateTime())
+	setData(&d, data, updateTimeKey, resp.GetUpdateTime())
 	return d
 }
 

@@ -80,7 +80,7 @@ func configCreateContextFunc(configBuilder preBuildConfig, read schema.ReadConte
 		if HasFailed(&d, err) {
 			return d
 		}
-		data.SetId(resp.Id)
+		data.SetId(resp.GetId())
 
 		// Join Warning (errors are checked above) with optional errors/warnings from read callback
 		return append(d, read(ctx, data, meta)...)
@@ -100,25 +100,25 @@ func configReadContextFunc(flatten postFlattenConfig) schema.ReadContextFunc {
 		if readHasFailed(&d, err, data) {
 			return d
 		}
-		if resp.ConfigNode == nil {
+		if resp.GetConfigNode() == nil {
 			return append(d, buildPluginError("config response is empty"))
 		}
-		data.SetId(resp.ConfigNode.Id)
-		setData(&d, data, customerIDKey, resp.ConfigNode.CustomerId)
-		setData(&d, data, appSpaceIDKey, resp.ConfigNode.AppSpaceId)
+		data.SetId(resp.GetConfigNode().GetId())
+		setData(&d, data, customerIDKey, resp.GetConfigNode().GetCustomerId())
+		setData(&d, data, appSpaceIDKey, resp.GetConfigNode().GetAppSpaceId())
 
 		switch {
-		case resp.ConfigNode.AppSpaceId != "":
-			setData(&d, data, locationKey, resp.ConfigNode.AppSpaceId)
-		case resp.ConfigNode.CustomerId != "":
-			setData(&d, data, locationKey, resp.ConfigNode.CustomerId)
+		case resp.GetConfigNode().GetAppSpaceId() != "":
+			setData(&d, data, locationKey, resp.GetConfigNode().GetAppSpaceId())
+		case resp.GetConfigNode().GetCustomerId() != "":
+			setData(&d, data, locationKey, resp.GetConfigNode().GetCustomerId())
 		}
 
-		setData(&d, data, nameKey, resp.ConfigNode.Name)
-		setData(&d, data, displayNameKey, resp.ConfigNode.DisplayName)
-		setData(&d, data, descriptionKey, resp.ConfigNode.Description)
-		setData(&d, data, createTimeKey, resp.ConfigNode.CreateTime)
-		setData(&d, data, updateTimeKey, resp.ConfigNode.UpdateTime)
+		setData(&d, data, nameKey, resp.GetConfigNode().GetName())
+		setData(&d, data, displayNameKey, resp.GetConfigNode().GetDisplayName())
+		setData(&d, data, descriptionKey, resp.GetConfigNode().GetDescription())
+		setData(&d, data, createTimeKey, resp.GetConfigNode().GetCreateTime())
+		setData(&d, data, updateTimeKey, resp.GetConfigNode().GetUpdateTime())
 
 		// Post-Process
 		if d.HasError() {
@@ -158,7 +158,7 @@ func configUpdateContextFunc(configBuilder preBuildConfig, read schema.ReadConte
 		if HasFailed(&d, err) {
 			return d
 		}
-		data.SetId(resp.Id)
+		data.SetId(resp.GetId())
 		// Join Warning (errors are checked above) with optional errors/warnings from read callback
 		return append(d, read(ctx, data, meta)...)
 	}

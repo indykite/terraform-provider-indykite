@@ -131,13 +131,13 @@ var _ = Describe("Data Source customer", func() {
 
 				// Success cases
 				{
-					Check: resource.ComposeTestCheckFunc(testDataSourceWonkaCustomer(wonka.Customer, customerID)),
+					Check: resource.ComposeTestCheckFunc(testDataSourceWonkaCustomer(wonka.GetCustomer(), customerID)),
 					Config: `data "indykite_customer" "wonka" {
 						customer_id = "` + customerID + `"
 					}`,
 				},
 				{
-					Check: resource.ComposeTestCheckFunc(testDataSourceWonkaCustomer(wonka.Customer, "")),
+					Check: resource.ComposeTestCheckFunc(testDataSourceWonkaCustomer(wonka.GetCustomer(), "")),
 					Config: `data "indykite_customer" "wonka" {
 						name = "wonka"
 					}`,
@@ -154,17 +154,17 @@ func testDataSourceWonkaCustomer(data *configpb.Customer, customerID string) res
 			return errors.New("not found: `indykite_customer.wonka`")
 		}
 
-		if rs.Primary.ID != data.Id {
+		if rs.Primary.ID != data.GetId() {
 			return errors.New("ID does not match")
 		}
 
 		keys := Keys{
-			"id": Equal(data.Id),
+			"id": Equal(data.GetId()),
 			"%":  Not(BeEmpty()), // This is Terraform helper
 
-			"name":         Equal(data.Name),
-			"display_name": Equal(data.DisplayName),
-			"description":  Equal(data.Description.GetValue()),
+			"name":         Equal(data.GetName()),
+			"display_name": Equal(data.GetDisplayName()),
+			"description":  Equal(data.GetDescription().GetValue()),
 			"create_time":  Not(BeEmpty()),
 			"update_time":  Not(BeEmpty()),
 		}

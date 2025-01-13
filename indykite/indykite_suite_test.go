@@ -83,14 +83,16 @@ func (t terraformGomockTestReporter) Cleanup(callback func()) {
 	t.ginkgoT.Cleanup(callback)
 }
 
-func addStringArrayToKeys[T string | []byte](keys Keys, key string, value []T) {
+func addStringArrayToKeys[T string | []byte](keys Keys, key string, value []T) Keys {
 	if len(value) == 0 {
-		return
+		return keys
 	}
 	keys[key+".#"] = Equal(strconv.Itoa(len(value)))
 	for i, v := range value {
 		keys[key+"."+strconv.Itoa(i)] = Equal(string(v))
 	}
+
+	return keys
 }
 
 func JSONEquals(oldValue, newValue string) bool {

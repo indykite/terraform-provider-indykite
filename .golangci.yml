@@ -60,7 +60,7 @@ linters:
         - perfsprint
         - prealloc
         - predeclared
-        # - protogetter # TODO enable
+        - protogetter
         - reassign
         - revive
         - tagalign

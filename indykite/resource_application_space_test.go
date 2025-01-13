@@ -87,21 +87,21 @@ var _ = Describe("Resource Application Space", func() {
 
 		readAfter1stUpdateResp := &configpb.ApplicationSpace{
 			CustomerId:  customerID,
-			Id:          initialAppSpaceResp.Id,
+			Id:          initialAppSpaceResp.GetId(),
 			Name:        "acme",
 			DisplayName: "acme",
 			Description: wrapperspb.String("Another AppSpace description"),
-			CreateTime:  initialAppSpaceResp.CreateTime,
+			CreateTime:  initialAppSpaceResp.GetCreateTime(),
 			UpdateTime:  timestamppb.Now(),
 			Region:      "europe-west1",
 		}
 		readAfter2ndUpdateResp := &configpb.ApplicationSpace{
 			CustomerId:  customerID,
-			Id:          initialAppSpaceResp.Id,
+			Id:          initialAppSpaceResp.GetId(),
 			Name:        "acme",
 			DisplayName: "Some new display name",
 			Description: nil,
-			CreateTime:  initialAppSpaceResp.CreateTime,
+			CreateTime:  initialAppSpaceResp.GetCreateTime(),
 			UpdateTime:  timestamppb.Now(),
 			Region:      "europe-west1",
 		}
@@ -110,55 +110,55 @@ var _ = Describe("Resource Application Space", func() {
 		mockConfigClient.EXPECT().
 			CreateApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
 				"CustomerId":  Equal(customerID),
-				"Name":        Equal(initialAppSpaceResp.Name),
+				"Name":        Equal(initialAppSpaceResp.GetName()),
 				"DisplayName": BeNil(),
 				"Description": PointTo(MatchFields(IgnoreExtras, Fields{
-					"Value": Equal(initialAppSpaceResp.Description.Value),
+					"Value": Equal(initialAppSpaceResp.GetDescription().GetValue()),
 				})),
-				"Region": Equal(initialAppSpaceResp.Region),
+				"Region": Equal(initialAppSpaceResp.GetRegion()),
 			})))).
-			Return(&configpb.CreateApplicationSpaceResponse{Id: initialAppSpaceResp.Id}, nil)
+			Return(&configpb.CreateApplicationSpaceResponse{Id: initialAppSpaceResp.GetId()}, nil)
 
 		// 2x update
 		mockConfigClient.EXPECT().
 			UpdateApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id":          Equal(initialAppSpaceResp.Id),
+				"Id":          Equal(initialAppSpaceResp.GetId()),
 				"DisplayName": BeNil(),
 				"Description": PointTo(MatchFields(IgnoreExtras, Fields{
-					"Value": Equal(readAfter1stUpdateResp.Description.Value),
+					"Value": Equal(readAfter1stUpdateResp.GetDescription().GetValue()),
 				})),
 			})))).
-			Return(&configpb.UpdateApplicationSpaceResponse{Id: initialAppSpaceResp.Id}, nil)
+			Return(&configpb.UpdateApplicationSpaceResponse{Id: initialAppSpaceResp.GetId()}, nil)
 
 		mockConfigClient.EXPECT().
 			UpdateApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(initialAppSpaceResp.Id),
+				"Id": Equal(initialAppSpaceResp.GetId()),
 				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{
-					"Value": Equal(readAfter2ndUpdateResp.DisplayName),
+					"Value": Equal(readAfter2ndUpdateResp.GetDisplayName()),
 				})),
 				"Description": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal("")})),
 			})))).
-			Return(&configpb.UpdateApplicationSpaceResponse{Id: initialAppSpaceResp.Id}, nil)
+			Return(&configpb.UpdateApplicationSpaceResponse{Id: initialAppSpaceResp.GetId()}, nil)
 
 		// Read in given order
 		gomock.InOrder(
 			mockConfigClient.EXPECT().
 				ReadApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Id": Equal(initialAppSpaceResp.Id)})),
+					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Id": Equal(initialAppSpaceResp.GetId())})),
 				})))).
 				Times(4).
 				Return(&configpb.ReadApplicationSpaceResponse{AppSpace: initialAppSpaceResp}, nil),
 
 			mockConfigClient.EXPECT().
 				ReadApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Id": Equal(initialAppSpaceResp.Id)})),
+					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Id": Equal(initialAppSpaceResp.GetId())})),
 				})))).
 				Times(3).
 				Return(&configpb.ReadApplicationSpaceResponse{AppSpace: readAfter1stUpdateResp}, nil),
 
 			mockConfigClient.EXPECT().
 				ReadApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Id": Equal(initialAppSpaceResp.Id)})),
+					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Id": Equal(initialAppSpaceResp.GetId())})),
 				})))).
 				Times(5).
 				Return(&configpb.ReadApplicationSpaceResponse{AppSpace: readAfter2ndUpdateResp}, nil),
@@ -167,7 +167,7 @@ var _ = Describe("Resource Application Space", func() {
 		// Delete
 		mockConfigClient.EXPECT().
 			DeleteApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(initialAppSpaceResp.Id),
+				"Id": Equal(initialAppSpaceResp.GetId()),
 			})))).
 			Return(&configpb.DeleteApplicationSpaceResponse{}, nil)
 
@@ -179,7 +179,7 @@ var _ = Describe("Resource Application Space", func() {
 				// Errors cases must be always first
 				{
 					// Checking Create and Read (initialAppSpaceResp)
-					Config: fmt.Sprintf(tfConfigDef, "", initialAppSpaceResp.Description.Value, ""),
+					Config: fmt.Sprintf(tfConfigDef, "", initialAppSpaceResp.GetDescription().GetValue(), ""),
 					Check: resource.ComposeTestCheckFunc(
 						testAppSpaceResourceDataExists(resourceName, initialAppSpaceResp),
 					),
@@ -188,32 +188,32 @@ var _ = Describe("Resource Application Space", func() {
 					// Performs 1 read (initialAppSpaceResp)
 					ResourceName:  resourceName,
 					ImportState:   true,
-					ImportStateId: initialAppSpaceResp.Id,
+					ImportStateId: initialAppSpaceResp.GetId(),
 				},
 				{
 					// Checking Read (initialAppSpaceResp), Update and Read(readAfter1stUpdateResp)
-					Config: fmt.Sprintf(tfConfigDef, "", readAfter1stUpdateResp.Description.Value, ""),
+					Config: fmt.Sprintf(tfConfigDef, "", readAfter1stUpdateResp.GetDescription().GetValue(), ""),
 					Check: resource.ComposeTestCheckFunc(
 						testAppSpaceResourceDataExists(resourceName, readAfter1stUpdateResp),
 					),
 				},
 				{
 					// Checking Read(readAfter1stUpdateResp), Update and Read(readAfter2ndUpdateResp)
-					Config: fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.DisplayName, "", ""),
+					Config: fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.GetDisplayName(), "", ""),
 					Check: resource.ComposeTestCheckFunc(
 						testAppSpaceResourceDataExists(resourceName, readAfter2ndUpdateResp),
 					),
 				},
 				{
 					// Checking Read(readAfter2ndUpdateResp) -> no changes but tries to destroy with error
-					Config:      fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.DisplayName, "", ""),
+					Config:      fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.GetDisplayName(), "", ""),
 					Destroy:     true,
 					ExpectError: regexp.MustCompile("Cannot destroy instance"),
 				},
 				{
 					// Checking Read(readAfter2ndUpdateResp), Update (del protection, no API call)
 					// and final Read (readAfter2ndUpdateResp)
-					Config: fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.DisplayName, "", turnOffDelProtection),
+					Config: fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.GetDisplayName(), "", turnOffDelProtection),
 				},
 			},
 		})
@@ -227,21 +227,21 @@ func testAppSpaceResourceDataExists(n string, data *configpb.ApplicationSpace) r
 			return fmt.Errorf("not found: %s", n)
 		}
 
-		if rs.Primary.ID != data.Id {
+		if rs.Primary.ID != data.GetId() {
 			return errors.New("ID does not match")
 		}
 		keys := Keys{
-			"id": Equal(data.Id),
+			"id": Equal(data.GetId()),
 			"%":  Not(BeEmpty()), // This is Terraform helper
 
-			"customer_id":         Equal(data.CustomerId),
-			"name":                Equal(data.Name),
-			"display_name":        Equal(data.DisplayName),
-			"description":         Equal(data.Description.GetValue()),
+			"customer_id":         Equal(data.GetCustomerId()),
+			"name":                Equal(data.GetName()),
+			"display_name":        Equal(data.GetDisplayName()),
+			"description":         Equal(data.GetDescription().GetValue()),
 			"create_time":         Not(BeEmpty()),
 			"update_time":         Not(BeEmpty()),
 			"deletion_protection": Not(BeEmpty()),
-			"region":              Equal(data.Region),
+			"region":              Equal(data.GetRegion()),
 		}
 
 		return convertOmegaMatcherToError(MatchAllKeys(keys), rs.Primary.Attributes)

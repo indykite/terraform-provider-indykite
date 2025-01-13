@@ -95,7 +95,7 @@ var _ = Describe("Resource Consent config", func() {
 				Id:          sampleID,
 				Name:        "wonka-consent-config",
 				Description: wrapperspb.String("Description of the best Consent by Wonka inc."),
-				CreateTime:  consentConfigResp.ConfigNode.CreateTime,
+				CreateTime:  consentConfigResp.GetConfigNode().GetCreateTime(),
 				UpdateTime:  timestamppb.Now(),
 				Config: &configpb.ConfigNode_ConsentConfig{
 					ConsentConfig: &configpb.ConsentConfiguration{
@@ -112,18 +112,18 @@ var _ = Describe("Resource Consent config", func() {
 		// Create
 		mockConfigClient.EXPECT().
 			CreateConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Name": Equal(consentConfigResp.ConfigNode.Name),
+				"Name": Equal(consentConfigResp.GetConfigNode().GetName()),
 				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal(
-					consentConfigResp.ConfigNode.DisplayName,
+					consentConfigResp.GetConfigNode().GetDisplayName(),
 				)})),
 				"Description": BeNil(),
 				"Location":    Equal(appSpaceID),
 				"Config": PointTo(MatchFields(IgnoreExtras, Fields{"ConsentConfig": test.EqualProto(
-					consentConfigResp.ConfigNode.GetConsentConfig(),
+					consentConfigResp.GetConfigNode().GetConsentConfig(),
 				)})),
 			})))).
 			Return(&configpb.CreateConfigNodeResponse{
-				Id:         consentConfigResp.ConfigNode.Id,
+				Id:         consentConfigResp.GetConfigNode().GetId(),
 				CreateTime: timestamppb.Now(),
 				UpdateTime: timestamppb.Now(),
 			}, nil)
@@ -131,45 +131,45 @@ var _ = Describe("Resource Consent config", func() {
 		// update
 		mockConfigClient.EXPECT().
 			UpdateConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id":          Equal(consentConfigResp.ConfigNode.Id),
+				"Id":          Equal(consentConfigResp.GetConfigNode().GetId()),
 				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{"Value": BeEmpty()})),
 				"Description": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal(
-					consentConfigUpdateResp.ConfigNode.Description.GetValue(),
+					consentConfigUpdateResp.GetConfigNode().GetDescription().GetValue(),
 				)})),
 				"Config": PointTo(MatchFields(IgnoreExtras, Fields{
 					"ConsentConfig": test.EqualProto(
-						consentConfigUpdateResp.ConfigNode.GetConsentConfig(),
+						consentConfigUpdateResp.GetConfigNode().GetConsentConfig(),
 					),
 				})),
 			})))).
 			Return(&configpb.UpdateConfigNodeResponse{
-				Id: consentConfigResp.ConfigNode.Id,
+				Id: consentConfigResp.GetConfigNode().GetId(),
 			}, nil)
 
 		// Read in given order
 		gomock.InOrder(
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(consentConfigResp.ConfigNode.Id),
+					"Id": Equal(consentConfigResp.GetConfigNode().GetId()),
 				})))).
 				Times(2).
 				Return(consentConfigResp, nil),
 
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(consentConfigResp.ConfigNode.Id),
+					"Id": Equal(consentConfigResp.GetConfigNode().GetId()),
 				})))).
 				Return(consentInvalidResponse, nil),
 
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(consentConfigResp.ConfigNode.Id),
+					"Id": Equal(consentConfigResp.GetConfigNode().GetId()),
 				})))).
 				Return(consentConfigResp, nil),
 
 			mockConfigClient.EXPECT().
 				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(consentConfigResp.ConfigNode.Id),
+					"Id": Equal(consentConfigResp.GetConfigNode().GetId()),
 				})))).
 				Times(2).
 				Return(consentConfigUpdateResp, nil),
@@ -178,7 +178,7 @@ var _ = Describe("Resource Consent config", func() {
 		// Delete
 		mockConfigClient.EXPECT().
 			DeleteConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(consentConfigResp.ConfigNode.Id),
+				"Id": Equal(consentConfigResp.GetConfigNode().GetId()),
 			})))).
 			Return(&configpb.DeleteConfigNodeResponse{}, nil)
 
@@ -313,7 +313,7 @@ var _ = Describe("Resource Consent config", func() {
 					// Performs 1 read (consentConfigResp)
 					ResourceName:  resourceName,
 					ImportState:   true,
-					ImportStateId: consentConfigResp.ConfigNode.Id,
+					ImportStateId: consentConfigResp.GetConfigNode().GetId(),
 				},
 				// Checking Read(consentConfigResp), Update and Read(consentConfigUpdateResp)
 				{
@@ -355,7 +355,7 @@ func testConsentResourceDataExists(
 		if !ok {
 			return fmt.Errorf("not found: %s", n)
 		}
-		if rs.Primary.ID != data.GetConfigNode().Id {
+		if rs.Primary.ID != data.GetConfigNode().GetId() {
 			return errors.New("ID does not match")
 		}
 		attrs := rs.Primary.Attributes
@@ -363,7 +363,7 @@ func testConsentResourceDataExists(
 		expectedJSON := data.GetConfigNode().GetConsentConfig()
 
 		keys := Keys{
-			"id": Equal(data.GetConfigNode().Id),
+			"id": Equal(data.GetConfigNode().GetId()),
 			"%":  Not(BeEmpty()), // This is Terraform helper
 
 			"location":         Not(BeEmpty()), // Response does not return this

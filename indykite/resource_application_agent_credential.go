@@ -133,8 +133,8 @@ func resAppAgentCredCreate(ctx context.Context, data *schema.ResourceData, meta 
 	if HasFailed(&d, err) {
 		return d
 	}
-	data.SetId(resp.Id)
-	setData(&d, data, agentConfigKey, string(resp.AgentConfig))
+	data.SetId(resp.GetId())
+	setData(&d, data, agentConfigKey, string(resp.GetAgentConfig()))
 
 	return resAppAgentCredRead(ctx, data, meta)
 }
@@ -185,15 +185,15 @@ func resAppAgentCredRead(ctx context.Context, data *schema.ResourceData, meta an
 		return diag.Diagnostics{buildPluginError("empty ApplicationAgentCredential response")}
 	}
 
-	data.SetId(resp.ApplicationAgentCredential.Id)
-	setData(&d, data, customerIDKey, resp.ApplicationAgentCredential.CustomerId)
-	setData(&d, data, appSpaceIDKey, resp.ApplicationAgentCredential.AppSpaceId)
-	setData(&d, data, applicationIDKey, resp.ApplicationAgentCredential.ApplicationId)
-	setData(&d, data, appAgentIDKey, resp.ApplicationAgentCredential.ApplicationAgentId)
+	data.SetId(resp.GetApplicationAgentCredential().GetId())
+	setData(&d, data, customerIDKey, resp.GetApplicationAgentCredential().GetCustomerId())
+	setData(&d, data, appSpaceIDKey, resp.GetApplicationAgentCredential().GetAppSpaceId())
+	setData(&d, data, applicationIDKey, resp.GetApplicationAgentCredential().GetApplicationId())
+	setData(&d, data, appAgentIDKey, resp.GetApplicationAgentCredential().GetApplicationAgentId())
 
-	setData(&d, data, displayNameKey, resp.ApplicationAgentCredential.DisplayName)
-	setData(&d, data, kidKey, resp.ApplicationAgentCredential.Kid)
-	setData(&d, data, createTimeKey, resp.ApplicationAgentCredential.CreateTime)
+	setData(&d, data, displayNameKey, resp.GetApplicationAgentCredential().GetDisplayName())
+	setData(&d, data, kidKey, resp.GetApplicationAgentCredential().GetKid())
+	setData(&d, data, createTimeKey, resp.GetApplicationAgentCredential().GetCreateTime())
 
 	return d
 }
