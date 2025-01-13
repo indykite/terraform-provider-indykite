@@ -23,6 +23,7 @@ linters:
         - bodyclose
         - containedctx
         - contextcheck
+        - copyloopvar
         - dogsled
         - dupword
         - durationcheck
@@ -30,7 +31,6 @@ linters:
         - errname
         - errorlint
         - exhaustive
-        - exportloopref
         - forbidigo
         - gci
         - ginkgolinter
@@ -111,7 +111,7 @@ linters-settings:
         values:
             regexp:
                 # As long we decide which format of YEAR in copyright we want, add this hack
-                our_year: 202[2-4] # Just change to 202[2-3] or other when changed
+                our_year: 202[2-5] # Just change to 202[2-3] or other when changed
         template: |-
             Copyright (c) {{OUR_YEAR}} IndyKite
 
@@ -163,6 +163,7 @@ linters-settings:
             - name: error-strings
             - name: errorf
             - name: exported
+              arguments: [checkPublicInterface]
             - name: increment-decrement
             - name: indent-error-flow
             - name: package-comments
