@@ -106,25 +106,25 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 				})),
 			})))).
 			Return(&configpb.RegisterApplicationAgentCredentialResponse{
-				Id:                 appAgentJWKCredResp.Id,
+				Id:                 appAgentJWKCredResp.GetId(),
 				ApplicationAgentId: appAgentID,
-				Kid:                appAgentJWKCredResp.Kid,
+				Kid:                appAgentJWKCredResp.GetKid(),
 				AgentConfig:        []byte(fmt.Sprintf(appAgentConfig, appAgentID)),
 			}, nil)
 
 		mockConfigClient.EXPECT().
 			RegisterApplicationAgentCredential(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
 				"ApplicationAgentId": Equal(appAgentID),
-				"DisplayName":        Equal(appAgentPEMCredResp.DisplayName),
+				"DisplayName":        Equal(appAgentPEMCredResp.GetDisplayName()),
 				"ExpireTime":         BeNil(),
 				"PublicKey": PointTo(MatchFields(IgnoreExtras, Fields{
 					"Pem": HaveLen(271),
 				})),
 			})))).
 			Return(&configpb.RegisterApplicationAgentCredentialResponse{
-				Id:                 appAgentPEMCredResp.Id,
+				Id:                 appAgentPEMCredResp.GetId(),
 				ApplicationAgentId: appAgentID,
-				Kid:                appAgentPEMCredResp.Kid,
+				Kid:                appAgentPEMCredResp.GetKid(),
 				AgentConfig:        []byte(fmt.Sprintf(appAgentConfig, appAgentID)),
 			}, nil)
 
@@ -132,7 +132,7 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 		gomock.InOrder(
 			mockConfigClient.EXPECT().
 				ReadApplicationAgentCredential(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(appAgentJWKCredResp.Id),
+					"Id": Equal(appAgentJWKCredResp.GetId()),
 				})))).
 				Times(6).
 				Return(&configpb.ReadApplicationAgentCredentialResponse{
@@ -141,7 +141,7 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 
 			mockConfigClient.EXPECT().
 				ReadApplicationAgentCredential(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(appAgentPEMCredResp.Id),
+					"Id": Equal(appAgentPEMCredResp.GetId()),
 				})))).
 				Times(2).
 				Return(&configpb.ReadApplicationAgentCredentialResponse{
@@ -152,12 +152,12 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 		// Delete
 		mockConfigClient.EXPECT().
 			DeleteApplicationAgentCredential(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(appAgentJWKCredResp.Id),
+				"Id": Equal(appAgentJWKCredResp.GetId()),
 			})))).
 			Return(&configpb.DeleteApplicationAgentCredentialResponse{}, nil)
 		mockConfigClient.EXPECT().
 			DeleteApplicationAgentCredential(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(appAgentPEMCredResp.Id),
+				"Id": Equal(appAgentPEMCredResp.GetId()),
 			})))).
 			Return(&configpb.DeleteApplicationAgentCredentialResponse{}, nil)
 
@@ -287,11 +287,11 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 					// Performs 1 read (appAgentJWKCredResp)
 					ResourceName:  resourceName,
 					ImportState:   true,
-					ImportStateId: appAgentJWKCredResp.Id,
+					ImportStateId: appAgentJWKCredResp.GetId(),
 				},
 				{
 					// Checking Create and Read (appAgentPEMCredResp)
-					Config: fmt.Sprintf(tfConfigDef, appAgentPEMCredResp.DisplayName, `public_key_pem = <<-EOT
+					Config: fmt.Sprintf(tfConfigDef, appAgentPEMCredResp.GetDisplayName(), `public_key_pem = <<-EOT
 						-----BEGIN PUBLIC KEY-----
 						MIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgHRMVhhoOrM0ldxMoaXQ6d9z9aBw
 						+BnjNPxKKMeyRYNHZW18CK2Av28AXla0sXca8N30lHcaCV0/DfZ+Kg4UC8aNSDlH
@@ -326,20 +326,20 @@ func testAppAgentCredResourceDataExists(
 			return fmt.Errorf("not found: %s", n)
 		}
 
-		if rs.Primary.ID != data.Id {
+		if rs.Primary.ID != data.GetId() {
 			return errors.New("ID does not match")
 		}
 
 		keys := Keys{
-			"id": Equal(data.Id),
+			"id": Equal(data.GetId()),
 			"%":  Not(BeEmpty()), // This is Terraform helper
 
-			"customer_id":    Equal(data.CustomerId),
-			"app_space_id":   Equal(data.AppSpaceId),
-			"application_id": Equal(data.ApplicationId),
-			"app_agent_id":   Equal(data.ApplicationAgentId),
-			"display_name":   Equal(data.DisplayName),
-			"kid":            Equal(data.Kid),
+			"customer_id":    Equal(data.GetCustomerId()),
+			"app_space_id":   Equal(data.GetAppSpaceId()),
+			"application_id": Equal(data.GetApplicationId()),
+			"app_agent_id":   Equal(data.GetApplicationAgentId()),
+			"display_name":   Equal(data.GetDisplayName()),
+			"kid":            Equal(data.GetKid()),
 			"create_time":    Not(BeEmpty()),
 
 			// "expire_time":       Not(BeEmpty()),

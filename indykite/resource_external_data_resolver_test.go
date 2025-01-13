@@ -179,7 +179,7 @@ var _ = Describe("Resource ExternalDataResolver", func() {
 					DisplayName: "Display name of ExternalDataResolver configuration",
 					CustomerId:  customerID,
 					AppSpaceId:  appSpaceID,
-					CreateTime:  expectedResp.ConfigNode.CreateTime,
+					CreateTime:  expectedResp.GetConfigNode().GetCreateTime(),
 					UpdateTime:  timestamppb.Now(),
 					Config: &configpb.ConfigNode_ExternalDataResolverConfig{
 						ExternalDataResolverConfig: &configpb.ExternalDataResolverConfig{
@@ -203,7 +203,7 @@ var _ = Describe("Resource ExternalDataResolver", func() {
 					Name:       "my-first-external-data-resolver1",
 					CustomerId: customerID,
 					AppSpaceId: appSpaceID,
-					CreateTime: expectedResp.ConfigNode.CreateTime,
+					CreateTime: expectedResp.GetConfigNode().GetCreateTime(),
 					UpdateTime: timestamppb.Now(),
 					Config: &configpb.ConfigNode_ExternalDataResolverConfig{
 						ExternalDataResolverConfig: &configpb.ExternalDataResolverConfig{
@@ -224,9 +224,9 @@ var _ = Describe("Resource ExternalDataResolver", func() {
 			// Create
 			mockConfigClient.EXPECT().
 				CreateConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Name": Equal(expectedResp.ConfigNode.Name),
+					"Name": Equal(expectedResp.GetConfigNode().GetName()),
 					"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal(
-						expectedResp.ConfigNode.DisplayName,
+						expectedResp.GetConfigNode().GetDisplayName(),
 					)})),
 					"Description": BeNil(),
 					"Location":    Equal(appSpaceID),
@@ -391,7 +391,7 @@ func testResourceDataExists(
 		if !ok {
 			return fmt.Errorf("not found: %s", n)
 		}
-		if rs.Primary.ID != data.ConfigNode.Id {
+		if rs.Primary.ID != data.GetConfigNode().GetId() {
 			return errors.New("ID does not match")
 		}
 		attrs := rs.Primary.Attributes
@@ -435,14 +435,14 @@ func testResourceDataExists(
 		}
 
 		keys := Keys{
-			"id": Equal(data.ConfigNode.Id),
+			"id": Equal(data.GetConfigNode().GetId()),
 			"%":  Not(BeEmpty()),
 
-			"location":     Equal(data.ConfigNode.AppSpaceId),
-			"customer_id":  Equal(data.ConfigNode.CustomerId),
-			"app_space_id": Equal(data.ConfigNode.AppSpaceId),
-			"name":         Equal(data.ConfigNode.Name),
-			"display_name": Equal(data.ConfigNode.DisplayName),
+			"location":     Equal(data.GetConfigNode().GetAppSpaceId()),
+			"customer_id":  Equal(data.GetConfigNode().GetCustomerId()),
+			"app_space_id": Equal(data.GetConfigNode().GetAppSpaceId()),
+			"name":         Equal(data.GetConfigNode().GetName()),
+			"display_name": Equal(data.GetConfigNode().GetDisplayName()),
 			"create_time":  Not(BeEmpty()),
 			"update_time":  Not(BeEmpty()),
 

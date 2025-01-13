@@ -102,15 +102,15 @@ func dataAppAgentReadContext(ctx context.Context, data *schema.ResourceData, met
 		return diag.Diagnostics{buildPluginError("empty ApplicationAgent response")}
 	}
 
-	data.SetId(resp.ApplicationAgent.Id)
-	setData(&d, data, customerIDKey, resp.ApplicationAgent.CustomerId)
-	setData(&d, data, appSpaceIDKey, resp.ApplicationAgent.AppSpaceId)
-	setData(&d, data, applicationIDKey, resp.ApplicationAgent.ApplicationId)
-	setData(&d, data, nameKey, resp.ApplicationAgent.Name)
-	setData(&d, data, displayNameKey, resp.ApplicationAgent.DisplayName)
-	setData(&d, data, descriptionKey, resp.ApplicationAgent.Description)
-	setData(&d, data, createTimeKey, resp.ApplicationAgent.CreateTime)
-	setData(&d, data, updateTimeKey, resp.ApplicationAgent.UpdateTime)
+	data.SetId(resp.GetApplicationAgent().GetId())
+	setData(&d, data, customerIDKey, resp.GetApplicationAgent().GetCustomerId())
+	setData(&d, data, appSpaceIDKey, resp.GetApplicationAgent().GetAppSpaceId())
+	setData(&d, data, applicationIDKey, resp.GetApplicationAgent().GetApplicationId())
+	setData(&d, data, nameKey, resp.GetApplicationAgent().GetName())
+	setData(&d, data, displayNameKey, resp.GetApplicationAgent().GetDisplayName())
+	setData(&d, data, descriptionKey, resp.GetApplicationAgent().GetDescription())
+	setData(&d, data, createTimeKey, resp.GetApplicationAgent().GetCreateTime())
+	setData(&d, data, updateTimeKey, resp.GetApplicationAgent().GetUpdateTime())
 	return d
 }
 

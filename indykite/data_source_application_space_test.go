@@ -84,7 +84,7 @@ var _ = Describe("DataSource Application Space", func() {
 				ReadApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{
 						"Name": PointTo(MatchFields(IgnoreExtras, Fields{
-							"Name":     Equal(appSpaceResp.Name),
+							"Name":     Equal(appSpaceResp.GetName()),
 							"Location": Equal(customerID),
 						})),
 					})),
@@ -102,7 +102,7 @@ var _ = Describe("DataSource Application Space", func() {
 				ReadApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{
 						"Name": PointTo(MatchFields(IgnoreExtras, Fields{
-							"Name":     Equal(appSpaceResp.Name),
+							"Name":     Equal(appSpaceResp.GetName()),
 							"Location": Equal(customerID),
 						})),
 					})),
@@ -273,23 +273,23 @@ func testAppSpaceDataExists(n string, data *configpb.ApplicationSpace, appSpaceI
 		if !ok {
 			return fmt.Errorf("not found: %s", n)
 		}
-		if rs.Primary.ID != data.Id {
+		if rs.Primary.ID != data.GetId() {
 			return errors.New("ID does not match")
 		}
 
 		keys := Keys{
-			"id": Equal(data.Id),
+			"id": Equal(data.GetId()),
 			"%":  Not(BeEmpty()), // This is Terraform helper
 
-			"customer_id":  Equal(data.CustomerId),
-			"name":         Equal(data.Name),
-			"display_name": Equal(data.DisplayName),
-			"description":  Equal(data.Description.GetValue()),
+			"customer_id":  Equal(data.GetCustomerId()),
+			"name":         Equal(data.GetName()),
+			"display_name": Equal(data.GetDisplayName()),
+			"description":  Equal(data.GetDescription().GetValue()),
 			"create_time":  Not(BeEmpty()),
 			"update_time":  Not(BeEmpty()),
 		}
 		if appSpaceID != "" {
-			keys["app_space_id"] = Equal(data.Id)
+			keys["app_space_id"] = Equal(data.GetId())
 		}
 
 		return convertOmegaMatcherToError(MatchAllKeys(keys), rs.Primary.Attributes)
@@ -325,9 +325,9 @@ func testAppSpaceListDataExists(n string, data ...*configpb.ApplicationSpace) re
 			k := "app_spaces." + strconv.Itoa(i) + "."
 			keys[k+"%"] = Not(BeEmpty()) // This is Terraform helper
 
-			keys[k+"id"] = Equal(d.Id)
-			keys[k+"customer_id"] = Equal(d.CustomerId)
-			keys[k+"name"] = Equal(d.Name)
+			keys[k+"id"] = Equal(d.GetId())
+			keys[k+"customer_id"] = Equal(d.GetCustomerId())
+			keys[k+"name"] = Equal(d.GetName())
 			keys[k+"display_name"] = Equal(d.GetDisplayName())
 			keys[k+"description"] = Equal(d.GetDescription().GetValue())
 		}

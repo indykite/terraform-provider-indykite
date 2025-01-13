@@ -65,7 +65,7 @@ func resAppSpaceCreateContext(ctx context.Context, data *schema.ResourceData, me
 	if HasFailed(&d, err) {
 		return d
 	}
-	data.SetId(resp.Id)
+	data.SetId(resp.GetId())
 
 	return resAppSpaceReadContext(ctx, data, meta)
 }
@@ -91,14 +91,14 @@ func resAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta
 		return diag.Diagnostics{buildPluginError("empty ApplicationSpace response")}
 	}
 
-	data.SetId(resp.AppSpace.Id)
-	setData(&d, data, customerIDKey, resp.AppSpace.CustomerId)
-	setData(&d, data, nameKey, resp.AppSpace.Name)
-	setData(&d, data, displayNameKey, resp.AppSpace.DisplayName)
-	setData(&d, data, descriptionKey, resp.AppSpace.Description)
-	setData(&d, data, createTimeKey, resp.AppSpace.CreateTime)
-	setData(&d, data, updateTimeKey, resp.AppSpace.UpdateTime)
-	setData(&d, data, regionKey, resp.AppSpace.Region)
+	data.SetId(resp.GetAppSpace().GetId())
+	setData(&d, data, customerIDKey, resp.GetAppSpace().GetCustomerId())
+	setData(&d, data, nameKey, resp.GetAppSpace().GetName())
+	setData(&d, data, displayNameKey, resp.GetAppSpace().GetDisplayName())
+	setData(&d, data, descriptionKey, resp.GetAppSpace().GetDescription())
+	setData(&d, data, createTimeKey, resp.GetAppSpace().GetCreateTime())
+	setData(&d, data, updateTimeKey, resp.GetAppSpace().GetUpdateTime())
+	setData(&d, data, regionKey, resp.GetAppSpace().GetRegion())
 	return d
 }
 

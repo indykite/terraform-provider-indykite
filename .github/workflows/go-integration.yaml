@@ -29,6 +29,9 @@ jobs:
               with:
                   go-version-file: go.mod
 
+            - name: Install Terraform
+              uses: hashicorp/setup-terraform@v3
+
             - name: Terraform Init and Apply
               run: |
                   make build_test_local_plugin integration

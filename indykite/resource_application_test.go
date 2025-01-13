@@ -85,23 +85,23 @@ var _ = Describe("Resource Application", func() {
 		}
 
 		readAfter1stUpdateResp := &configpb.Application{
-			CustomerId:  initialApplicationResp.CustomerId,
-			AppSpaceId:  initialApplicationResp.AppSpaceId,
-			Id:          initialApplicationResp.Id,
+			CustomerId:  initialApplicationResp.GetCustomerId(),
+			AppSpaceId:  initialApplicationResp.GetAppSpaceId(),
+			Id:          initialApplicationResp.GetId(),
 			Name:        "acme",
 			DisplayName: "acme",
 			Description: wrapperspb.String("Another App description"),
-			CreateTime:  initialApplicationResp.CreateTime,
+			CreateTime:  initialApplicationResp.GetCreateTime(),
 			UpdateTime:  timestamppb.Now(),
 		}
 		readAfter2ndUpdateResp := &configpb.Application{
-			CustomerId:  initialApplicationResp.CustomerId,
-			AppSpaceId:  initialApplicationResp.AppSpaceId,
-			Id:          initialApplicationResp.Id,
+			CustomerId:  initialApplicationResp.GetCustomerId(),
+			AppSpaceId:  initialApplicationResp.GetAppSpaceId(),
+			Id:          initialApplicationResp.GetId(),
 			Name:        "acme",
 			DisplayName: "Some new display name",
 			Description: nil,
-			CreateTime:  initialApplicationResp.CreateTime,
+			CreateTime:  initialApplicationResp.GetCreateTime(),
 			UpdateTime:  timestamppb.Now(),
 		}
 
@@ -109,54 +109,58 @@ var _ = Describe("Resource Application", func() {
 		mockConfigClient.EXPECT().
 			CreateApplication(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
 				"AppSpaceId":  Equal(appSpaceID),
-				"Name":        Equal(initialApplicationResp.Name),
+				"Name":        Equal(initialApplicationResp.GetName()),
 				"DisplayName": BeNil(),
 				"Description": PointTo(MatchFields(IgnoreExtras, Fields{
-					"Value": Equal(initialApplicationResp.Description.Value),
+					"Value": Equal(initialApplicationResp.GetDescription().GetValue()),
 				})),
 			})))).
-			Return(&configpb.CreateApplicationResponse{Id: initialApplicationResp.Id}, nil)
+			Return(&configpb.CreateApplicationResponse{Id: initialApplicationResp.GetId()}, nil)
 
 		// 2x update
 		mockConfigClient.EXPECT().
 			UpdateApplication(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id":          Equal(initialApplicationResp.Id),
+				"Id":          Equal(initialApplicationResp.GetId()),
 				"DisplayName": BeNil(),
 				"Description": PointTo(MatchFields(IgnoreExtras, Fields{
-					"Value": Equal(readAfter1stUpdateResp.Description.Value),
+					"Value": Equal(readAfter1stUpdateResp.GetDescription().GetValue()),
 				})),
 			})))).
-			Return(&configpb.UpdateApplicationResponse{Id: initialApplicationResp.Id}, nil)
+			Return(&configpb.UpdateApplicationResponse{Id: initialApplicationResp.GetId()}, nil)
 
 		mockConfigClient.EXPECT().
 			UpdateApplication(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(initialApplicationResp.Id),
+				"Id": Equal(initialApplicationResp.GetId()),
 				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{
-					"Value": Equal(readAfter2ndUpdateResp.DisplayName),
+					"Value": Equal(readAfter2ndUpdateResp.GetDisplayName()),
 				})),
 				"Description": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal("")})),
 			})))).
-			Return(&configpb.UpdateApplicationResponse{Id: initialApplicationResp.Id}, nil)
+			Return(&configpb.UpdateApplicationResponse{Id: initialApplicationResp.GetId()}, nil)
 
 		// Read in given order
 		gomock.InOrder(
 			mockConfigClient.EXPECT().
 				ReadApplication(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Id": Equal(initialApplicationResp.Id)})),
+					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{
+						"Id": Equal(initialApplicationResp.GetId())})),
 				})))).
 				Times(4).
 				Return(&configpb.ReadApplicationResponse{Application: initialApplicationResp}, nil),
 
 			mockConfigClient.EXPECT().
 				ReadApplication(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Id": Equal(initialApplicationResp.Id)})),
+					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{
+						"Id": Equal(initialApplicationResp.GetId())})),
 				})))).
 				Times(3).
 				Return(&configpb.ReadApplicationResponse{Application: readAfter1stUpdateResp}, nil),
 
 			mockConfigClient.EXPECT().
 				ReadApplication(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Id": Equal(initialApplicationResp.Id)})),
+					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{
+						"Id": Equal(initialApplicationResp.GetId()),
+					})),
 				})))).
 				Times(5).
 				Return(&configpb.ReadApplicationResponse{Application: readAfter2ndUpdateResp}, nil),
@@ -165,7 +169,7 @@ var _ = Describe("Resource Application", func() {
 		// Delete
 		mockConfigClient.EXPECT().
 			DeleteApplication(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(initialApplicationResp.Id),
+				"Id": Equal(initialApplicationResp.GetId()),
 			})))).
 			Return(&configpb.DeleteApplicationResponse{}, nil)
 
@@ -181,7 +185,7 @@ var _ = Describe("Resource Application", func() {
 				},
 				{
 					// Checking Create and Read (initialApplicationResp)
-					Config: fmt.Sprintf(tfConfigDef, "", initialApplicationResp.Description.Value, ""),
+					Config: fmt.Sprintf(tfConfigDef, "", initialApplicationResp.GetDescription().GetValue(), ""),
 					Check: resource.ComposeTestCheckFunc(
 						testAppResourceDataExists(resourceName, initialApplicationResp),
 					),
@@ -190,32 +194,32 @@ var _ = Describe("Resource Application", func() {
 					// Performs 1 read (initialApplicationResp)
 					ResourceName:  resourceName,
 					ImportState:   true,
-					ImportStateId: initialApplicationResp.Id,
+					ImportStateId: initialApplicationResp.GetId(),
 				},
 				{
 					// Checking Read (initialApplicationResp), Update and Read(readAfter1stUpdateResp)
-					Config: fmt.Sprintf(tfConfigDef, "", readAfter1stUpdateResp.Description.Value, ""),
+					Config: fmt.Sprintf(tfConfigDef, "", readAfter1stUpdateResp.GetDescription().GetValue(), ""),
 					Check: resource.ComposeTestCheckFunc(
 						testAppResourceDataExists(resourceName, readAfter1stUpdateResp),
 					),
 				},
 				{
 					// Checking Read(readAfter1stUpdateResp), Update and Read(readAfter2ndUpdateResp)
-					Config: fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.DisplayName, "", ""),
+					Config: fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.GetDisplayName(), "", ""),
 					Check: resource.ComposeTestCheckFunc(
 						testAppResourceDataExists(resourceName, readAfter2ndUpdateResp),
 					),
 				},
 				{
 					// Checking Read(readAfter2ndUpdateResp) -> no changes but tries to destroy with error
-					Config:      fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.DisplayName, "", ""),
+					Config:      fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.GetDisplayName(), "", ""),
 					Destroy:     true,
 					ExpectError: regexp.MustCompile("Cannot destroy instance"),
 				},
 				{
 					// Checking Read(readAfter2ndUpdateResp), Update (del protection, no API call)
 					// and final Read (readAfter2ndUpdateResp)
-					Config: fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.DisplayName, "", turnOffDelProtection),
+					Config: fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.GetDisplayName(), "", turnOffDelProtection),
 				},
 			},
 		})
@@ -229,19 +233,19 @@ func testAppResourceDataExists(n string, data *configpb.Application) resource.Te
 			return fmt.Errorf("not found: %s", n)
 		}
 
-		if rs.Primary.ID != data.Id {
+		if rs.Primary.ID != data.GetId() {
 			return errors.New("ID does not match")
 		}
 
 		keys := Keys{
-			"id": Equal(data.Id),
+			"id": Equal(data.GetId()),
 			"%":  Not(BeEmpty()), // This is Terraform helper
 
-			"customer_id":         Equal(data.CustomerId),
-			"app_space_id":        Equal(data.AppSpaceId),
-			"name":                Equal(data.Name),
-			"display_name":        Equal(data.DisplayName),
-			"description":         Equal(data.Description.GetValue()),
+			"customer_id":         Equal(data.GetCustomerId()),
+			"app_space_id":        Equal(data.GetAppSpaceId()),
+			"name":                Equal(data.GetName()),
+			"display_name":        Equal(data.GetDisplayName()),
+			"description":         Equal(data.GetDescription().GetValue()),
 			"create_time":         Not(BeEmpty()),
 			"update_time":         Not(BeEmpty()),
 			"deletion_protection": Not(BeEmpty()),

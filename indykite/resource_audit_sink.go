@@ -104,14 +104,14 @@ func resourceAuditSinkFlatten(
 			oldPassword = dataMap[auditSinkKafkaPasswordKey]
 		}
 		setData(&d, data, auditSinkKafkaProviderKey, []map[string]any{{
-			auditSinkKafkaBrokersKey:  p.Kafka.Brokers,
-			auditSinkKafkaTopicKey:    p.Kafka.Topic,
-			auditSinkKafkaUsernameKey: p.Kafka.Username,
+			auditSinkKafkaBrokersKey:  p.Kafka.GetBrokers(),
+			auditSinkKafkaTopicKey:    p.Kafka.GetTopic(),
+			auditSinkKafkaUsernameKey: p.Kafka.GetUsername(),
 			// Password is not retrieved from response, but omitting here would result in removing.
 			// First read old value and set it here too.
 			auditSinkKafkaPasswordKey:      oldPassword,
-			auditSinkKafkaDisableTLSKey:    p.Kafka.DisableTls,
-			auditSinkKafkaSkipTLSVerifyKey: p.Kafka.TlsSkipVerify,
+			auditSinkKafkaDisableTLSKey:    p.Kafka.GetDisableTls(),
+			auditSinkKafkaSkipTLSVerifyKey: p.Kafka.GetTlsSkipVerify(),
 		}})
 	default:
 		return append(d, buildPluginError(fmt.Sprintf("unsupported AuditSink Provider: %T", p)))
