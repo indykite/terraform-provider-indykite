@@ -1,6 +1,25 @@
 # Changelog
 
 
+## [0.14.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.13.1...v0.14.0) (2025-01-13)
+
+
+### Features
+
+* implement token introspect changes ([101a011](https://github.com/indykite/terraform-provider-indykite/commit/101a0112dccbe9c3227d66d64e5b8c48f1781745))
+
+
+### Refactoring
+
+* remove bookmark ([923c93a](https://github.com/indykite/terraform-provider-indykite/commit/923c93a1a1f98dc20a2c8a9c410d96d9f36bcd18))
+
+
+### Miscellaneous Chores
+
+* apply proto getter linter ([508f6b9](https://github.com/indykite/terraform-provider-indykite/commit/508f6b977ba4a92965dc024aae9020cfcbe412a1))
+* **deps:** update everything ([502ff24](https://github.com/indykite/terraform-provider-indykite/commit/502ff24c5b470612af522b7053e06463cb2c5e6f))
+* **deps:** update everything ([1665a3a](https://github.com/indykite/terraform-provider-indykite/commit/1665a3aa33a2ee2af13db0127993a04fef0ceea0))
+
 ## [0.13.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.13.0...v0.13.1) (2024-12-17)
 
 
