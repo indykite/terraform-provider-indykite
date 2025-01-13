@@ -16,16 +16,16 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 
-default_stages: [commit, push]
+default_stages: [pre-commit, pre-push]
 fail_fast: false
 repos:
     - repo: https://github.com/pre-commit/pre-commit-hooks
       rev: v5.0.0
       hooks:
           - id: trailing-whitespace
-            stages: [commit, push, manual]
+            stages: [pre-commit, pre-push, manual]
           - id: end-of-file-fixer
-            stages: [commit, push, manual]
+            stages: [pre-commit, pre-push, manual]
           - id: check-yaml
           - id: check-toml
           - id: check-merge-conflict

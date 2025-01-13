@@ -23,11 +23,12 @@ Token introspect configuration adds support for 3rd party tokens to identify the
 
 ### Optional
 
-- `claims_mapping` (Map of String) ClaimsMapping specify which claims from the token should be mapped to IKG Property with given name.
-    Remember, that 'email' claim is always extracted if exists and stored under 'email' key in IKG.
+- `claims_mapping` (Map of String) ClaimsMapping specifies which claims from the token should be mapped to new names and name of property in IKG.
+    Be aware, that this can override any existing claims, which might not be accessible anymore by internal services.
+    And with the highest priority, there is mapping of sub claim to 'external_id'. So you shouldn't ever use 'external_id' as a key.
 
-    Key specify name of property in IKG.
-    Value specify which claim to map and how.
+    Key specifies the new name and also the name of the property in IKG.
+    Value specifies which claim to map and how.
 - `description` (String) Your own description of resource. Must be less than or equal to 256 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
 - `jwt_matcher` (Block List, Max: 1) Specifies all attributes required to match a JWT token. (see [below for nested schema](#nestedblock--jwt_matcher))
@@ -36,6 +37,7 @@ Token introspect configuration adds support for 3rd party tokens to identify the
 - `opaque_matcher` (Block List, Max: 1) Specify opaque token matcher. Currently we support only 1 opaque matcher per application space. (see [below for nested schema](#nestedblock--opaque_matcher))
 - `perform_upsert` (Boolean) Perform Upsert specify, if we should create and/or update DigitalTwin in IKG if it doesn't exist with.
 	In future this will perform upsert also on properties that are derived from token.
+- `sub_claim` (String) Sub claim is used to match DigitalTwin with external_id. If not specified, standard 'sub' claim will be used. Either 'sub' or specified claim will then also be mapped to 'external_id' claim.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
@@ -83,6 +85,10 @@ Optional:
 
 <a id="nestedblock--opaque_matcher"></a>
 ### Nested Schema for `opaque_matcher`
+
+Required:
+
+- `hint` (String) To differentiate between multiple opaque tokens configurations, hint must be provided. Hint is case sensitive plain text, that is expected to be provided in token introspect request, if there are multiple opaque tokens configurations.
 
 
 <a id="nestedblock--timeouts"></a>

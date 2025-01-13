@@ -34,6 +34,7 @@ const (
 	tokenIntrospectIssuerKey   = "issuer"
 	tokenIntrospectAudienceKey = "audience"
 	tokenIntrospectOpaqueKey   = "opaque_matcher"
+	tokenIntrospectHintKey     = "hint"
 
 	tokenIntrospectOfflineKey    = "offline_validation"
 	tokenIntrospectPublicJWKsKey = "public_jwks"
@@ -42,6 +43,7 @@ const (
 	tokenIntrospectCacheTTLKey   = "cache_ttl"
 
 	tokenIntrospectClaimsMappingKey  = "claims_mapping"
+	tokenIntrospectSubClaimKey       = "sub_claim"
 	tokenIntrospectCMPropertyNameKey = "ikg_name"
 	tokenIntrospectCMSelectorKey     = "selector"
 
@@ -105,8 +107,14 @@ func resourceTokenIntrospect() *schema.Resource {
 				Type:        schema.TypeList,
 				Description: "Specify opaque token matcher. Currently we support only 1 opaque matcher per application space.",
 				MaxItems:    1,
-				// There is nothing to set for now. But to make it work, set it empty.
-				Elem:         &schema.Resource{Schema: map[string]*schema.Schema{}},
+				Elem: &schema.Resource{Schema: map[string]*schema.Schema{
+					tokenIntrospectHintKey: {
+						Type:         schema.TypeString,
+						Required:     true,
+						Description:  "To differentiate between multiple opaque tokens configurations, hint must be provided. Hint is case sensitive plain text, that is expected to be provided in token introspect request, if there are multiple opaque tokens configurations.",
+						ValidateFunc: validation.StringLenBetween(1, 50),
+					},
+				}},
 				RequiredWith: []string{tokenIntrospectOnlineKey + ".0." + tokenIntrospectUserInfoEPKey},
 			}, tokenIntrospectOpaqueKey, matcherOneOf),
 
@@ -160,11 +168,13 @@ func resourceTokenIntrospect() *schema.Resource {
 
 			tokenIntrospectClaimsMappingKey: {
 				Type: schema.TypeMap,
-				Description: `ClaimsMapping specify which claims from the token should be mapped to IKG Property with given name.
-    Remember, that 'email' claim is always extracted if exists and stored under 'email' key in IKG.
+				//nolint:lll
+				Description: `ClaimsMapping specifies which claims from the token should be mapped to new names and name of property in IKG.
+    Be aware, that this can override any existing claims, which might not be accessible anymore by internal services.
+    And with the highest priority, there is mapping of sub claim to 'external_id'. So you shouldn't ever use 'external_id' as a key.
 
-    Key specify name of property in IKG.
-    Value specify which claim to map and how.`,
+    Key specifies the new name and also the name of the property in IKG.
+    Value specifies which claim to map and how.`,
 				Optional: true,
 				ValidateDiagFunc: validation.AllDiag(
 					validation.MapKeyLenBetween(2, 256),
@@ -172,6 +182,12 @@ func resourceTokenIntrospect() *schema.Resource {
 					validation.MapValueLenBetween(1, 256),
 				),
 				Elem: &schema.Schema{Type: schema.TypeString},
+			},
+			tokenIntrospectSubClaimKey: {
+				Type:         schema.TypeString,
+				Description:  `Sub claim is used to match DigitalTwin with external_id. If not specified, standard 'sub' claim will be used. Either 'sub' or specified claim will then also be mapped to 'external_id' claim.`,
+				Optional:     true,
+				ValidateFunc: validation.StringLenBetween(1, 256),
 			},
 			tokenIntrospectIKGNodeTypeKey: {
 				Type:        schema.TypeString,
@@ -207,6 +223,7 @@ func resourceTokenIntrospectFlatten(
 		claimsMapping[key] = claim.GetSelector()
 	}
 	setData(&d, data, tokenIntrospectClaimsMappingKey, claimsMapping)
+	setData(&d, data, tokenIntrospectSubClaimKey, tiCfg.GetSubClaim().GetSelector())
 
 	switch matcher := tiCfg.GetTokenMatcher().(type) {
 	case *configpb.TokenIntrospectConfig_Jwt:
@@ -215,7 +232,9 @@ func resourceTokenIntrospectFlatten(
 			tokenIntrospectAudienceKey: matcher.Jwt.GetAudience(),
 		}})
 	case *configpb.TokenIntrospectConfig_Opaque_:
-		setData(&d, data, tokenIntrospectOpaqueKey, []map[string]any{{}})
+		setData(&d, data, tokenIntrospectOpaqueKey, []map[string]any{{
+			tokenIntrospectHintKey: matcher.Opaque.GetHint(),
+		}})
 	default:
 		return append(d, buildPluginError(fmt.Sprintf("unsupported Token Matcher: %T", matcher)))
 	}
@@ -253,6 +272,9 @@ func resourceTokenIntrospectBuild(
 		IkgNodeType:   data.Get(tokenIntrospectIKGNodeTypeKey).(string),
 		PerformUpsert: data.Get(tokenIntrospectPerformUpsertKey).(bool),
 	}
+	if val := data.Get(tokenIntrospectSubClaimKey).(string); val != "" {
+		cfg.SubClaim = &configpb.TokenIntrospectConfig_Claim{Selector: val}
+	}
 	for key, selector := range claimsMapping {
 		cfg.ClaimsMapping[key] = &configpb.TokenIntrospectConfig_Claim{
 			Selector: selector.(string),
@@ -268,9 +290,12 @@ func resourceTokenIntrospectBuild(
 			},
 		}
 	}
-	if _, ok := data.GetOk(tokenIntrospectOpaqueKey); ok {
+	if val, ok := data.GetOk(tokenIntrospectOpaqueKey); ok {
+		mapVal := val.([]any)[0].(map[string]any)
 		cfg.TokenMatcher = &configpb.TokenIntrospectConfig_Opaque_{
-			Opaque: &configpb.TokenIntrospectConfig_Opaque{},
+			Opaque: &configpb.TokenIntrospectConfig_Opaque{
+				Hint: mapVal[tokenIntrospectHintKey].(string),
+			},
 		}
 	}
 

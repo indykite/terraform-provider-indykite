@@ -115,7 +115,9 @@ var _ = Describe("Resource TokenIntrospect", func() {
 				Config: &configpb.ConfigNode_TokenIntrospectConfig{
 					TokenIntrospectConfig: &configpb.TokenIntrospectConfig{
 						TokenMatcher: &configpb.TokenIntrospectConfig_Opaque_{
-							Opaque: &configpb.TokenIntrospectConfig_Opaque{}},
+							Opaque: &configpb.TokenIntrospectConfig_Opaque{
+								Hint: "my.domain.com",
+							}},
 						Validation: &configpb.TokenIntrospectConfig_Online_{
 							Online: &configpb.TokenIntrospectConfig_Online{
 								UserinfoEndpoint: "https://data.example.com/userinfo",
@@ -150,6 +152,7 @@ var _ = Describe("Resource TokenIntrospect", func() {
 							},
 						},
 						IkgNodeType: "MyUser",
+						SubClaim:    &configpb.TokenIntrospectConfig_Claim{Selector: "custom_sub"},
 					},
 				},
 			},
@@ -260,6 +263,7 @@ var _ = Describe("Resource TokenIntrospect", func() {
 					"update_time":  Not(BeEmpty()),
 
 					"ikg_node_type": Equal(data.GetConfigNode().GetTokenIntrospectConfig().GetIkgNodeType()),
+					"sub_claim":     Equal(data.GetConfigNode().GetTokenIntrospectConfig().GetSubClaim().GetSelector()),
 					"perform_upsert": Equal(strconv.FormatBool(
 						data.GetConfigNode().GetTokenIntrospectConfig().GetPerformUpsert())),
 				}
@@ -290,7 +294,8 @@ var _ = Describe("Resource TokenIntrospect", func() {
 				case *configpb.TokenIntrospectConfig_Opaque_:
 					keys["jwt_matcher.#"] = Equal("0")
 					keys["opaque_matcher.#"] = Equal("1")
-					keys["opaque_matcher.0.%"] = Equal("0")
+					keys["opaque_matcher.0.%"] = Equal("1")
+					keys["opaque_matcher.0.hint"] = Equal(matcher.Opaque.GetHint())
 				}
 
 				rawClaimsMapping := make(map[string]string)
@@ -304,7 +309,9 @@ var _ = Describe("Resource TokenIntrospect", func() {
 		}
 
 		validSettings := `
-		opaque_matcher {}
+		opaque_matcher {
+			hint = "my.domain.com"
+		}
 		online_validation {
 			user_info_endpoint = "https://data.example.com/userinfo"
 		}
@@ -332,7 +339,9 @@ var _ = Describe("Resource TokenIntrospect", func() {
 				},
 				{
 					Config: fmt.Sprintf(tfConfigDef, appSpaceID, "name",
-						`opaque_matcher {}
+						`opaque_matcher {
+							hint = "my.domain.com"
+						}
 						online_validation {}
 						ikg_node_type = "MyUser"`),
 					ExpectError: regexp.MustCompile(
@@ -372,7 +381,9 @@ var _ = Describe("Resource TokenIntrospect", func() {
 					// Checking Update and Read
 					Config: fmt.Sprintf(tfConfigDef, appSpaceID, "my-first-token-introspect",
 						`description = "token introspect description"
-						opaque_matcher { }
+						opaque_matcher {
+							hint = "my.domain.com"
+						}
 						online_validation {
 							user_info_endpoint = "https://data.example.com/userinfo"
 						}
@@ -410,6 +421,7 @@ var _ = Describe("Resource TokenIntrospect", func() {
 							]
 						}
 						ikg_node_type = "MyUser"
+						sub_claim = "custom_sub"
 					`,
 					),
 					Check: resource.ComposeTestCheckFunc(

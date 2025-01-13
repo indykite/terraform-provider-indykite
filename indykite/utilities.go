@@ -382,10 +382,15 @@ var AuthorizationPolicyStatusTypes = map[string]configpb.AuthorizationPolicyConf
 // ProtoValidateError tries to define interface for all Proto Validation errors,
 // so we can generate better errors back to user.
 type ProtoValidateError interface {
+	// Field function returns field value.
 	Field() string
+	// Reason function returns reason value.
 	Reason() string
+	// Cause function returns cause value.
 	Cause() error
+	// Key function returns key value.
 	Key() bool
+	// ErrorName returns error name.
 	ErrorName() string
 }
 
