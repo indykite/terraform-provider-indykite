@@ -70,6 +70,7 @@ func Provider() *schema.Provider {
 			"indykite_external_data_resolver":       resourceExternalDataResolver(),
 			"indykite_consent":                      resourceConsent(),
 			"indykite_entity_matching_pipeline":     resourceEntityMatchingPipeline(),
+			"indykite_knowledge_query":              resourceKnowledgeQuery(),
 		},
 	}
 

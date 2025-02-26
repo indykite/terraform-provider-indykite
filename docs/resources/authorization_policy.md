@@ -17,10 +17,10 @@ description: |-
 
 ### Required
 
-- `json` (String) Configuration of Authorization Policy in JSON format, the same one exported by Console.
+- `json` (String) Configuration of Authorization Policy in JSON format, the same one exported by The Hub.
 - `location` (String) identifier of Location, where to create resource
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
-- `status` (String) Status of the Authorization Policy. active, inactive
+- `status` (String) Status of the Authorization Policy. Possible values are: active, draft, inactive.
 
 ### Optional
 

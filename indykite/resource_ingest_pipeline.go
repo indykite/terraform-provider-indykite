@@ -15,9 +15,7 @@
 package indykite
 
 import (
-	"fmt"
 	"regexp"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -35,17 +33,6 @@ const (
 
 var (
 	ingestPipelineAppAgentTokenRegex = regexp.MustCompile(`^[A-Za-z0-9-_]+?\.[A-Za-z0-9-_]+?\.[A-Za-z0-9-_]+?$`)
-	ingestPipelineAllowedOperations  = []string{
-		"OPERATION_UPSERT_NODE",
-		"OPERATION_UPSERT_RELATIONSHIP",
-		"OPERATION_DELETE_NODE",
-		"OPERATION_DELETE_RELATIONSHIP",
-		"OPERATION_DELETE_NODE_PROPERTY",
-		"OPERATION_DELETE_RELATIONSHIP_PROPERTY",
-	}
-	//nolint:lll // long description
-	ingestPipelineOperationsDescription = "List of operations which will be allowed to be used in the ingest pipeline. Valid values are: \n  - \"" +
-		strings.Join(ingestPipelineAllowedOperations, "\" \n  - \"") + "\"\n"
 )
 
 func resourceIngestPipeline() *schema.Resource {
@@ -85,15 +72,13 @@ func resourceIngestPipeline() *schema.Resource {
 				MaxItems: 10,
 			},
 			ingestPipelineOperationsTypeKey: {
-				Type:        schema.TypeList,
-				Description: ingestPipelineOperationsDescription,
-				Required:    true,
+				Type: schema.TypeList,
 				Elem: &schema.Schema{
-					Type:         schema.TypeString,
-					ValidateFunc: validation.StringInSlice(ingestPipelineAllowedOperations, false),
+					Type: schema.TypeString,
 				},
-				MinItems: 1,
-				MaxItems: 6,
+				Optional:    true,
+				Deprecated:  "This field is deprecated and is not used anymore.",
+				Description: "List of operations is no longer used. All previously saved values are ignored.",
 			},
 			ingestPipelineAppAgentTokenTypeKey: {
 				Type:        schema.TypeString,
@@ -115,17 +100,6 @@ func resourceIngestPipelineFlatten(
 	var d diag.Diagnostics
 	ipCfg := resp.GetConfigNode().GetIngestPipelineConfig()
 
-	operationsMapping := make([]string, len(ipCfg.GetOperations()))
-	for i, intOp := range ipCfg.GetOperations() {
-		strOp, ok := IngestPipelineOperationTypesReverse[intOp]
-		if !ok {
-			d = append(d, buildPluginError(fmt.Sprintf("unsupported Ingest Pipeline Operation: %d", intOp)))
-			return d
-		}
-		operationsMapping[i] = strOp
-	}
-	setData(&d, data, ingestPipelineOperationsTypeKey, operationsMapping)
-
 	sourcesMapping := make([]string, len(ipCfg.GetSources()))
 	for i, source := range ipCfg.GetSources() {
 		sourcesMapping[i] = source
@@ -136,27 +110,15 @@ func resourceIngestPipelineFlatten(
 }
 
 func resourceIngestPipelineBuild(
-	d *diag.Diagnostics,
+	_ *diag.Diagnostics,
 	data *schema.ResourceData,
 	_ *ClientContext,
 	builder *config.NodeRequest,
 ) {
-	sources := data.Get(ingestPipelineSourcesTypeKey).([]any)
-	operations := data.Get(ingestPipelineOperationsTypeKey).([]any)
 	cfg := &configpb.IngestPipelineConfig{
-		Sources:       rawArrayToTypedArray[string](sources),
+		Sources:       rawArrayToTypedArray[string](data.Get(ingestPipelineSourcesTypeKey).([]any)),
 		AppAgentToken: data.Get(ingestPipelineAppAgentTokenTypeKey).(string),
 	}
-
-	var cfgOperations = make([]configpb.IngestPipelineOperation, len(operations))
-	for i, o := range operations {
-		cfgOperation, ok := IngestPipelineOperationTypes[o.(string)]
-		if !ok {
-			*d = append(*d, buildPluginError(fmt.Sprintf("unsupported Ingest Pipeline Operation: %s", o)))
-		}
-		cfgOperations[i] = cfgOperation
-	}
-	cfg.Operations = cfgOperations
 
 	builder.WithIngestPipelineConfig(cfg)
 }
