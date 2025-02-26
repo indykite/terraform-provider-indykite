@@ -84,11 +84,7 @@ var _ = Describe("Resource IngestPipeline", func() {
 				UpdateTime:  timestamppb.Now(),
 				Config: &configpb.ConfigNode_IngestPipelineConfig{
 					IngestPipelineConfig: &configpb.IngestPipelineConfig{
-						Sources: []string{"source1", "source2"},
-						Operations: []configpb.IngestPipelineOperation{
-							configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_UPSERT_NODE,
-							configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_UPSERT_RELATIONSHIP,
-						},
+						Sources:       []string{"source1", "source2"},
 						AppAgentToken: "", // Empty sensitive data
 					},
 				},
@@ -105,12 +101,7 @@ var _ = Describe("Resource IngestPipeline", func() {
 				UpdateTime:  timestamppb.Now(),
 				Config: &configpb.ConfigNode_IngestPipelineConfig{
 					IngestPipelineConfig: &configpb.IngestPipelineConfig{
-						Sources: []string{"source1", "source2", "source3"},
-						Operations: []configpb.IngestPipelineOperation{
-							configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_UPSERT_NODE,
-							configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_UPSERT_RELATIONSHIP,
-							configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_DELETE_NODE,
-						},
+						Sources:       []string{"source1", "source2", "source3"},
 						AppAgentToken: "", // Empty sensitive data
 					},
 				},
@@ -129,11 +120,7 @@ var _ = Describe("Resource IngestPipeline", func() {
 				"Config": PointTo(MatchFields(IgnoreExtras, Fields{
 					"IngestPipelineConfig": test.EqualProto(
 						&configpb.IngestPipelineConfig{
-							Sources: []string{"source1", "source2"},
-							Operations: []configpb.IngestPipelineOperation{
-								configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_UPSERT_NODE,
-								configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_UPSERT_RELATIONSHIP,
-							},
+							Sources:       []string{"source1", "source2"},
 							AppAgentToken: appAgentToken,
 						},
 					),
@@ -156,12 +143,7 @@ var _ = Describe("Resource IngestPipeline", func() {
 				"Config": PointTo(MatchFields(IgnoreExtras, Fields{
 					"IngestPipelineConfig": test.EqualProto(
 						&configpb.IngestPipelineConfig{
-							Sources: []string{"source1", "source2", "source3"},
-							Operations: []configpb.IngestPipelineOperation{
-								configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_UPSERT_NODE,
-								configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_UPSERT_RELATIONSHIP,
-								configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_DELETE_NODE,
-							},
+							Sources:       []string{"source1", "source2", "source3"},
 							AppAgentToken: appAgentToken,
 						},
 					),
@@ -224,12 +206,6 @@ var _ = Describe("Resource IngestPipeline", func() {
 					"app_agent_token": Equal(token),
 				}
 
-				operations := data.GetConfigNode().GetIngestPipelineConfig().GetOperations()
-				keys["operations.#"] = Equal(strconv.Itoa(len(operations)))
-				for i, op := range operations {
-					keys[fmt.Sprintf("operations.%d", i)] = Equal(indykite.IngestPipelineOperationTypesReverse[op])
-				}
-
 				sources := data.GetConfigNode().GetIngestPipelineConfig().GetSources()
 				keys["sources.#"] = Equal(strconv.Itoa(len(sources)))
 				addStringArrayToKeys(keys, "sources", sources)
@@ -240,35 +216,25 @@ var _ = Describe("Resource IngestPipeline", func() {
 
 		validSettings := `
 		sources = ["source1", "source2"]
-		operations = ["OPERATION_UPSERT_NODE", "OPERATION_UPSERT_RELATIONSHIP"]
 		app_agent_token = "` + appAgentToken + `"
 		`
 
 		validSettingsUpdate := `
 		sources = ["source1", "source2", "source3"]
-		operations = ["OPERATION_UPSERT_NODE", "OPERATION_UPSERT_RELATIONSHIP", "OPERATION_DELETE_NODE"]
 		app_agent_token = "` + appAgentToken + `"
 		`
 
 		// Invalid token
 		invalidSettings1 := `
 		sources = ["source1", "source2"]
-		operations = ["OPERATION_UPSERT_NODE", "OPERATION_UPSERT_RELATIONSHIP"]
 		app_agent_token = "invalid-token"
 		`
 
 		// Missing required argument
 		invalidSettings2 := `
-		operations = ["OPERATION_UPSERT_NODE", "OPERATION_UPSERT_RELATIONSHIP", "OPERATION_DELETE_NODE"]
 		app_agent_token = "` + appAgentToken + `"
 		`
 
-		// Empty slice
-		invalidSettings3 := `
-		sources = ["source1", "source2"]
-		operations = []
-		app_agent_token = "` + appAgentToken + `"
-		`
 		resource.Test(GinkgoT(), resource.TestCase{
 			Providers: map[string]*schema.Provider{
 				"indykite": provider,
@@ -286,10 +252,6 @@ var _ = Describe("Resource IngestPipeline", func() {
 				{
 					Config:      fmt.Sprintf(tfConfigDef, appSpaceID, "name", invalidSettings2),
 					ExpectError: regexp.MustCompile("Missing required argument"),
-				},
-				{
-					Config:      fmt.Sprintf(tfConfigDef, appSpaceID, "name", invalidSettings3),
-					ExpectError: regexp.MustCompile("Not enough list items"),
 				},
 
 				{

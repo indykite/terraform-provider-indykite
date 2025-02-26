@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -361,6 +362,9 @@ func getMapStringKeys[V any](in map[string]V) []string {
 	for k := range in {
 		keys = append(keys, k)
 	}
+	// Terraform builds errors based on that and also documentation.
+	// To be consistent, we need to sort it.
+	sort.Strings(keys)
 	return keys
 }
 
@@ -377,6 +381,14 @@ func ReverseProtoEnumMap[Key, Value comparable](in map[Key]Value) map[Value]Key 
 var AuthorizationPolicyStatusTypes = map[string]configpb.AuthorizationPolicyConfig_Status{
 	"active":   configpb.AuthorizationPolicyConfig_STATUS_ACTIVE,
 	"inactive": configpb.AuthorizationPolicyConfig_STATUS_INACTIVE,
+	"draft":    configpb.AuthorizationPolicyConfig_STATUS_DRAFT,
+}
+
+// KnowledgeQueryStatusTypes defines all supported StatusTypes and its mapping.
+var KnowledgeQueryStatusTypes = map[string]configpb.KnowledgeQueryConfig_Status{
+	"active":   configpb.KnowledgeQueryConfig_STATUS_ACTIVE,
+	"inactive": configpb.KnowledgeQueryConfig_STATUS_INACTIVE,
+	"draft":    configpb.KnowledgeQueryConfig_STATUS_DRAFT,
 }
 
 // ProtoValidateError tries to define interface for all Proto Validation errors,

@@ -1,4 +1,4 @@
-// Copyright (c) 2022 IndyKite
+// Copyright (c) 2025 IndyKite
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,18 +26,18 @@ import (
 )
 
 const (
-	authzJSONConfigKey = "json"
-	authzTagsKey       = "tags"
-	authzStatusKey     = "status"
+	knowledgeQueryJSONQueryConfigKey = "query"
+	knowledgeQueryStatusKey          = "status"
+	knowledgeQueryPolicyID           = "policy_id"
 )
 
-func resourceAuthorizationPolicy() *schema.Resource {
-	readContext := configReadContextFunc(resourceAuthorizationPolicyFlatten)
+func resourceKnowledgeQuery() *schema.Resource {
+	readContext := configReadContextFunc(resourceKnowledgeQueryFlatten)
 
 	return &schema.Resource{
-		CreateContext: configCreateContextFunc(resourceAuthorizationPolicyBuild, readContext),
+		CreateContext: configCreateContextFunc(resourceKnowledgeQueryBuild, readContext),
 		ReadContext:   readContext,
-		UpdateContext: configUpdateContextFunc(resourceAuthorizationPolicyBuild, readContext),
+		UpdateContext: configUpdateContextFunc(resourceKnowledgeQueryBuild, readContext),
 		DeleteContext: configDeleteContextFunc(),
 		Importer: &schema.ResourceImporter{
 			StateContext: basicStateImporter,
@@ -54,7 +54,7 @@ func resourceAuthorizationPolicy() *schema.Resource {
 			createTimeKey:  createTimeSchema(),
 			updateTimeKey:  updateTimeSchema(),
 
-			authzJSONConfigKey: {
+			knowledgeQueryJSONQueryConfigKey: {
 				Type:             schema.TypeString,
 				Required:         true,
 				DiffSuppressFunc: structure.SuppressJsonDiff,
@@ -62,70 +62,66 @@ func resourceAuthorizationPolicy() *schema.Resource {
 					validation.StringIsNotEmpty,
 					validation.StringIsJSON,
 				),
-				Description: "Configuration of Authorization Policy in JSON format, the same one exported by The Hub.",
+				Description: "Configuration of Knowledge Query in JSON format, the same one exported by The Hub.",
 			},
-			authzStatusKey: {
+			knowledgeQueryStatusKey: {
 				Type:         schema.TypeString,
 				Required:     true,
-				ValidateFunc: validation.StringInSlice(getMapStringKeys(AuthorizationPolicyStatusTypes), false),
-				Description: "Status of the Authorization Policy. Possible values are: " +
-					strings.Join(getMapStringKeys(AuthorizationPolicyStatusTypes), ", ") + ".",
+				ValidateFunc: validation.StringInSlice(getMapStringKeys(KnowledgeQueryStatusTypes), false),
+				Description: "Status of the Knowledge Query. Possible values are: " +
+					strings.Join(getMapStringKeys(KnowledgeQueryStatusTypes), ", ") + ".",
 			},
-			authzTagsKey: {
-				Type:     schema.TypeList,
-				Optional: true,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
-				},
-				Description: "Tags of the Authorization Policy.",
+			knowledgeQueryPolicyID: {
+				Type:             schema.TypeString,
+				Required:         true,
+				ValidateDiagFunc: ValidateGID,
+				Description:      "ID of the Authorization Policy that is used to authorize the query.",
 			},
 		},
 	}
 }
 
-func resourceAuthorizationPolicyFlatten(
+func resourceKnowledgeQueryFlatten(
 	data *schema.ResourceData,
 	resp *configpb.ReadConfigNodeResponse,
 ) diag.Diagnostics {
 	var d diag.Diagnostics
-	policy := resp.GetConfigNode().GetAuthorizationPolicyConfig().GetPolicy()
-	if policy == "" {
-		return append(d, buildPluginError("config in the response is not valid AuthorizationPolicyConfig"))
+	query := resp.GetConfigNode().GetKnowledgeQueryConfig().GetQuery()
+	if query == "" {
+		return append(d, buildPluginError("config in the response is not valid KnowledgeQueryConfig"))
 	}
-	setData(&d, data, authzJSONConfigKey, policy)
+	setData(&d, data, knowledgeQueryJSONQueryConfigKey, query)
 
-	status := resp.GetConfigNode().GetAuthorizationPolicyConfig().GetStatus()
-	if status == configpb.AuthorizationPolicyConfig_STATUS_INVALID {
+	status := resp.GetConfigNode().GetKnowledgeQueryConfig().GetStatus()
+	if status == configpb.KnowledgeQueryConfig_STATUS_INVALID {
 		return append(d, buildPluginError("status in the response is not valid"))
 	}
-
-	statusKey, exist := ReverseProtoEnumMap(AuthorizationPolicyStatusTypes)[status]
+	statusKey, exist := ReverseProtoEnumMap(KnowledgeQueryStatusTypes)[status]
 	if !exist {
 		d = append(d, buildPluginError("unsupported Policy Status Type: "+status.String()))
 	}
-	setData(&d, data, authzStatusKey, statusKey)
+	setData(&d, data, knowledgeQueryStatusKey, statusKey)
 
-	tags := resp.GetConfigNode().GetAuthorizationPolicyConfig().GetTags()
-	setData(&d, data, authzTagsKey, tags)
+	setData(&d, data, knowledgeQueryPolicyID, resp.GetConfigNode().GetKnowledgeQueryConfig().GetPolicyId())
 
 	return d
 }
 
-func authorizationPolicyConfigBuilder(data *schema.ResourceData) *configpb.AuthorizationPolicyConfig {
-	cfg := &configpb.AuthorizationPolicyConfig{
-		Policy: data.Get(authzJSONConfigKey).(string),
-		Status: AuthorizationPolicyStatusTypes[data.Get(authzStatusKey).(string)],
-		Tags:   rawArrayToTypedArray[string](data.Get(authzTagsKey).([]any)),
+func knowledgeQueryConfigBuilder(data *schema.ResourceData) *configpb.KnowledgeQueryConfig {
+	cfg := &configpb.KnowledgeQueryConfig{
+		Query:    data.Get(knowledgeQueryJSONQueryConfigKey).(string),
+		Status:   KnowledgeQueryStatusTypes[data.Get(knowledgeQueryStatusKey).(string)],
+		PolicyId: data.Get(knowledgeQueryPolicyID).(string),
 	}
 	return cfg
 }
 
-func resourceAuthorizationPolicyBuild(
+func resourceKnowledgeQueryBuild(
 	_ *diag.Diagnostics,
 	data *schema.ResourceData,
 	_ *ClientContext,
 	builder *config.NodeRequest,
 ) {
-	cfg := authorizationPolicyConfigBuilder(data)
-	builder.WithAuthorizationPolicyConfig(cfg)
+	cfg := knowledgeQueryConfigBuilder(data)
+	builder.WithKnowledgeQueryConfig(cfg)
 }

@@ -92,7 +92,6 @@ linters-settings:
         checks: [all]
 
     govet:
-        shadow: true
         enable-all: true
 
     gocritic:
