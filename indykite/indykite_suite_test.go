@@ -126,3 +126,15 @@ func addStringMapMatcherToKeys(keys Keys, key string, data map[string]string, in
 		keys[key+"."+k] = Equal(v)
 	}
 }
+
+func addSliceMapMatcherToKeys(keys Keys, key string, data []map[string]any, includeEmpty bool) {
+	if len(data) == 0 && !includeEmpty {
+		return
+	}
+
+	for i, item := range data {
+		for k, v := range item {
+			keys[key+"."+strconv.Itoa(i)+"."+k] = Equal(v)
+		}
+	}
+}
