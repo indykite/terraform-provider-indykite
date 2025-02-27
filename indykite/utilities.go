@@ -431,6 +431,25 @@ var externalDataResolverContentTypeToString = map[configpb.ExternalDataResolverC
 	configpb.ExternalDataResolverConfig_CONTENT_TYPE_JSON:    "json",
 }
 
+// TrustScoreProfileScheduleFrequencies defines all supported frequencies for trust score.
+var TrustScoreProfileScheduleFrequencies = map[string]configpb.TrustScoreProfileConfig_UpdateFrequency{
+	"UPDATE_FREQUENCY_INVALID":      configpb.TrustScoreProfileConfig_UPDATE_FREQUENCY_INVALID,
+	"UPDATE_FREQUENCY_THREE_HOURS":  configpb.TrustScoreProfileConfig_UPDATE_FREQUENCY_THREE_HOURS,
+	"UPDATE_FREQUENCY_SIX_HOURS":    configpb.TrustScoreProfileConfig_UPDATE_FREQUENCY_SIX_HOURS,
+	"UPDATE_FREQUENCY_TWELVE_HOURS": configpb.TrustScoreProfileConfig_UPDATE_FREQUENCY_TWELVE_HOURS,
+	"UPDATE_FREQUENCY_DAILY":        configpb.TrustScoreProfileConfig_UPDATE_FREQUENCY_DAILY,
+}
+
+// TrustScoreDimensionNames defines all supported dimensions names for trust score.
+var TrustScoreDimensionNames = map[string]configpb.TrustScoreDimension_Name{
+	"NAME_INVALID":      configpb.TrustScoreDimension_NAME_INVALID,
+	"NAME_FRESHNESS":    configpb.TrustScoreDimension_NAME_FRESHNESS,
+	"NAME_COMPLETENESS": configpb.TrustScoreDimension_NAME_COMPLETENESS,
+	"NAME_VALIDITY":     configpb.TrustScoreDimension_NAME_VALIDITY,
+	"NAME_ORIGIN":       configpb.TrustScoreDimension_NAME_ORIGIN,
+	"NAME_VERIFICATION": configpb.TrustScoreDimension_NAME_VERIFICATION,
+}
+
 func betterValidationErrorWithPath(err error) error {
 	var protoValidErr ProtoValidateError
 	if errors.As(err, &protoValidErr) {
