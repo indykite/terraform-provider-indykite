@@ -16,7 +16,7 @@ please responsibly disclose by contacting us at security@indykite.com.
 
 - [Provider documentation](https://registry.terraform.io/providers/indykite/indykite/latest/docs)
 
-The provider need to be set (adapt with latest version):
+The provider need to be set:
 ```hcl
 terraform {
   required_providers {
