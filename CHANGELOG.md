@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.16.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.15.0...v0.16.0) (2025-02-28)
+
+
+### Features
+
+* fix release ([e06e1e3](https://github.com/indykite/terraform-provider-indykite/commit/e06e1e3bb18ca0496242c3a2ab1d8be13b25d87f))
+
+
+### Miscellaneous Chores
+
+* **master:** release 0.15.0 ([83d0424](https://github.com/indykite/terraform-provider-indykite/commit/83d0424e8406ff2187b96942cb9285670ad67767))
+
 ## [0.15.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.14.0...v0.15.0) (2025-02-28)
 
 
