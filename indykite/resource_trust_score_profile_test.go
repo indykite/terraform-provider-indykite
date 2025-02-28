@@ -304,11 +304,11 @@ var _ = Describe("Resource TrustScoreProfile", func() {
 							dimensions {
 							name   = "NAME_COMPLETENESS"
 							weight = 1.0
-							}	
+							}
 							dimensions {
 								name   = "NAME_ORIGIN"
 								weight = 1.0
-							}						
+							}
 							schedule = "UPDATE_FREQUENCY_SIX_HOURS"
 							`),
 						Check: resource.ComposeTestCheckFunc(
@@ -323,7 +323,7 @@ var _ = Describe("Resource TrustScoreProfile", func() {
 							dimensions {
 							name   = "NAME_FRESHNESS"
 							weight = 1.0
-							}							
+							}
 							schedule = "UPDATE_FREQUENCY_SIX_HOURS"
 							`),
 						// ExpectError: regexp.MustCompile(
