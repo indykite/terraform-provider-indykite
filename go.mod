@@ -1,6 +1,6 @@
 module github.com/indykite/terraform-provider-indykite
 
-go 1.23.6
+go 1.23.3
 
 require (
 	github.com/hashicorp/go-cty v1.4.1-0.20241127173709-a0325cb22c13
