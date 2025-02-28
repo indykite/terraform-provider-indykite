@@ -40,7 +40,7 @@ And configured with one of the following environment variables:
 
 ### Terraform
 
-Be sure you have the correct Terraform version (0.13.0+), you can choose the binary here:
+Be sure you have the correct Terraform version (0.14.0+), you can choose the binary here:
 
 - https://releases.hashicorp.com/terraform/
 
