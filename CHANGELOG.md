@@ -1,19 +1,5 @@
 # Changelog
 
-
-## [0.15.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.14.0...v0.15.0) (2025-02-28)
-
-
-### Features
-
-* add knowledge query resolver ([43a3ad8](https://github.com/indykite/terraform-provider-indykite/commit/43a3ad87d30e01700731956dc7bdb225ed30159d))
-* add trust score ([0d42880](https://github.com/indykite/terraform-provider-indykite/commit/0d4288072fef340ad81fc5a91153670d95c37a5b))
-
-
-### Miscellaneous Chores
-
-* **deps:** update everything ([03f35d9](https://github.com/indykite/terraform-provider-indykite/commit/03f35d9a26e70a9aa5fafb339e95503fd114b05b))
-
 ## [0.14.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.13.1...v0.14.0) (2025-01-13)
 
 
