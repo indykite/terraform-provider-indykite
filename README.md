@@ -22,7 +22,7 @@ terraform {
   required_providers {
     indykite = {
       source = "indykite/indykite"
-      version = "~> 0.15"
+      version = "~> 0.16"
     }
   }
 }
