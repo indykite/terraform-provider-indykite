@@ -1,4 +1,4 @@
-FROM golang:1.23
+FROM golang:1.24
 LABEL version="v0.0.1"
 # You can start with any base Docker Image that works for you
 RUN apt-get update && apt-get install -y --no-install-recommends \
