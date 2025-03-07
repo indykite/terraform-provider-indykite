@@ -172,6 +172,26 @@ resource "indykite_external_data_resolver" "post-resolver" {
   }
 }
 
+resource "indykite_trust_score_profile" "create-score" {
+  name         = "terraform-trust-score-profile-${time_static.example.unix}"
+  display_name = "Terraform trust score profile  ${time_static.example.unix}"
+  description  = "Trust score profile for terraform"
+  location     = local.location_id
+  node_classification = "Person"
+  dimensions {
+    name   = "NAME_VERIFICATION"
+    weight = 0.5
+  }
+  dimensions {
+    name   = "NAME_ORIGIN"
+    weight = 0.5
+  }
+	schedule = "UPDATE_FREQUENCY_DAILY"
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
 resource "indykite_entity_matching_pipeline" "create-pipeline" {
   name         = "terraform-entitymatching-pipeline-${time_static.example.unix}"
   display_name = "Terraform entitymatching pipeline  ${time_static.example.unix}"
