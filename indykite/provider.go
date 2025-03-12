@@ -61,7 +61,6 @@ func Provider() *schema.Provider {
 		ResourcesMap: map[string]*schema.Resource{
 			"indykite_application_space":            resourceApplicationSpace(),
 			"indykite_application":                  resourceApplication(),
-			"indykite_audit_sink":                   resourceAuditSink(),
 			"indykite_application_agent":            resourceApplicationAgent(),
 			"indykite_application_agent_credential": resourceApplicationAgentCredential(),
 			"indykite_authorization_policy":         resourceAuthorizationPolicy(),
