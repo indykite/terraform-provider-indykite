@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.15.0...v0.16.0) (2025-03-12)
+
+
+### Features
+
+* remove auditsink config node ([7c9211c](https://github.com/indykite/terraform-provider-indykite/commit/7c9211c541cc1db79017b1df63102e28e25a83c6))
+
 ## [0.15.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.14.0...v0.15.0) (2025-03-03)
 
 
