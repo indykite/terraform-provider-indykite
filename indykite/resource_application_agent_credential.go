@@ -63,6 +63,7 @@ func resourceApplicationAgentCredential() *schema.Resource {
 				Type:          schema.TypeString,
 				Optional:      true,
 				ForceNew:      true,
+				Deprecated:    "This field is deprecated.",
 				ConflictsWith: []string{publicKeyJWKKey},
 				ValidateFunc: validation.All(
 					validation.StringMatch(
@@ -78,6 +79,7 @@ func resourceApplicationAgentCredential() *schema.Resource {
 				Type:             schema.TypeString,
 				Optional:         true,
 				ForceNew:         true,
+				Deprecated:       "This field is deprecated.",
 				ConflictsWith:    []string{publicKeyPEMKey},
 				DiffSuppressFunc: structure.SuppressJsonDiff,
 				ValidateFunc:     validation.All(validation.StringIsJSON, validation.StringLenBetween(96, 8192)),
