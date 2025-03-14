@@ -42,8 +42,8 @@ resource "indykite_application_agent_credential" "with-public" {
 
 - `display_name` (String)
 - `expire_time` (String) Optional date-time when credentials are going to expire
-- `public_key_jwk` (String) Provide your onw Public key in JWK format, otherwise new pair is generated
-- `public_key_pem` (String) Provide your onw Public key in PEM format, otherwise new pair is generated
+- `public_key_jwk` (String, Deprecated) Provide your onw Public key in JWK format, otherwise new pair is generated
+- `public_key_pem` (String, Deprecated) Provide your onw Public key in PEM format, otherwise new pair is generated
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
