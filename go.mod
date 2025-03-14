@@ -2,7 +2,7 @@ module github.com/indykite/terraform-provider-indykite
 
 go 1.23.3
 
-toolchain go1.23.4
+toolchain go1.24.1
 
 require (
 	github.com/hashicorp/go-cty v1.4.1
