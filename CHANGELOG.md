@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.16.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.16.0...v0.16.1) (2025-03-20)
+
+
+### Bug Fixes
+
+* change a test date ([82719df](https://github.com/indykite/terraform-provider-indykite/commit/82719df2fcd21f939c9f15e329b78822a68d0111))
+
+
+### Miscellaneous Chores
+
+* deprecate credentials public key ([9609f1a](https://github.com/indykite/terraform-provider-indykite/commit/9609f1a184adfbdc94317127d651464e515029b8))
+
 ## [0.16.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.15.0...v0.16.0) (2025-03-12)
 
 
