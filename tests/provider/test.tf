@@ -51,7 +51,7 @@ resource "indykite_application_agent" "agent" {
 resource "indykite_application_agent_credential" "with_public" {
   app_agent_id = indykite_application_agent.agent.id
   display_name = "Terraform credential ${time_static.example.unix}"
-  expire_time  = "2040-12-31T12:34:56-01:00"
+  expire_time  = "2026-12-31T12:34:56-01:00"
   lifecycle {
     create_before_destroy = true
   }
