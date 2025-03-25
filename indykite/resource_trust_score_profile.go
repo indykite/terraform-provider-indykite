@@ -15,6 +15,8 @@
 package indykite
 
 import (
+	"strings"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -34,9 +36,12 @@ func resourceTrustScoreProfile() *schema.Resource {
 	readContext := configReadContextFunc(resourceTrustScoreProfileFlatten)
 
 	return &schema.Resource{
-		Description: "The TrustScoreProfile enables data consumers to evaluate the reliability of data, given the intent.  " +
-			"By leveraging it, they can ensure that the data is suitable for effective use in downstream processes,  " +
-			"increasing data quality and reducing data risk. ",
+		Description: "The Trust Score Profile helps assess how trustworthy data is. " +
+			"It allows applications, authorization policies, and AI systems to define and check  " +
+			"whether data meets specific reliability requirements. " +
+			"By validating key factors — such as how recent, complete, and accurate the data is —  " +
+			"the Trust Score ensures that only high-quality and reliable data is used in decision-making. " +
+			"This reduces risk and improves the overall quality of downstream processes. ",
 
 		CreateContext: configCreateContextFunc(resourceTrustScoreProfileBuild, readContext),
 		ReadContext:   readContext,
@@ -74,9 +79,18 @@ func resourceTrustScoreProfile() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						trustScoreProfileName: {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "Name of the trust score dimension, must be one of the predefined names.",
+							Type:     schema.TypeString,
+							Required: true,
+							Description: "Name of the trust score dimensions. Possible values are: " +
+								strings.Join(getMapStringKeys(TrustScoreDimensionNames), ", ") + "." +
+								"Origin: Identifies where the data comes from, " +
+								"ensuring its source is transparent and trustworthy." +
+								"Validity: Checks whether the data is in the correct format " +
+								"and follows expected rules." +
+								"Completeness: Confirms that no critical information is missing from the data. " +
+								"Freshness: Measures how up-to-date the data is to ensure it’s still relevant." +
+								"Verification: Ensures the data has been reviewed and confirmed " +
+								"as accurate by a trusted source.",
 						},
 						trustScoreProfileWeight: {
 							Type:         schema.TypeFloat,
@@ -88,9 +102,10 @@ func resourceTrustScoreProfile() *schema.Resource {
 				MinItems: 1,
 			},
 			trustScoreProfileSchedule: {
-				Type:        schema.TypeString,
-				Description: "Schedule sets the time between re-calculations, must be one of the predefined intervals.",
-				Required:    true,
+				Type: schema.TypeString,
+				Description: "Schedule sets the time between re-calculations. Possible values are: " +
+					strings.Join(getMapStringKeys(TrustScoreProfileScheduleFrequencies), ", ") + ".",
+				Required: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 					ValidateFunc: validation.StringInSlice(getMapStringKeys(
