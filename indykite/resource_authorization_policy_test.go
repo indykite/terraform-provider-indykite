@@ -84,7 +84,7 @@ var _ = Describe("Resource Authorization Policy config", func() {
 		}
 
 		authzPolicyInvalidResponse := proto.Clone(authzPolicyConfigResp).(*configpb.ReadConfigNodeResponse)
-		authzPolicyInvalidResponse.ConfigNode.Config = &configpb.ConfigNode_AuditSinkConfig{}
+		authzPolicyInvalidResponse.ConfigNode.Config = &configpb.ConfigNode_EventSinkConfig{}
 
 		authzPolicyConfigUpdateResp := &configpb.ReadConfigNodeResponse{
 			ConfigNode: &configpb.ConfigNode{

@@ -86,7 +86,7 @@ var _ = Describe("Resource Consent config", func() {
 		}
 
 		consentInvalidResponse := proto.Clone(consentConfigResp).(*configpb.ReadConfigNodeResponse)
-		consentInvalidResponse.ConfigNode.Config = &configpb.ConfigNode_AuditSinkConfig{}
+		consentInvalidResponse.ConfigNode.Config = &configpb.ConfigNode_EventSinkConfig{}
 
 		consentConfigUpdateResp := &configpb.ReadConfigNodeResponse{
 			ConfigNode: &configpb.ConfigNode{

@@ -172,6 +172,19 @@ resource "indykite_external_data_resolver" "post-resolver" {
   }
 }
 
+resource "indykite_knowledge_query" "create-query" {
+  name         = "terraform-knowledge-query-${time_static.example.unix}"
+  display_name = "Terraform knowledge-query  ${time_static.example.unix}"
+  description  = "Knowledge query for terraform"
+  location     = indykite_application_space.appspace.id
+  query = jsonencode({"something":["like", "query"]})
+	status = "active"
+  policy_id = indykite_authorization_policy.policy_drive_car.id
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
 resource "indykite_trust_score_profile" "create-score" {
   name         = "terraform-trust-score-profile-${time_static.example.unix}"
   display_name = "Terraform trust score profile  ${time_static.example.unix}"

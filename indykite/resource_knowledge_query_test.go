@@ -196,7 +196,7 @@ var _ = Describe("Resource Knowledge Query config", func() {
 		}
 
 		knowledgeQueryInvalidResponse := proto.Clone(knowledgeQueryConfigResp).(*configpb.ReadConfigNodeResponse)
-		knowledgeQueryInvalidResponse.ConfigNode.Config = &configpb.ConfigNode_AuditSinkConfig{}
+		knowledgeQueryInvalidResponse.ConfigNode.Config = &configpb.ConfigNode_EventSinkConfig{}
 
 		knowledgeQueryConfigUpdateResp := &configpb.ReadConfigNodeResponse{
 			ConfigNode: &configpb.ConfigNode{

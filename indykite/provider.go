@@ -71,6 +71,7 @@ func Provider() *schema.Provider {
 			"indykite_entity_matching_pipeline":     resourceEntityMatchingPipeline(),
 			"indykite_knowledge_query":              resourceKnowledgeQuery(),
 			"indykite_trust_score_profile":          resourceTrustScoreProfile(),
+			"indykite_event_sink":                   resourceEventSink(),
 		},
 	}
 
