@@ -32,6 +32,6 @@ resource "indykite_event_sink" "create-event" {
 		context_key_value_filter {
       key = "relationshipcreated"
       value = "access-granted"
-    } 
+    }
 	}
 }

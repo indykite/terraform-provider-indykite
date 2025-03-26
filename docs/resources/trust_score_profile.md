@@ -61,7 +61,7 @@ resource "indykite_trust_score_profile" "trust-score" {
 
 Required:
 
-- `name` (String) Name of the trust score dimensions. Possible values are: NAME_COMPLETENESS, NAME_FRESHNESS, NAME_INVALID, NAME_ORIGIN, NAME_VALIDITY, NAME_VERIFICATION.Origin: Identifies where the data comes from, ensuring its source is transparent and trustworthy.Validity: Checks whether the data is in the correct format and follows expected rules.Completeness: Confirms that no critical information is missing from the data. Freshness: Measures how up-to-date the data is to ensure it’s still relevant.Verification: Ensures the data has been reviewed and confirmed as accurate by a trusted source.
+- `name` (String) Name of the trust score dimensions. Possible values are: NAME_COMPLETENESS, NAME_FRESHNESS, NAME_INVALID, NAME_ORIGIN, NAME_VALIDITY, NAME_VERIFICATION.  Origin: Identifies where the data comes from, ensuring its source is transparent and trustworthy.  Validity: Checks whether the data is in the correct format and follows expected rules.  Completeness: Confirms that no critical information is missing from the data.  Freshness: Measures how up-to-date the data is to ensure it’s still relevant.  Verification: Ensures the data has been reviewed and confirmed as accurate by a trusted source.
 - `weight` (Number) Weight represents how relevant the dimension is in the trust score calculation.
 
 
