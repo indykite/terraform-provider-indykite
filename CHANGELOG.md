@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.17.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.16.1...v0.17.0) (2025-03-26)
+
+
+### Features
+
+* add event resource ([7baab31](https://github.com/indykite/terraform-provider-indykite/commit/7baab310db913e0b73d40b5876e0dcdd2339ff3f))
+* add event tests and update docs ([277c2cd](https://github.com/indykite/terraform-provider-indykite/commit/277c2cd7c816eabd7a7df3186aaa9055269f77b4))
+
 ## [0.16.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.16.0...v0.16.1) (2025-03-20)
 
 
