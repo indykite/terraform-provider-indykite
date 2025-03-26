@@ -305,7 +305,7 @@ var _ = Describe("Resource EventSink", func() {
 
 		validKafkaBlock := `
 		providers  {
-			provider_name = "kafka2" 
+			provider_name = "kafka2"
 			kafka {
 				brokers = ["my.kafka.server.example.com"]
 				topic = "my-kafka-topic"
@@ -314,7 +314,7 @@ var _ = Describe("Resource EventSink", func() {
 			}
 		}
 		routes {
-			provider_id = "kafka-provider" 
+			provider_id = "kafka-provider"
 			stop_processing = false
 			event_type_filter = "indykite.eventsink.config.create"
 		}`
@@ -335,9 +335,9 @@ var _ = Describe("Resource EventSink", func() {
 				},
 				{
 					Config: fmt.Sprintf(tfConfigDef, appSpaceID, "name", `
-					display_name = "Display name of Event Sink configuration" 
+					display_name = "Display name of Event Sink configuration"
 					providers  {
-						provider_name = "kafka2" 
+						provider_name = "kafka2"
 						kafka {
 							brokers = ["my.kafka.server.example.com"]
 							topic = "my-kafka-topic"
@@ -358,7 +358,7 @@ var _ = Describe("Resource EventSink", func() {
 					Config: fmt.Sprintf(tfConfigDef, appSpaceID, "my-first-event-sink",
 						`display_name = "Display name of Event Sink configuration"
 						providers  {
-							provider_name = "kafka2" 
+							provider_name = "kafka2"
 							kafka {
 								brokers = ["my.kafka.server.example.com"]
 								topic = "my-kafka-topic"
@@ -367,7 +367,7 @@ var _ = Describe("Resource EventSink", func() {
 							}
 						}
 						routes {
-							provider_id = "kafka-provider" 
+							provider_id = "kafka-provider"
 	                        stop_processing = false
 							event_type_filter = "indykite.eventsink.config.create"
 						}
@@ -388,7 +388,7 @@ var _ = Describe("Resource EventSink", func() {
 					Config: fmt.Sprintf(tfConfigDef, appSpaceID, "my-first-event-sink",
 						`description = "sink for IK event logs for internal monitoring"
 						providers  {
-							provider_name = "kafka2" 
+							provider_name = "kafka2"
 							kafka {
 								brokers = ["my.kafka.server.example.com"]
 								topic = "event-topic"
@@ -399,7 +399,7 @@ var _ = Describe("Resource EventSink", func() {
 							}
 						}
 						routes {
-							provider_id = "kafka-provider" 
+							provider_id = "kafka-provider"
 	                        stop_processing = false
 							event_type_filter = "indykite.eventsink.config.update"
 						}

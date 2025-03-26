@@ -36,4 +36,3 @@ resource "indykite_external_data_resolver" "post-resolver" {
   response_type     = "json"
   response_selector = ".resp"
 }
-
