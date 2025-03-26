@@ -82,13 +82,13 @@ func resourceTrustScoreProfile() *schema.Resource {
 							Type:     schema.TypeString,
 							Required: true,
 							Description: "Name of the trust score dimensions. Possible values are: " +
-								strings.Join(getMapStringKeys(TrustScoreDimensionNames), ", ") + "." +
+								strings.Join(getMapStringKeys(TrustScoreDimensionNames), ", ") + ".  " +
 								"Origin: Identifies where the data comes from, " +
-								"ensuring its source is transparent and trustworthy." +
+								"ensuring its source is transparent and trustworthy.  " +
 								"Validity: Checks whether the data is in the correct format " +
-								"and follows expected rules." +
-								"Completeness: Confirms that no critical information is missing from the data. " +
-								"Freshness: Measures how up-to-date the data is to ensure it’s still relevant." +
+								"and follows expected rules.  " +
+								"Completeness: Confirms that no critical information is missing from the data.  " +
+								"Freshness: Measures how up-to-date the data is to ensure it’s still relevant.  " +
 								"Verification: Ensures the data has been reviewed and confirmed " +
 								"as accurate by a trusted source.",
 						},

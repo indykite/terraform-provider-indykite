@@ -78,7 +78,7 @@ func resourceEventSink() *schema.Resource {
 			routesKey: {
 				Type:     schema.TypeList,
 				Elem:     &schema.Resource{Schema: routeSchema()},
-				Optional: true,
+				Required: true,
 			},
 		},
 	}
