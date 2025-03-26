@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.17.0...v0.17.1) (2025-03-26)
+
+
+### Bug Fixes
+
+* dummy commit ([4466f07](https://github.com/indykite/terraform-provider-indykite/commit/4466f07c3dc215c2b69c4f143f90f90df4a9ef25))
+
 ## [0.17.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.16.1...v0.17.0) (2025-03-26)
 
 
