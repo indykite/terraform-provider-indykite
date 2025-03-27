@@ -81,15 +81,15 @@ func resourceTrustScoreProfile() *schema.Resource {
 						trustScoreProfileName: {
 							Type:     schema.TypeString,
 							Required: true,
-							Description: "Name of the trust score dimensions. Possible values are: " +
-								strings.Join(getMapStringKeys(TrustScoreDimensionNames), ", ") + ".  " +
-								"Origin: Identifies where the data comes from, " +
+							Description: "Name of the trust score dimensions. Possible values are: `" +
+								strings.Join(getMapStringKeys(TrustScoreDimensionNames), "`, `") + "`.  " +
+								"`Origin`: Identifies where the data comes from, " +
 								"ensuring its source is transparent and trustworthy.  " +
-								"Validity: Checks whether the data is in the correct format " +
+								"`Validity`: Checks whether the data is in the correct format " +
 								"and follows expected rules.  " +
-								"Completeness: Confirms that no critical information is missing from the data.  " +
-								"Freshness: Measures how up-to-date the data is to ensure it’s still relevant.  " +
-								"Verification: Ensures the data has been reviewed and confirmed " +
+								"`Completeness`: Confirms that no critical information is missing from the data.  " +
+								"`Freshness`: Measures how up-to-date the data is to ensure it’s still relevant.  " +
+								"`Verification`: Ensures the data has been reviewed and confirmed " +
 								"as accurate by a trusted source.",
 						},
 						trustScoreProfileWeight: {
@@ -103,8 +103,8 @@ func resourceTrustScoreProfile() *schema.Resource {
 			},
 			trustScoreProfileSchedule: {
 				Type: schema.TypeString,
-				Description: "Schedule sets the time between re-calculations. Possible values are: " +
-					strings.Join(getMapStringKeys(TrustScoreProfileScheduleFrequencies), ", ") + ".",
+				Description: "Schedule sets the time between re-calculations. Possible values are: `" +
+					strings.Join(getMapStringKeys(TrustScoreProfileScheduleFrequencies), "`, `") + "`.",
 				Required: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
