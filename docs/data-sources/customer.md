@@ -3,7 +3,7 @@
 page_title: "indykite_customer Data Source - IndyKite"
 subcategory: ""
 description: |-
-  
+
 ---
 
 # indykite_customer (Data Source)

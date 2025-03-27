@@ -3,7 +3,7 @@
 page_title: "indykite_applications Data Source - IndyKite"
 subcategory: ""
 description: |-
-  
+
 ---
 
 # indykite_applications (Data Source)

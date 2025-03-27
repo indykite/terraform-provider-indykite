@@ -3,7 +3,7 @@
 page_title: "indykite_knowledge_query Resource - IndyKite"
 subcategory: ""
 description: |-
-  
+
 ---
 
 # indykite_knowledge_query (Resource)
@@ -47,5 +47,3 @@ Optional:
 - `delete` (String)
 - `read` (String)
 - `update` (String)
-
-

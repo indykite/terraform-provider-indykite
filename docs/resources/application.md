@@ -3,7 +3,7 @@
 page_title: "indykite_application Resource - IndyKite"
 subcategory: ""
 description: |-
-  
+
 ---
 
 # indykite_application (Resource)
@@ -44,5 +44,3 @@ Optional:
 - `delete` (String)
 - `read` (String)
 - `update` (String)
-
-

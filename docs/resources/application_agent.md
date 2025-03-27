@@ -3,7 +3,7 @@
 page_title: "indykite_application_agent Resource - IndyKite"
 subcategory: ""
 description: |-
-  
+
 ---
 
 # indykite_application_agent (Resource)
@@ -45,5 +45,3 @@ Optional:
 - `delete` (String)
 - `read` (String)
 - `update` (String)
-
-
