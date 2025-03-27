@@ -3,7 +3,7 @@
 page_title: "indykite_application_agent Data Source - IndyKite"
 subcategory: ""
 description: |-
-
+  
 ---
 
 # indykite_application_agent (Data Source)

@@ -3,7 +3,7 @@
 page_title: "indykite_authorization_policy Resource - IndyKite"
 subcategory: ""
 description: |-
-
+  
 ---
 
 # indykite_authorization_policy (Resource)
@@ -72,3 +72,5 @@ Optional:
 - `delete` (String)
 - `read` (String)
 - `update` (String)
+
+

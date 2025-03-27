@@ -3,7 +3,7 @@
 page_title: "indykite_application_agent_credential Resource - IndyKite"
 subcategory: ""
 description: |-
-
+  
 ---
 
 # indykite_application_agent_credential (Resource)

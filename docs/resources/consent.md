@@ -3,7 +3,7 @@
 page_title: "indykite_consent Resource - IndyKite"
 subcategory: ""
 description: |-
-
+  
 ---
 
 # indykite_consent (Resource)
@@ -83,3 +83,5 @@ Optional:
 - `delete` (String)
 - `read` (String)
 - `update` (String)
+
+

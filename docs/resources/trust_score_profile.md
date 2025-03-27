@@ -40,7 +40,7 @@ resource "indykite_trust_score_profile" "trust-score" {
 - `location` (String) identifier of Location, where to create resource
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 - `node_classification` (String) NodeClassification is a node label in PascalCase, cannot be modified once set.
-- `schedule` (String) Schedule sets the time between re-calculations. Possible values are: UPDATE_FREQUENCY_DAILY, UPDATE_FREQUENCY_INVALID, UPDATE_FREQUENCY_SIX_HOURS, UPDATE_FREQUENCY_THREE_HOURS, UPDATE_FREQUENCY_TWELVE_HOURS.
+- `schedule` (String) Schedule sets the time between re-calculations. Possible values are: `UPDATE_FREQUENCY_DAILY`, `UPDATE_FREQUENCY_INVALID`, `UPDATE_FREQUENCY_SIX_HOURS`, `UPDATE_FREQUENCY_THREE_HOURS`, `UPDATE_FREQUENCY_TWELVE_HOURS`.
 
 ### Optional
 
@@ -61,7 +61,7 @@ resource "indykite_trust_score_profile" "trust-score" {
 
 Required:
 
-- `name` (String) Name of the trust score dimensions. Possible values are: NAME_COMPLETENESS, NAME_FRESHNESS, NAME_INVALID, NAME_ORIGIN, NAME_VALIDITY, NAME_VERIFICATION.  Origin: Identifies where the data comes from, ensuring its source is transparent and trustworthy.  Validity: Checks whether the data is in the correct format and follows expected rules.  Completeness: Confirms that no critical information is missing from the data.  Freshness: Measures how up-to-date the data is to ensure it’s still relevant.  Verification: Ensures the data has been reviewed and confirmed as accurate by a trusted source.
+- `name` (String) Name of the trust score dimensions. Possible values are: `NAME_COMPLETENESS`, `NAME_FRESHNESS`, `NAME_INVALID`, `NAME_ORIGIN`, `NAME_VALIDITY`, `NAME_VERIFICATION`.  `Origin`: Identifies where the data comes from, ensuring its source is transparent and trustworthy.  `Validity`: Checks whether the data is in the correct format and follows expected rules.  `Completeness`: Confirms that no critical information is missing from the data.  `Freshness`: Measures how up-to-date the data is to ensure it’s still relevant.  `Verification`: Ensures the data has been reviewed and confirmed as accurate by a trusted source.
 - `weight` (Number) Weight represents how relevant the dimension is in the trust score calculation.
 
 
@@ -75,3 +75,5 @@ Optional:
 - `delete` (String)
 - `read` (String)
 - `update` (String)
+
+
