@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.18.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.17.1...v0.18.0) (2025-03-28)
+
+
+### Features
+
+* minor changes in docs ([f49293d](https://github.com/indykite/terraform-provider-indykite/commit/f49293d05f43b5165a312c01338e6575d59f94e1))
+
+
+### Bug Fixes
+
+* disable tests ([60a3833](https://github.com/indykite/terraform-provider-indykite/commit/60a3833e6f1e75f9c130512d2750978fb0649b53))
+
 ## [0.17.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.17.0...v0.17.1) (2025-03-26)
 
 
