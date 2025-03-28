@@ -172,7 +172,7 @@ resource "indykite_external_data_resolver" "post-resolver" {
   }
 }
 
-# Enable once we have fully working
+# Enable once we have fully working Knowledge Query part of Config API
 # resource "indykite_knowledge_query" "create-query" {
 #   name         = "terraform-knowledge-query-${time_static.example.unix}"
 #   display_name = "Terraform knowledge-query  ${time_static.example.unix}"
