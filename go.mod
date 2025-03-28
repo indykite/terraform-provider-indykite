@@ -2,18 +2,18 @@ module github.com/indykite/terraform-provider-indykite
 
 go 1.23.3
 
-toolchain go1.23.4
+toolchain go1.24.1
 
 require (
-	github.com/hashicorp/go-cty v1.4.1
+	github.com/hashicorp/go-cty v1.5.0
 	github.com/hashicorp/terraform-plugin-go v0.26.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.36.1
 	github.com/indykite/indykite-sdk-go v0.53.0
-	github.com/onsi/ginkgo/v2 v2.23.0
-	github.com/onsi/gomega v1.36.2
+	github.com/onsi/ginkgo/v2 v2.23.3
+	github.com/onsi/gomega v1.36.3
 	go.uber.org/mock v0.5.0
 	google.golang.org/grpc v1.71.0
-	google.golang.org/protobuf v1.36.5
+	google.golang.org/protobuf v1.36.6
 	gopkg.in/yaml.v3 v3.0.1
 )
 
