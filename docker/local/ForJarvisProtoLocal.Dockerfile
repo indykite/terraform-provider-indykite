@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Add new user and not using root to run the tests for security reasons
 RUN useradd --create-home -u 10001 appuser
 
-ENV APPUSER_HOME /home/appuser
+ENV APPUSER_HOME=/home/appuser
 
 COPY run_tests_on_local_be.sh ${APPUSER_HOME}/run_test.sh
 RUN chmod +x ${APPUSER_HOME}/run_test.sh \
