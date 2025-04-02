@@ -177,17 +177,17 @@ resource "indykite_authorization_policy" "policy_for_ciq" {
   display_name = "Terraform policy for CIQ ${time_static.example.unix}"
   description  = "Policy for CIQ in terraform pipeline"
   json = jsonencode({
-    "meta": { "policy_version": "1.0-ciq" },
-    "subject": { "type": "Person" },
-    "condition": {
-      "cypher": "MATCH (person:Person)-[r1:ACCEPTED]->(contract:Contract)-[r2:COVERS]->(vehicle:Vehicle)-[r3:HAS]->(ln:LicenseNumber)",
-      "filter": [ { "app": "app1", "attribute": "person.property.username", "operator": "=", "value": "$username" } ]
+    "meta" : { "policy_version" : "1.0-ciq" },
+    "subject" : { "type" : "Person" },
+    "condition" : {
+      "cypher" : "MATCH (person:Person)-[r1:ACCEPTED]->(contract:Contract)-[r2:COVERS]->(vehicle:Vehicle)-[r3:HAS]->(ln:LicenseNumber)",
+      "filter" : [{ "app" : "app1", "attribute" : "person.property.username", "operator" : "=", "value" : "$username" }]
     },
-    "upsert_nodes": [],
-    "upsert_relationships": [],
-    "allowed_reads": {
-      "nodes": [ "ln.property.value", "ln.property.transferrable", "ln.external_id" ],
-      "relationships": [ "r1" ]
+    "upsert_nodes" : [],
+    "upsert_relationships" : [],
+    "allowed_reads" : {
+      "nodes" : ["ln.property.value", "ln.property.transferrable", "ln.external_id"],
+      "relationships" : ["r1"]
     }
   })
   location = indykite_application_space.appspace.id
@@ -204,12 +204,12 @@ resource "indykite_knowledge_query" "create-query" {
   description  = "Knowledge query for terraform"
   location     = indykite_application_space.appspace.id
   query = jsonencode({
-    "nodes": [ "ln.property.value" ],
-    "relationships": [],
-    "filter": { "attribute": "ln.property.value", "operator": "=", "value": "$lnValue" }
+    "nodes" : ["ln.property.value"],
+    "relationships" : [],
+    "filter" : { "attribute" : "ln.property.value", "operator" : "=", "value" : "$lnValue" }
   })
 
-	status = "active"
+  status    = "active"
   policy_id = indykite_authorization_policy.policy_for_ciq.id
   lifecycle {
     create_before_destroy = true
@@ -222,56 +222,56 @@ resource "indykite_event_sink" "create-event" {
   description  = "Event sink for terraform"
   location     = indykite_application_space.appspace.id
   providers {
-     provider_name = "kafka-provider-01"
+    provider_name = "kafka-provider-01"
     kafka {
-      brokers = ["kafka-01:9092", "kafka-02:9092"]
-      topic = "events"
+      brokers  = ["kafka-01:9092", "kafka-02:9092"]
+      topic    = "events"
       username = "my-username"
       password = "some-super-secret-password"
-      }
+    }
   }
   providers {
     provider_name = "kafka-provider-02"
     kafka {
-      brokers = ["kafka-02-01:9092", "kafka-02-02:9092"]
-      topic = "events"
+      brokers  = ["kafka-02-01:9092", "kafka-02-02:9092"]
+      topic    = "events"
       username = "other-username"
       password = "some-other-secret-password"
-      }
+    }
   }
   routes {
-    provider_id = "kafka-provider-01"
-	  stop_processing = false
-		event_type_filter = "indykite.eventsink.config.create"
-	}
+    provider_id       = "kafka-provider-01"
+    stop_processing   = false
+    event_type_filter = "indykite.eventsink.config.create"
+  }
   routes {
-    provider_id = "kafka-provider-02"
-	  stop_processing = false
-		context_key_value_filter {
-      key = "relationshipcreated"
+    provider_id     = "kafka-provider-02"
+    stop_processing = false
+    context_key_value_filter {
+      key   = "relationshipcreated"
       value = "access-granted"
     }
-	}
+  }
   lifecycle {
     create_before_destroy = true
   }
 }
 
 resource "indykite_trust_score_profile" "create-score" {
-  name         = "terraform-trust-score-profile-${time_static.example.unix}"
-  display_name = "Terraform trust score profile  ${time_static.example.unix}"
-  description  = "Trust score profile for terraform"
-  location     = local.location_id
+  name                = "terraform-trust-score-profile-${time_static.example.unix}"
+  display_name        = "Terraform trust score profile  ${time_static.example.unix}"
+  description         = "Trust score profile for terraform"
+  location            = local.location_id
   node_classification = "Person"
-  dimensions {
+  dimension {
     name   = "NAME_VERIFICATION"
     weight = 0.5
   }
-  dimensions {
+  dimension {
     name   = "NAME_ORIGIN"
     weight = 0.5
   }
-	schedule = "UPDATE_FREQUENCY_DAILY"
+  schedule = "UPDATE_FREQUENCY_DAILY"
   lifecycle {
     create_before_destroy = true
   }

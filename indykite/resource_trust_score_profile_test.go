@@ -72,9 +72,9 @@ var _ = Describe("Resource TrustScoreProfile", func() {
 
 		validSettings = `
 		node_classification = "Person"
-		dimensions {
+		dimension {
 		  name   = "NAME_FRESHNESS"
-		  weight = 1.0
+		  weight = 0.6
 		}
 		schedule = "UPDATE_FREQUENCY_DAILY"
 		`
@@ -120,11 +120,11 @@ var _ = Describe("Resource TrustScoreProfile", func() {
 							Dimensions: []*configpb.TrustScoreDimension{
 								{
 									Name:   configpb.TrustScoreDimension_NAME_FRESHNESS,
-									Weight: 1.0,
+									Weight: 0.7,
 								},
 								{
 									Name:   configpb.TrustScoreDimension_NAME_ORIGIN,
-									Weight: 1.0,
+									Weight: 0.7,
 								},
 							},
 							Schedule: configpb.TrustScoreProfileConfig_UPDATE_FREQUENCY_DAILY,
@@ -147,11 +147,11 @@ var _ = Describe("Resource TrustScoreProfile", func() {
 							Dimensions: []*configpb.TrustScoreDimension{
 								{
 									Name:   configpb.TrustScoreDimension_NAME_COMPLETENESS,
-									Weight: 1.0,
+									Weight: 0.9,
 								},
 								{
 									Name:   configpb.TrustScoreDimension_NAME_ORIGIN,
-									Weight: 1.0,
+									Weight: 0.9,
 								},
 							},
 							Schedule: configpb.TrustScoreProfileConfig_UPDATE_FREQUENCY_SIX_HOURS,
@@ -175,7 +175,7 @@ var _ = Describe("Resource TrustScoreProfile", func() {
 							Dimensions: []*configpb.TrustScoreDimension{
 								{
 									Name:   configpb.TrustScoreDimension_NAME_FRESHNESS,
-									Weight: 1.0,
+									Weight: 0.8,
 								},
 							},
 							Schedule: configpb.TrustScoreProfileConfig_UPDATE_FREQUENCY_SIX_HOURS,
@@ -281,13 +281,13 @@ var _ = Describe("Resource TrustScoreProfile", func() {
 						Config: fmt.Sprintf(tfConfigDef, appSpaceID, "my-first-trust-score-profile",
 							`display_name = "Display name of TrustScoreProfile configuration"
 							node_classification = "Person"
-							dimensions {
+							dimension {
 								name   = "NAME_FRESHNESS"
-								weight = 1.0
+								weight = 0.7
 							}
-							dimensions {
+							dimension {
 								name   = "NAME_ORIGIN"
-								weight = 1.0
+								weight = 0.7
 							}
 							schedule = "UPDATE_FREQUENCY_DAILY"
 							`,
@@ -301,13 +301,13 @@ var _ = Describe("Resource TrustScoreProfile", func() {
 						Config: fmt.Sprintf(tfConfigDef, appSpaceID, "my-first-trust-score-profile",
 							`display_name = "Display name of TrustScoreProfile configuration"
 							node_classification = "Person"
-							dimensions {
+							dimension {
 							name   = "NAME_COMPLETENESS"
-							weight = 1.0
+							weight = 0.9
 							}
-							dimensions {
+							dimension {
 								name   = "NAME_ORIGIN"
-								weight = 1.0
+								weight = 0.9
 							}
 							schedule = "UPDATE_FREQUENCY_SIX_HOURS"
 							`),
@@ -320,9 +320,9 @@ var _ = Describe("Resource TrustScoreProfile", func() {
 						Config: fmt.Sprintf(tfConfigDef, appSpaceID, "my-first-trust-score-profile",
 							`display_name = "Display name of TrustScoreProfile configuration"
 							node_classification = "Employee"
-							dimensions {
+							dimension {
 							name   = "NAME_FRESHNESS"
-							weight = 1.0
+							weight = 0.8
 							}
 							schedule = "UPDATE_FREQUENCY_SIX_HOURS"
 							`),
@@ -374,19 +374,23 @@ func testResourceTrustScoreProfileExists(
 		dimensions := data.GetConfigNode().
 			GetTrustScoreProfileConfig().
 			GetDimensions()
-		mapDimensions := make([]map[string]any, len(dimensions))
+
+		mapDimensions := make([]map[string]OmegaMatcher, len(dimensions))
 		for k, v := range dimensions {
 			if v != nil {
 				if mapDimensions[k] == nil {
-					mapDimensions[k] = make(map[string]any)
+					mapDimensions[k] = make(map[string]OmegaMatcher)
 				}
-				mapDimensions[k]["name"] = indykite.ReverseProtoEnumMap(indykite.TrustScoreDimensionNames)[v.GetName()]
-				mapDimensions[k]["weight"] = strconv.FormatFloat(float64(v.GetWeight()), 'f', -1, 64)
+				mapDimensions[k]["name"] = Equal(
+					indykite.ReverseProtoEnumMap(indykite.TrustScoreDimensionNames)[v.GetName()],
+				)
+				mapDimensions[k]["weight"] = BeTerraformNumerically("~", v.GetWeight())
 			}
 		}
-		addSliceMapMatcherToKeys(keys, "dimensions", mapDimensions, true)
-		keys["dimensions.#"] = Equal(strconv.Itoa(len(dimensions)))
-		keys["dimensions.0.%"] = Equal("2")
+
+		addSliceMapMatcherToKeys(keys, "dimension", mapDimensions, true)
+		keys["dimension.#"] = Equal(strconv.Itoa(len(dimensions)))
+		keys["dimension.0.%"] = Equal("2")
 
 		return convertOmegaMatcherToError(MatchKeys(IgnoreExtras, keys), attrs)
 	}
