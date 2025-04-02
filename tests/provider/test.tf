@@ -172,19 +172,49 @@ resource "indykite_external_data_resolver" "post-resolver" {
   }
 }
 
-# Enable once we have fully working Knowledge Query part of Config API
-# resource "indykite_knowledge_query" "create-query" {
-#   name         = "terraform-knowledge-query-${time_static.example.unix}"
-#   display_name = "Terraform knowledge-query  ${time_static.example.unix}"
-#   description  = "Knowledge query for terraform"
-#   location     = indykite_application_space.appspace.id
-#   query = jsonencode({"something":["like", "query"]})
-# 	status = "active"
-#   policy_id = indykite_authorization_policy.policy_drive_car.id
-#   lifecycle {
-#     create_before_destroy = true
-#   }
-# }
+resource "indykite_authorization_policy" "policy_for_ciq" {
+  name         = "terraform-pipeline-policy-for-ciq-${time_static.example.unix}"
+  display_name = "Terraform policy for CIQ ${time_static.example.unix}"
+  description  = "Policy for CIQ in terraform pipeline"
+  json = jsonencode({
+    "meta": { "policy_version": "1.0-ciq" },
+    "subject": { "type": "Person" },
+    "condition": {
+      "cypher": "MATCH (person:Person)-[r1:ACCEPTED]->(contract:Contract)-[r2:COVERS]->(vehicle:Vehicle)-[r3:HAS]->(ln:LicenseNumber)",
+      "filter": [ { "app": "app1", "attribute": "person.property.username", "operator": "=", "value": "$username" } ]
+    },
+    "upsert_nodes": [],
+    "upsert_relationships": [],
+    "allowed_reads": {
+      "nodes": [ "ln.property.value", "ln.property.transferrable", "ln.external_id" ],
+      "relationships": [ "r1" ]
+    }
+  })
+  location = indykite_application_space.appspace.id
+  status   = "active"
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+
+resource "indykite_knowledge_query" "create-query" {
+  name         = "terraform-knowledge-query-${time_static.example.unix}"
+  display_name = "Terraform knowledge-query  ${time_static.example.unix}"
+  description  = "Knowledge query for terraform"
+  location     = indykite_application_space.appspace.id
+  query = jsonencode({
+    "nodes": [ "ln.property.value" ],
+    "relationships": [],
+    "filter": { "attribute": "ln.property.value", "operator": "=", "value": "$lnValue" }
+  })
+
+	status = "active"
+  policy_id = indykite_authorization_policy.policy_for_ciq.id
+  lifecycle {
+    create_before_destroy = true
+  }
+}
 
 resource "indykite_event_sink" "create-event" {
   name         = "terraform-event-sink-${time_static.example.unix}"
