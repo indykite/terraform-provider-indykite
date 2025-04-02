@@ -15,6 +15,7 @@
 package indykite
 
 import (
+	"math"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -26,7 +27,7 @@ import (
 
 const (
 	trustScoreProfileNodeClassification = "node_classification"
-	trustScoreProfileDimensionsKey      = "dimensions"
+	trustScoreProfileDimensionsKey      = "dimension"
 	trustScoreProfileSchedule           = "schedule"
 	trustScoreProfileName               = "name"
 	trustScoreProfileWeight             = "weight"
@@ -127,11 +128,12 @@ func resourceTrustScoreProfileFlatten(
 	nodeClassification := trustScoreProfile.GetNodeClassification()
 	setData(&d, data, trustScoreProfileNodeClassification, nodeClassification)
 
+	var ratio float64 = 10000 // 4 decimal places to round number when converting float32 to float64
 	dimensions := make([]any, len(trustScoreProfile.GetDimensions()))
 	for i, dim := range trustScoreProfile.GetDimensions() {
 		dimensions[i] = map[string]any{
 			trustScoreProfileName:   ReverseProtoEnumMap(TrustScoreDimensionNames)[dim.GetName()],
-			trustScoreProfileWeight: float32(dim.GetWeight()),
+			trustScoreProfileWeight: math.Round(float64(dim.GetWeight())*ratio) / ratio,
 		}
 	}
 	setData(&d, data, trustScoreProfileDimensionsKey, dimensions)
@@ -173,8 +175,8 @@ func getDimensions(data *schema.ResourceData) []*configpb.TrustScoreDimension {
 			continue
 		}
 		dimensions[i] = &configpb.TrustScoreDimension{
-			Name:   TrustScoreDimensionNames[item["name"].(string)],
-			Weight: float32(item["weight"].(float64)),
+			Name:   TrustScoreDimensionNames[item[trustScoreProfileName].(string)],
+			Weight: float32(item[trustScoreProfileWeight].(float64)),
 		}
 	}
 	return dimensions

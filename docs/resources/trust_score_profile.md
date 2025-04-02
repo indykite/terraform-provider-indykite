@@ -14,16 +14,16 @@ The Trust Score Profile helps assess how trustworthy data is. It allows applicat
 
 ```terraform
 resource "indykite_trust_score_profile" "trust-score" {
-  name         = "terraform-resolver-get"
-  display_name = "Terraform trust score profile"
-  description  = "Trust score profile for terraform pipeline"
-  location     = "AppSpaceID"
+  name                = "terraform-resolver-get"
+  display_name        = "Terraform trust score profile"
+  description         = "Trust score profile for terraform pipeline"
+  location            = "AppSpaceID"
   node_classification = "Person"
-  dimensions {
+  dimension {
     name   = "NAME_VERIFICATION"
     weight = 0.5
   }
-  dimensions {
+  dimension {
     name   = "NAME_ORIGIN"
     weight = 0.5
   }
@@ -36,7 +36,7 @@ resource "indykite_trust_score_profile" "trust-score" {
 
 ### Required
 
-- `dimensions` (Block List, Min: 1) List of dimensions that will be used to calculate the trust score. (see [below for nested schema](#nestedblock--dimensions))
+- `dimension` (Block List, Min: 1) List of dimensions that will be used to calculate the trust score. (see [below for nested schema](#nestedblock--dimension))
 - `location` (String) identifier of Location, where to create resource
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 - `node_classification` (String) NodeClassification is a node label in PascalCase, cannot be modified once set.
@@ -56,8 +56,8 @@ resource "indykite_trust_score_profile" "trust-score" {
 - `id` (String) The ID of this resource.
 - `update_time` (String) Timestamp when the Resource was last updated. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
 
-<a id="nestedblock--dimensions"></a>
-### Nested Schema for `dimensions`
+<a id="nestedblock--dimension"></a>
+### Nested Schema for `dimension`
 
 Required:
 

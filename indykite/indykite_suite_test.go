@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/onsi/gomega/matchers"
 	"go.uber.org/mock/gomock"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -127,14 +128,50 @@ func addStringMapMatcherToKeys(keys Keys, key string, data map[string]string, in
 	}
 }
 
-func addSliceMapMatcherToKeys(keys Keys, key string, data []map[string]any, includeEmpty bool) {
+func addSliceMapMatcherToKeys(keys Keys, key string, data []map[string]OmegaMatcher, includeEmpty bool) {
 	if len(data) == 0 && !includeEmpty {
 		return
 	}
 
 	for i, item := range data {
 		for k, v := range item {
-			keys[key+"."+strconv.Itoa(i)+"."+k] = Equal(v)
+			keys[key+"."+strconv.Itoa(i)+"."+k] = v
 		}
 	}
+}
+
+type NumericalTerraformMatcher struct {
+	matchers.BeNumericallyMatcher
+}
+
+// BeTerraformNumerically performs numerical assertions in a type-agnostic way.
+// Expected should be numbers, though the specific type of number is irrelevant (float32, float64, uint8, etc...).
+// Actual has same rules as Expected, but can be also string, which is returned by Terraform.
+//
+// There are six, self-explanatory, supported comparators:
+//
+//	Expect(1.0).Should(BeTerraformNumerically("==", 1))
+//	Expect(1.0).Should(BeTerraformNumerically("~", 0.999, 0.01))
+//	Expect(1.0).Should(BeTerraformNumerically(">", 0.9))
+//	Expect(1.0).Should(BeTerraformNumerically(">=", 1.0))
+//	Expect(1.0).Should(BeTerraformNumerically("<", 3))
+//	Expect(1.0).Should(BeTerraformNumerically("<=", 1.0))
+func BeTerraformNumerically(comparator string, compareTo ...any) OmegaMatcher {
+	if len(compareTo) == 1 {
+		compareTo = append(compareTo, 1e-6)
+	}
+	return &NumericalTerraformMatcher{
+		BeNumericallyMatcher: matchers.BeNumericallyMatcher{Comparator: comparator, CompareTo: compareTo},
+	}
+}
+
+func (matcher *NumericalTerraformMatcher) Match(actual any) (bool, error) {
+	if s, isStr := actual.(string); isStr {
+		var err error
+		actual, err = strconv.ParseFloat(s, 64)
+		if err != nil {
+			return false, err
+		}
+	}
+	return matcher.BeNumericallyMatcher.Match(actual)
 }
