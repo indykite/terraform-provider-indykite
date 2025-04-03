@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.18.0...v0.18.1) (2025-04-03)
+
+
+### Bug Fixes
+
+* change float management in trust score ([a14e776](https://github.com/indykite/terraform-provider-indykite/commit/a14e776ec5fa10abf12f1f2902cd1c69308e7ed3))
+
 ## [0.18.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.17.1...v0.18.0) (2025-03-28)
 
 
