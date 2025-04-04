@@ -183,8 +183,6 @@ resource "indykite_authorization_policy" "policy_for_ciq" {
       "cypher" : "MATCH (person:Person)-[r1:ACCEPTED]->(contract:Contract)-[r2:COVERS]->(vehicle:Vehicle)-[r3:HAS]->(ln:LicenseNumber)",
       "filter" : [{ "app" : "app1", "attribute" : "person.property.username", "operator" : "=", "value" : "$username" }]
     },
-    "upsert_nodes" : [],
-    "upsert_relationships" : [],
     "allowed_reads" : {
       "nodes" : ["ln.property.value", "ln.property.transferrable", "ln.external_id"],
       "relationships" : ["r1"]
