@@ -36,17 +36,17 @@ resource "indykite_event_sink" "create-event" {
       password = "some-other-secret-password"
     }
   }
-  providers  {
+  providers {
     provider_name = "azuregrid"
     azure_event_grid {
       topic_endpoint = "https://ik-test.eventgrid.azure.net/api/events"
-      access_key = "secret-access-key"
+      access_key     = "secret-access-key"
     }
   }
-  providers  {
+  providers {
     provider_name = "azurebus"
     azure_service_bus {
-      connection_string = "personal-connection-info"
+      connection_string   = "personal-connection-info"
       queue_or_topic_name = "your-queue"
     }
   }
@@ -64,15 +64,15 @@ resource "indykite_event_sink" "create-event" {
     }
   }
   routes {
-    provider_id = "azuregrid"
-                stop_processing = false
+    provider_id       = "azuregrid"
+    stop_processing   = false
     event_type_filter = "indykite.eventsink.config.create"
   }
   routes {
-    provider_id = "azurebus"
+    provider_id     = "azurebus"
     stop_processing = false
     context_key_value_filter {
-      key = "relationshipcreated"
+      key   = "relationshipcreated"
       value = "access-granted"
     }
   }
