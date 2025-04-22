@@ -21,6 +21,20 @@ resource "indykite_event_sink" "create-event" {
       password = "some-other-secret-password"
     }
   }
+  providers {
+    provider_name = "azuregrid"
+    azure_event_grid {
+      topic_endpoint = "https://ik-test.eventgrid.azure.net/api/events"
+      access_key     = "secret-access-key"
+    }
+  }
+  providers {
+    provider_name = "azurebus"
+    azure_service_bus {
+      connection_string   = "personal-connection-info"
+      queue_or_topic_name = "your-queue"
+    }
+  }
   routes {
     provider_id       = "kafka-provider-01"
     stop_processing   = false
@@ -28,6 +42,19 @@ resource "indykite_event_sink" "create-event" {
   }
   routes {
     provider_id     = "kafka-provider-02"
+    stop_processing = false
+    context_key_value_filter {
+      key   = "relationshipcreated"
+      value = "access-granted"
+    }
+  }
+  routes {
+    provider_id       = "azuregrid"
+    stop_processing   = false
+    event_type_filter = "indykite.eventsink.config.create"
+  }
+  routes {
+    provider_id     = "azurebus"
     stop_processing = false
     context_key_value_filter {
       key   = "relationshipcreated"

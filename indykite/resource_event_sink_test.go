@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -41,7 +42,9 @@ import (
 
 var _ = Describe("Resource EventSink", func() {
 	const (
-		resourceName = "indykite_event_sink.development"
+		resourceName  = "indykite_event_sink.development"
+		resourceName2 = "indykite_event_sink.development2"
+		resourceName3 = "indykite_event_sink.development3"
 	)
 	var (
 		mockCtrl         *gomock.Controller
@@ -66,6 +69,18 @@ var _ = Describe("Resource EventSink", func() {
 	It("Test CRUD of Event Sink configuration with Kafka provider", func() {
 		tfConfigDef :=
 			`resource "indykite_event_sink" "development" {
+				location = "%s"
+				name = "%s"
+				%s
+			}`
+		tfConfigDef2 :=
+			`resource "indykite_event_sink" "development2" {
+				location = "%s"
+				name = "%s"
+				%s
+			}`
+		tfConfigDef3 :=
+			`resource "indykite_event_sink" "development3" {
 				location = "%s"
 				name = "%s"
 				%s
@@ -138,6 +153,80 @@ var _ = Describe("Resource EventSink", func() {
 								StopProcessing: false,
 								Filter: &configpb.EventSinkConfig_Route_EventType{
 									EventType: "indykite.eventsink.config.update",
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		expectedRespGrid := &configpb.ReadConfigNodeResponse{
+			ConfigNode: &configpb.ConfigNode{
+				Id:          sampleID,
+				Name:        "my-first-event-sink",
+				DisplayName: "Display name of Event Sink configuration",
+				CustomerId:  customerID,
+				AppSpaceId:  appSpaceID,
+				CreateTime:  timestamppb.Now(),
+				UpdateTime:  timestamppb.Now(),
+				Config: &configpb.ConfigNode_EventSinkConfig{
+					EventSinkConfig: &configpb.EventSinkConfig{
+						Providers: map[string]*configpb.EventSinkConfig_Provider{
+							"azuregrid": {
+								Provider: &configpb.EventSinkConfig_Provider_AzureEventGrid{
+									AzureEventGrid: &configpb.AzureEventGridSinkConfig{
+										TopicEndpoint: "https://ik-test.eventgrid.azure.net/api/events",
+										// AccessKey is never returned as it is sensitive value
+										// AccessKey: "",
+									},
+								},
+							},
+						},
+						Routes: []*configpb.EventSinkConfig_Route{
+							{
+								ProviderId:     "azuregrid",
+								StopProcessing: false,
+								Filter: &configpb.EventSinkConfig_Route_EventType{
+									EventType: "indykite.eventsink.config.create",
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		expectedRespBus := &configpb.ReadConfigNodeResponse{
+			ConfigNode: &configpb.ConfigNode{
+				Id:          sampleID,
+				Name:        "my-first-event-sink",
+				DisplayName: "Display name of Event Sink configuration",
+				CustomerId:  customerID,
+				AppSpaceId:  appSpaceID,
+				CreateTime:  timestamppb.Now(),
+				UpdateTime:  timestamppb.Now(),
+				Config: &configpb.ConfigNode_EventSinkConfig{
+					EventSinkConfig: &configpb.EventSinkConfig{
+						Providers: map[string]*configpb.EventSinkConfig_Provider{
+							"azurebus": {
+								Provider: &configpb.EventSinkConfig_Provider_AzureServiceBus{
+									AzureServiceBus: &configpb.AzureServiceBusSinkConfig{
+										// ConnectionString is never returned as it is sensitive value
+										// ConnectionString: "",
+										QueueOrTopicName: "your-queue",
+									},
+								},
+							},
+						},
+						Routes: []*configpb.EventSinkConfig_Route{
+							{
+								ProviderId:     "azurebus",
+								StopProcessing: false,
+								Filter: &configpb.EventSinkConfig_Route_ContextKeyValue{
+									ContextKeyValue: &configpb.EventSinkConfig_Route_KeyValue{
+										Key:   "relationshipcreated",
+										Value: "access-granted",
+									},
 								},
 							},
 						},
@@ -252,6 +341,121 @@ var _ = Describe("Resource EventSink", func() {
 			})))).
 			Return(&configpb.DeleteConfigNodeResponse{}, nil)
 
+		// Create
+		mockConfigClient.EXPECT().
+			CreateConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Name": Equal(expectedRespGrid.GetConfigNode().GetName()),
+				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal(
+					expectedResp.GetConfigNode().GetDisplayName(),
+				)})),
+				"Description": BeNil(),
+				"Location":    Equal(appSpaceID),
+				"Config": PointTo(MatchFields(IgnoreExtras, Fields{
+					"EventSinkConfig": test.EqualProto(&configpb.EventSinkConfig{
+						Providers: map[string]*configpb.EventSinkConfig_Provider{
+							"azuregrid": {
+								Provider: &configpb.EventSinkConfig_Provider_AzureEventGrid{
+									AzureEventGrid: &configpb.AzureEventGridSinkConfig{
+										TopicEndpoint: "https://ik-test.eventgrid.azure.net/api/events",
+										AccessKey:     "secret-access-key",
+									},
+								},
+							},
+						},
+						Routes: []*configpb.EventSinkConfig_Route{
+							{
+								ProviderId:     "azuregrid",
+								StopProcessing: false,
+								Filter: &configpb.EventSinkConfig_Route_EventType{
+									EventType: "indykite.eventsink.config.create",
+								},
+							},
+						},
+					}),
+				})),
+			})))).
+			Return(&configpb.CreateConfigNodeResponse{
+				Id:         sampleID,
+				CreateTime: timestamppb.Now(),
+				UpdateTime: timestamppb.Now(),
+			}, nil)
+
+		// Read in given order
+		gomock.InOrder(
+			mockConfigClient.EXPECT().
+				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Id": Equal(sampleID),
+				})))).
+				Times(4).
+				Return(expectedRespGrid, nil),
+		)
+
+		// Delete
+		mockConfigClient.EXPECT().
+			DeleteConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Id": Equal(sampleID),
+			})))).
+			Return(&configpb.DeleteConfigNodeResponse{}, nil)
+
+		// Create
+		mockConfigClient.EXPECT().
+			CreateConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Name": Equal(expectedRespGrid.GetConfigNode().GetName()),
+				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal(
+					expectedResp.GetConfigNode().GetDisplayName(),
+				)})),
+				"Description": BeNil(),
+				"Location":    Equal(appSpaceID),
+				"Config": PointTo(MatchFields(IgnoreExtras, Fields{
+					"EventSinkConfig": test.EqualProto(&configpb.EventSinkConfig{
+						Providers: map[string]*configpb.EventSinkConfig_Provider{
+							"azurebus": {
+								Provider: &configpb.EventSinkConfig_Provider_AzureServiceBus{
+									AzureServiceBus: &configpb.AzureServiceBusSinkConfig{
+										ConnectionString: "personal-connection-info",
+										QueueOrTopicName: "your-queue",
+									},
+								},
+							},
+						},
+						Routes: []*configpb.EventSinkConfig_Route{
+							{
+								ProviderId:     "azurebus",
+								StopProcessing: false,
+								Filter: &configpb.EventSinkConfig_Route_ContextKeyValue{
+									ContextKeyValue: &configpb.EventSinkConfig_Route_KeyValue{
+										Key:   "relationshipcreated",
+										Value: "access-granted",
+									},
+								},
+							},
+						},
+					}),
+				})),
+			})))).
+			Return(&configpb.CreateConfigNodeResponse{
+				Id:         sampleID,
+				CreateTime: timestamppb.Now(),
+				UpdateTime: timestamppb.Now(),
+			}, nil)
+
+		// Read in given order
+		gomock.InOrder(
+			mockConfigClient.EXPECT().
+				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Id": Equal(sampleID),
+				})))).
+				Times(4).
+				Return(expectedRespBus, nil),
+		)
+
+		// Delete
+		mockConfigClient.EXPECT().
+			DeleteConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Id": Equal(sampleID),
+			})))).
+			Return(&configpb.DeleteConfigNodeResponse{}, nil)
+
 		testResourceDataExists := func(
 			n string,
 			data *configpb.ReadConfigNodeResponse,
@@ -278,27 +482,70 @@ var _ = Describe("Resource EventSink", func() {
 					"description":  Equal(data.GetConfigNode().GetDescription().GetValue()),
 					"create_time":  Not(BeEmpty()),
 					"update_time":  Not(BeEmpty()),
-
-					"providers.#":                         Equal("1"),
-					"providers.0.%":                       Equal("2"),
-					"providers.0.kafka.#":                 Equal("1"),
-					"providers.0.kafka.0.%":               Equal("6"),
-					"providers.0.kafka.0.brokers.#":       Equal("1"),
-					"providers.0.kafka.0.brokers.0":       Not(BeEmpty()),
-					"providers.0.kafka.0.disable_tls":     Not(BeEmpty()),
-					"providers.0.kafka.0.password":        Equal(password),
-					"providers.0.kafka.0.tls_skip_verify": Not(BeEmpty()),
-					"providers.0.kafka.0.topic":           Not(BeEmpty()),
-					"providers.0.kafka.0.username":        Not(BeEmpty()),
-					"providers.0.provider_name":           Not(BeEmpty()),
-					"routes.#":                            Equal("1"),
-					"routes.0.context_key_value_filter.#": Equal("0"),
-					"routes.0.%":                          Equal("4"),
-					"routes.0.provider_id":                Not(BeEmpty()),
-					"routes.0.event_type_filter":          Not(BeEmpty()),
-					"routes.0.stop_processing":            Not(BeEmpty()),
 				}
-
+				eventSink := data.GetConfigNode().GetEventSinkConfig()
+				i := 0
+				for key, p := range eventSink.GetProviders() {
+					switch p.GetProvider().(type) {
+					case *configpb.EventSinkConfig_Provider_Kafka:
+						keys["providers.#"] = Equal("1")
+						keys[fmt.Sprintf("providers.%d.%%", i)] = Equal("4")
+						keys[fmt.Sprintf("providers.%d.provider_name", i)] = Equal(key)
+						keys[fmt.Sprintf("providers.%d.kafka.#", i)] = Equal("1")
+						keys[fmt.Sprintf("providers.%d.azure_service_bus.#", i)] = Equal("0")
+						keys[fmt.Sprintf("providers.%d.azure_event_grid.#", i)] = Equal("0")
+						keys[fmt.Sprintf("providers.%d.kafka.0.%%", i)] = Equal("6")
+						keys[fmt.Sprintf("providers.%d.kafka.0.brokers.#", i)] = Equal("1")
+						keys[fmt.Sprintf("providers.%d.kafka.0.brokers.0", i)] = Equal(p.GetKafka().GetBrokers()[0])
+						keys[fmt.Sprintf("providers.%d.kafka.0.disable_tls", i)] = Equal(strconv.
+							FormatBool(p.GetKafka().GetDisableTls()))
+						keys[fmt.Sprintf("providers.%d.kafka.0.password", i)] = Equal(password)
+						keys[fmt.Sprintf("providers.%d.kafka.0.tls_skip_verify", i)] = Equal(strconv.
+							FormatBool(p.GetKafka().GetTlsSkipVerify()))
+						keys[fmt.Sprintf("providers.%d.kafka.0.topic", i)] = Equal(p.GetKafka().GetTopic())
+						keys[fmt.Sprintf("providers.%d.kafka.0.username", i)] = Equal(p.GetKafka().GetUsername())
+					case *configpb.EventSinkConfig_Provider_AzureEventGrid:
+						keys["providers.#"] = Equal("1")
+						keys[fmt.Sprintf("providers.%d.%%", i)] = Equal("4")
+						keys[fmt.Sprintf("providers.%d.provider_name", i)] = Equal(key)
+						keys[fmt.Sprintf("providers.%d.azure_event_grid.#", i)] = Equal("1")
+						keys[fmt.Sprintf("providers.%d.azure_service_bus.#", i)] = Equal("0")
+						keys[fmt.Sprintf("providers.%d.kafka.#", i)] = Equal("0")
+						keys[fmt.Sprintf("providers.%d.azure_event_grid.0.%%", i)] = Equal("2")
+						keys[fmt.Sprintf("providers.%d.azure_event_grid.0.access_key", i)] = Equal(password)
+						keys[fmt.Sprintf("providers.%d.azure_event_grid.0.topic_endpoint", i)] = Equal(
+							p.GetAzureEventGrid().GetTopicEndpoint())
+					case *configpb.EventSinkConfig_Provider_AzureServiceBus:
+						keys["providers.#"] = Equal("1")
+						keys[fmt.Sprintf("providers.%d.%%", i)] = Equal("4")
+						keys[fmt.Sprintf("providers.%d.provider_name", i)] = Equal(key)
+						keys[fmt.Sprintf("providers.%d.azure_service_bus.#", i)] = Equal("1")
+						keys[fmt.Sprintf("providers.%d.kafka.#", i)] = Equal("0")
+						keys[fmt.Sprintf("providers.%d.azure_event_grid.#", i)] = Equal("0")
+						keys[fmt.Sprintf("providers.%d.azure_service_bus.0.%%", i)] = Equal("2")
+						keys[fmt.Sprintf("providers.%d.azure_service_bus.0.connection_string", i)] = Equal(password)
+						keys[fmt.Sprintf("providers.%d.azure_service_bus.0.queue_or_topic_name", i)] = Equal(
+							p.GetAzureServiceBus().GetQueueOrTopicName())
+					}
+				}
+				for j, p := range eventSink.GetRoutes() {
+					keys["routes.#"] = Equal("1")
+					keys[fmt.Sprintf("routes.%d.%%", j)] = Equal("4")
+					keys[fmt.Sprintf("routes.%d.provider_id", j)] = Equal(p.GetProviderId())
+					keys[fmt.Sprintf("routes.%d.event_type_filter", j)] = Equal(p.GetEventType())
+					keys[fmt.Sprintf("routes.%d.context_key_value_filter.#", j)] = BeElementOf([]string{"0", "1"})
+					if p.GetContextKeyValue() != nil {
+						keys[fmt.Sprintf("routes.%d.context_key_value_filter.#", j)] = Equal("1")
+						keys[fmt.Sprintf("routes.%d.context_key_value_filter.0.%%", j)] = Equal("2")
+						keys[fmt.Sprintf("routes.%d.context_key_value_filter.0.key", j)] = Equal(
+							p.GetContextKeyValue().GetKey())
+						keys[fmt.Sprintf("routes.%d.context_key_value_filter.0.value", j)] = Equal(
+							p.GetContextKeyValue().GetValue())
+					} else {
+						keys[fmt.Sprintf("routes.%d.context_key_value_filter.#", j)] = Equal("0")
+					}
+					keys[fmt.Sprintf("routes.%d.stop_processing", j)] = Equal(strconv.FormatBool(p.GetStopProcessing()))
+				}
 				return convertOmegaMatcherToError(MatchAllKeys(keys), attrs)
 			}
 		}
@@ -408,6 +655,64 @@ var _ = Describe("Resource EventSink", func() {
 					Check: resource.ComposeTestCheckFunc(
 						testResourceDataExists(resourceName, expectedUpdatedResp, "changed-password"),
 					),
+				},
+				{
+					// Checking Create and Read
+					Config: fmt.Sprintf(tfConfigDef2, appSpaceID, "my-first-event-sink",
+						`display_name = "Display name of Event Sink configuration"
+						providers  {
+							provider_name = "azuregrid"
+							azure_event_grid {
+								topic_endpoint = "https://ik-test.eventgrid.azure.net/api/events"
+								access_key = "secret-access-key"
+							}
+						}
+						routes {
+							provider_id = "azuregrid"
+	                        stop_processing = false
+							event_type_filter = "indykite.eventsink.config.create"
+						}
+						`,
+					),
+					Check: resource.ComposeTestCheckFunc(
+						testResourceDataExists(resourceName2, expectedRespGrid, "secret-access-key"),
+					),
+				},
+				{
+					// Performs 1 read
+					ResourceName:  resourceName2,
+					ImportState:   true,
+					ImportStateId: sampleID,
+				},
+				{
+					// Checking Create and Read
+					Config: fmt.Sprintf(tfConfigDef3, appSpaceID, "my-first-event-sink",
+						`display_name = "Display name of Event Sink configuration"
+						providers  {
+							provider_name = "azurebus"
+							azure_service_bus {
+								connection_string = "personal-connection-info"
+								queue_or_topic_name = "your-queue"
+							}
+						}
+						routes {
+							provider_id = "azurebus"
+	                        stop_processing = false
+							context_key_value_filter {
+								key = "relationshipcreated"
+								value = "access-granted"
+							}
+						}`,
+					),
+					Check: resource.ComposeTestCheckFunc(
+						testResourceDataExists(resourceName3, expectedRespBus, "personal-connection-info"),
+					),
+				},
+				{
+					// Performs 1 read
+					ResourceName:  resourceName3,
+					ImportState:   true,
+					ImportStateId: sampleID,
 				},
 			},
 		})

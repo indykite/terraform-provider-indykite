@@ -15,6 +15,7 @@
 package indykite
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 
@@ -26,27 +27,34 @@ import (
 )
 
 const (
-	providersKey       = "providers"
-	routesKey          = "routes"
-	providerNameKey    = "provider_name"
-	providerIDKey      = "provider_id"
-	stopProcessingKey  = "stop_processing"
-	eventTypeKey       = "event_type_filter"
-	contextKeyValueKey = "context_key_value_filter"
-	providerKey        = "provider"
-	kafkaKey           = "kafka"
-	brokersKey         = "brokers"
-	topicKey           = "topic"
-	keyKey             = "key"
-	valueKey           = "value"
-	disableTLSKey      = "disable_tls"
-	tlsSkipVerifyKey   = "tls_skip_verify"
-	usernameKey        = "username"
-	passwordKey        = "password"
+	providersKey        = "providers"
+	routesKey           = "routes"
+	providerNameKey     = "provider_name"
+	providerIDKey       = "provider_id"
+	stopProcessingKey   = "stop_processing"
+	eventTypeKey        = "event_type_filter"
+	contextKeyValueKey  = "context_key_value_filter"
+	providerKey         = "provider"
+	kafkaKey            = "kafka"
+	azureEventGridKey   = "azure_event_grid"
+	azureServiceBusKey  = "azure_service_bus"
+	brokersKey          = "brokers"
+	topicKey            = "topic"
+	keyKey              = "key"
+	valueKey            = "value"
+	disableTLSKey       = "disable_tls"
+	tlsSkipVerifyKey    = "tls_skip_verify"
+	usernameKey         = "username"
+	passwordKey         = "password"
+	topicEndpointKey    = "topic_endpoint"
+	accessKey           = "access_key"
+	connectionStringKey = "connection_string"
+	queueKey            = "queue_or_topic_name"
 )
 
 func resourceEventSink() *schema.Resource {
 	readContext := configReadContextFunc(resourceEventSinkFlatten)
+	providerOneOf := []string{kafkaKey, azureEventGridKey, azureServiceBusKey}
 
 	return &schema.Resource{
 		Description: `Event Sink configuration is used to configure outbound events.`,
@@ -81,6 +89,7 @@ func resourceEventSink() *schema.Resource {
 				Required: true,
 			},
 		},
+		CustomizeDiff: validateProviderOneOf(providerOneOf),
 	}
 }
 
@@ -93,8 +102,8 @@ func providerSchema() map[string]*schema.Schema {
 		kafkaKey: {
 			Type:        schema.TypeList,
 			MaxItems:    1,
+			Optional:    true,
 			Description: "KafkaSinkConfig",
-			Required:    true,
 			Elem: &schema.Resource{
 				Schema: map[string]*schema.Schema{
 					brokersKey: {
@@ -130,6 +139,56 @@ func providerSchema() map[string]*schema.Schema {
 						Type:      schema.TypeString,
 						Required:  true,
 						Sensitive: true,
+					},
+				},
+			},
+		},
+		azureEventGridKey: {
+			Type:        schema.TypeList,
+			MaxItems:    1,
+			Optional:    true,
+			Description: "AzureEventGridSinkConfig",
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					topicEndpointKey: {
+						Type:     schema.TypeString,
+						Required: true,
+						ValidateFunc: validation.All(
+							validation.StringLenBetween(1, 1024),
+						),
+					},
+					accessKey: {
+						Type:      schema.TypeString,
+						Required:  true,
+						Sensitive: true,
+						ValidateFunc: validation.All(
+							validation.StringLenBetween(1, 1024),
+						),
+					},
+				},
+			},
+		},
+		azureServiceBusKey: {
+			Type:        schema.TypeList,
+			MaxItems:    1,
+			Optional:    true,
+			Description: "AzureServiceBusSinkConfig",
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					connectionStringKey: {
+						Type:      schema.TypeString,
+						Required:  true,
+						Sensitive: true,
+						ValidateFunc: validation.All(
+							validation.StringLenBetween(1, 1024),
+						),
+					},
+					queueKey: {
+						Type:     schema.TypeString,
+						Required: true,
+						ValidateFunc: validation.All(
+							validation.StringLenBetween(1, 1024),
+						),
 					},
 				},
 			},
@@ -184,33 +243,73 @@ func resourceEventSinkFlatten(
 ) diag.Diagnostics {
 	var d diag.Diagnostics
 	eventSink := resp.GetConfigNode().GetEventSinkConfig()
-	var results []map[string]any //nolint:prealloc // no prealloc
+	var results []map[string]any
 	for key, p := range eventSink.GetProviders() {
-		var oldPassword any
-		if val, ok := data.Get(providersKey).([]any); ok && len(val) > 0 {
-			kafkaMap, _ := val[0].(map[string]any)[kafkaKey].([]any)[0].(map[string]any)
-			oldPassword = kafkaMap[passwordKey]
+		switch p.GetProvider().(type) {
+		case *configpb.EventSinkConfig_Provider_Kafka:
+			var oldPassword any
+			if val, ok := data.Get(providersKey).([]any); ok && len(val) > 0 {
+				for _, y := range val {
+					if kafkaList, ok := y.(map[string]any)[kafkaKey].([]any); ok && len(kafkaList) > 0 {
+						kafka := kafkaList[0].(map[string]any)
+						oldPassword = kafka[passwordKey]
+					}
+				}
+			}
+			kafkaConfig := map[string]any{
+				brokersKey:  p.GetKafka().GetBrokers(),
+				topicKey:    p.GetKafka().GetTopic(),
+				usernameKey: p.GetKafka().GetUsername(),
+				// Password is not retrieved from response, but omitting here would result in removing.
+				// First read old value and set it here too.
+				passwordKey:      oldPassword,
+				disableTLSKey:    p.GetKafka().GetDisableTls(),
+				tlsSkipVerifyKey: p.GetKafka().GetTlsSkipVerify(),
+			}
+			result := map[string]any{
+				providerNameKey: key,
+				kafkaKey:        []any{kafkaConfig},
+			}
+			results = append(results, result)
+		case *configpb.EventSinkConfig_Provider_AzureEventGrid:
+			var oldAccessKey any
+			if val, ok := data.Get(providersKey).([]any); ok && len(val) > 0 {
+				for _, y := range val {
+					if gridList, ok := y.(map[string]any)[azureEventGridKey].([]any); ok && len(gridList) > 0 {
+						grid := gridList[0].(map[string]any)
+						oldAccessKey = grid[accessKey]
+					}
+				}
+			}
+			gridConfig := map[string]any{
+				topicEndpointKey: p.GetAzureEventGrid().GetTopicEndpoint(),
+				accessKey:        oldAccessKey,
+			}
+			result := map[string]any{
+				providerNameKey:   key,
+				azureEventGridKey: []any{gridConfig},
+			}
+			results = append(results, result)
+		case *configpb.EventSinkConfig_Provider_AzureServiceBus:
+			var oldConnection any
+			if val, ok := data.Get(providersKey).([]any); ok && len(val) > 0 {
+				for _, y := range val {
+					if busList, ok := y.(map[string]any)[azureServiceBusKey].([]any); ok && len(busList) > 0 {
+						bus := busList[0].(map[string]any)
+						oldConnection = bus[connectionStringKey]
+					}
+				}
+			}
+			busConfig := map[string]any{
+				connectionStringKey: oldConnection,
+				queueKey:            p.GetAzureServiceBus().GetQueueOrTopicName(),
+			}
+			result := map[string]any{
+				providerNameKey:    key,
+				azureServiceBusKey: []any{busConfig},
+			}
+			results = append(results, result)
 		}
-		kafkaConfig := map[string]any{
-			brokersKey:  p.GetKafka().GetBrokers(),
-			topicKey:    p.GetKafka().GetTopic(),
-			usernameKey: p.GetKafka().GetUsername(),
-			// Password is not retrieved from response, but omitting here would result in removing.
-			// First read old value and set it here too.
-			passwordKey: oldPassword,
-		}
-
-		if p.GetKafka().GetDisableTls() {
-			kafkaConfig[disableTLSKey] = p.GetKafka().GetDisableTls()
-		}
-		if p.GetKafka().GetTlsSkipVerify() {
-			kafkaConfig[tlsSkipVerifyKey] = p.GetKafka().GetTlsSkipVerify()
-		}
-		result := map[string]any{
-			providerNameKey: key,
-			kafkaKey:        []any{kafkaConfig},
-		}
-		results = append(results, result)
 	}
 	setData(&d, data, providersKey, results)
 
@@ -286,6 +385,26 @@ func resourceEventSinkBuild(
 					},
 				},
 			}
+		} else if gridList, ok := item[azureEventGridKey].([]any); ok && len(gridList) > 0 {
+			gridData := gridList[0].(map[string]any)
+			cfg.Providers[key] = &configpb.EventSinkConfig_Provider{
+				Provider: &configpb.EventSinkConfig_Provider_AzureEventGrid{
+					AzureEventGrid: &configpb.AzureEventGridSinkConfig{
+						TopicEndpoint: gridData[topicEndpointKey].(string),
+						AccessKey:     gridData[accessKey].(string),
+					},
+				},
+			}
+		} else if busList, ok := item[azureServiceBusKey].([]any); ok && len(busList) > 0 {
+			busData := busList[0].(map[string]any)
+			cfg.Providers[key] = &configpb.EventSinkConfig_Provider{
+				Provider: &configpb.EventSinkConfig_Provider_AzureServiceBus{
+					AzureServiceBus: &configpb.AzureServiceBusSinkConfig{
+						ConnectionString: busData[connectionStringKey].(string),
+						QueueOrTopicName: busData[queueKey].(string),
+					},
+				},
+			}
 		}
 	}
 	cfg.Routes = getRoutes(data)
@@ -333,4 +452,37 @@ func getRoutes(data *schema.ResourceData) []*configpb.EventSinkConfig_Route {
 		}
 	}
 	return routes
+}
+
+func validateProviderOneOf(providerTypes []string) schema.CustomizeDiffFunc {
+	return func(ctx context.Context, d *schema.ResourceDiff, _ any) error {
+		_ = ctx
+
+		providers := d.Get(providersKey).([]any)
+		for i, p := range providers {
+			if p == nil {
+				continue
+			}
+			providerMap := p.(map[string]any)
+			count := 0
+			for _, value := range providerTypes {
+				if _, ok := providerMap[value]; ok && providerMap[value] != nil {
+					switch v := providerMap[value].(type) {
+					case []any:
+						if len(v) > 0 {
+							count++
+						}
+					case []string:
+						if len(v) > 0 {
+							count++
+						}
+					}
+				}
+			}
+			if count != 1 {
+				return fmt.Errorf("exactly one of providers must be specified in providers[%d]", i)
+			}
+		}
+		return nil
+	}
 }

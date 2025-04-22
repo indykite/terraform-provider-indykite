@@ -36,6 +36,20 @@ resource "indykite_event_sink" "create-event" {
       password = "some-other-secret-password"
     }
   }
+  providers  {
+    provider_name = "azuregrid"
+    azure_event_grid {
+      topic_endpoint = "https://ik-test.eventgrid.azure.net/api/events"
+      access_key = "secret-access-key"
+    }
+  }
+  providers  {
+    provider_name = "azurebus"
+    azure_service_bus {
+      connection_string = "personal-connection-info"
+      queue_or_topic_name = "your-queue"
+    }
+  }
   routes {
     provider_id       = "kafka-provider-01"
     stop_processing   = false
@@ -46,6 +60,19 @@ resource "indykite_event_sink" "create-event" {
     stop_processing = false
     context_key_value_filter {
       key   = "relationshipcreated"
+      value = "access-granted"
+    }
+  }
+  routes {
+    provider_id = "azuregrid"
+                stop_processing = false
+    event_type_filter = "indykite.eventsink.config.create"
+  }
+  routes {
+    provider_id = "azurebus"
+    stop_processing = false
+    context_key_value_filter {
+      key = "relationshipcreated"
       value = "access-granted"
     }
   }
@@ -81,8 +108,31 @@ resource "indykite_event_sink" "create-event" {
 
 Required:
 
-- `kafka` (Block List, Min: 1, Max: 1) KafkaSinkConfig (see [below for nested schema](#nestedblock--providers--kafka))
 - `provider_name` (String)
+
+Optional:
+
+- `azure_event_grid` (Block List, Max: 1) AzureEventGridSinkConfig (see [below for nested schema](#nestedblock--providers--azure_event_grid))
+- `azure_service_bus` (Block List, Max: 1) AzureServiceBusSinkConfig (see [below for nested schema](#nestedblock--providers--azure_service_bus))
+- `kafka` (Block List, Max: 1) KafkaSinkConfig (see [below for nested schema](#nestedblock--providers--kafka))
+
+<a id="nestedblock--providers--azure_event_grid"></a>
+### Nested Schema for `providers.azure_event_grid`
+
+Required:
+
+- `access_key` (String, Sensitive)
+- `topic_endpoint` (String)
+
+
+<a id="nestedblock--providers--azure_service_bus"></a>
+### Nested Schema for `providers.azure_service_bus`
+
+Required:
+
+- `connection_string` (String, Sensitive)
+- `queue_or_topic_name` (String)
+
 
 <a id="nestedblock--providers--kafka"></a>
 ### Nested Schema for `providers.kafka`
