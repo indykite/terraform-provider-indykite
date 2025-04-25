@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/indykite/indykite-sdk-go/config"
 	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 const (
@@ -42,6 +43,7 @@ const (
 	topicKey            = "topic"
 	keyKey              = "key"
 	valueKey            = "value"
+	evTypeKey           = "event_type"
 	disableTLSKey       = "disable_tls"
 	tlsSkipVerifyKey    = "tls_skip_verify"
 	usernameKey         = "username"
@@ -50,6 +52,9 @@ const (
 	accessKey           = "access_key"
 	connectionStringKey = "connection_string"
 	queueKey            = "queue_or_topic_name"
+	providerDisplayKey  = "provider_display_name"
+	routeDisplayKey     = "route_display_name"
+	routeIDKey          = "route_id"
 )
 
 func resourceEventSink() *schema.Resource {
@@ -140,6 +145,13 @@ func providerSchema() map[string]*schema.Schema {
 						Required:  true,
 						Sensitive: true,
 					},
+					providerDisplayKey: {
+						Type:     schema.TypeString,
+						Optional: true,
+						ValidateFunc: validation.All(
+							validation.StringLenBetween(2, 254),
+						),
+					},
 				},
 			},
 		},
@@ -163,6 +175,13 @@ func providerSchema() map[string]*schema.Schema {
 						Sensitive: true,
 						ValidateFunc: validation.All(
 							validation.StringLenBetween(1, 1024),
+						),
+					},
+					providerDisplayKey: {
+						Type:     schema.TypeString,
+						Optional: true,
+						ValidateFunc: validation.All(
+							validation.StringLenBetween(2, 254),
 						),
 					},
 				},
@@ -190,6 +209,13 @@ func providerSchema() map[string]*schema.Schema {
 							validation.StringLenBetween(1, 1024),
 						),
 					},
+					providerDisplayKey: {
+						Type:     schema.TypeString,
+						Optional: true,
+						ValidateFunc: validation.All(
+							validation.StringLenBetween(2, 254),
+						),
+					},
 				},
 			},
 		},
@@ -214,12 +240,30 @@ func routeSchema() map[string]*schema.Schema {
 		eventTypeKey: {
 			Type:     schema.TypeString,
 			Optional: true,
+			ValidateFunc: validation.All(
+				validation.StringMatch(regexp.MustCompile(`^[a-zA-Z0-9_*\\.]+$`),
+					"must contain only letters, numbers, underscores, asterisks and dots"),
+			),
 		},
 		contextKeyValueKey: {
 			Type:     schema.TypeList,
 			Elem:     &schema.Resource{Schema: keyValueSchema()},
 			Optional: true,
 			MaxItems: 1,
+		},
+		routeDisplayKey: {
+			Type:     schema.TypeString,
+			Optional: true,
+			ValidateFunc: validation.All(
+				validation.StringLenBetween(2, 254),
+			),
+		},
+		routeIDKey: {
+			Type:     schema.TypeString,
+			Optional: true,
+			ValidateFunc: validation.All(
+				validation.StringLenBetween(2, 63),
+			),
 		},
 	}
 }
@@ -233,6 +277,14 @@ func keyValueSchema() map[string]*schema.Schema {
 		valueKey: {
 			Type:     schema.TypeString,
 			Required: true,
+		},
+		evTypeKey: {
+			Type:     schema.TypeString,
+			Optional: true,
+			ValidateFunc: validation.All(
+				validation.StringMatch(regexp.MustCompile(`^[a-zA-Z0-9_*\\.]+$`),
+					"must contain only letters, numbers, underscores, asterisks and dots"),
+			),
 		},
 	}
 }
@@ -262,9 +314,10 @@ func resourceEventSinkFlatten(
 				usernameKey: p.GetKafka().GetUsername(),
 				// Password is not retrieved from response, but omitting here would result in removing.
 				// First read old value and set it here too.
-				passwordKey:      oldPassword,
-				disableTLSKey:    p.GetKafka().GetDisableTls(),
-				tlsSkipVerifyKey: p.GetKafka().GetTlsSkipVerify(),
+				passwordKey:        oldPassword,
+				disableTLSKey:      p.GetKafka().GetDisableTls(),
+				tlsSkipVerifyKey:   p.GetKafka().GetTlsSkipVerify(),
+				providerDisplayKey: p.GetKafka().GetDisplayName().GetValue(),
 			}
 			result := map[string]any{
 				providerNameKey: key,
@@ -282,8 +335,9 @@ func resourceEventSinkFlatten(
 				}
 			}
 			gridConfig := map[string]any{
-				topicEndpointKey: p.GetAzureEventGrid().GetTopicEndpoint(),
-				accessKey:        oldAccessKey,
+				topicEndpointKey:   p.GetAzureEventGrid().GetTopicEndpoint(),
+				accessKey:          oldAccessKey,
+				providerDisplayKey: p.GetAzureEventGrid().GetDisplayName().GetValue(),
 			}
 			result := map[string]any{
 				providerNameKey:   key,
@@ -303,6 +357,7 @@ func resourceEventSinkFlatten(
 			busConfig := map[string]any{
 				connectionStringKey: oldConnection,
 				queueKey:            p.GetAzureServiceBus().GetQueueOrTopicName(),
+				providerDisplayKey:  p.GetAzureServiceBus().GetDisplayName().GetValue(),
 			}
 			result := map[string]any{
 				providerNameKey:    key,
@@ -321,6 +376,8 @@ func resourceEventSinkFlatten(
 				providerIDKey:     route.GetProviderId(),
 				stopProcessingKey: route.GetStopProcessing(),
 				eventTypeKey:      filter.EventType,
+				routeDisplayKey:   route.GetDisplayName().GetValue(),
+				routeIDKey:        route.GetId().GetValue(),
 			}
 
 		case *configpb.EventSinkConfig_Route_ContextKeyValue:
@@ -329,10 +386,13 @@ func resourceEventSinkFlatten(
 				stopProcessingKey: route.GetStopProcessing(),
 				contextKeyValueKey: []map[string]any{
 					{
-						keyKey:   filter.ContextKeyValue.GetKey(),
-						valueKey: filter.ContextKeyValue.GetValue(),
+						keyKey:    filter.ContextKeyValue.GetKey(),
+						valueKey:  filter.ContextKeyValue.GetValue(),
+						evTypeKey: filter.ContextKeyValue.GetEventType(),
 					},
 				},
+				routeDisplayKey: route.GetDisplayName().GetValue(),
+				routeIDKey:      route.GetId().GetValue(),
 			}
 
 		default:
@@ -382,26 +442,51 @@ func resourceEventSinkBuild(
 							}
 							return false
 						}(),
+						DisplayName: func() *wrapperspb.StringValue {
+							v, ok := kafkaData[providerDisplayKey].(string)
+							if !ok || v == "" {
+								return nil
+							}
+							return wrapperspb.String(v)
+						}(),
 					},
 				},
 			}
-		} else if gridList, ok := item[azureEventGridKey].([]any); ok && len(gridList) > 0 {
+			continue
+		}
+		if gridList, ok := item[azureEventGridKey].([]any); ok && len(gridList) > 0 {
 			gridData := gridList[0].(map[string]any)
 			cfg.Providers[key] = &configpb.EventSinkConfig_Provider{
 				Provider: &configpb.EventSinkConfig_Provider_AzureEventGrid{
 					AzureEventGrid: &configpb.AzureEventGridSinkConfig{
 						TopicEndpoint: gridData[topicEndpointKey].(string),
 						AccessKey:     gridData[accessKey].(string),
+						DisplayName: func() *wrapperspb.StringValue {
+							v, ok := gridData[providerDisplayKey].(string)
+							if !ok || v == "" {
+								return nil
+							}
+							return wrapperspb.String(v)
+						}(),
 					},
 				},
 			}
-		} else if busList, ok := item[azureServiceBusKey].([]any); ok && len(busList) > 0 {
+			continue
+		}
+		if busList, ok := item[azureServiceBusKey].([]any); ok && len(busList) > 0 {
 			busData := busList[0].(map[string]any)
 			cfg.Providers[key] = &configpb.EventSinkConfig_Provider{
 				Provider: &configpb.EventSinkConfig_Provider_AzureServiceBus{
 					AzureServiceBus: &configpb.AzureServiceBusSinkConfig{
 						ConnectionString: busData[connectionStringKey].(string),
 						QueueOrTopicName: busData[queueKey].(string),
+						DisplayName: func() *wrapperspb.StringValue {
+							v, ok := busData[providerDisplayKey].(string)
+							if !ok || v == "" {
+								return nil
+							}
+							return wrapperspb.String(v)
+						}(),
 					},
 				},
 			}
@@ -418,8 +503,8 @@ func getRoutes(data *schema.ResourceData) []*configpb.EventSinkConfig_Route {
 	}
 	var routes = make([]*configpb.EventSinkConfig_Route, len(routesSet))
 	for i, o := range routesSet {
-		item, ok := o.(map[string]any)
-		if !ok {
+		item, exists := o.(map[string]any)
+		if !exists {
 			continue
 		}
 		// Handle eventTypeKey case
@@ -430,24 +515,57 @@ func getRoutes(data *schema.ResourceData) []*configpb.EventSinkConfig_Route {
 				Filter: &configpb.EventSinkConfig_Route_EventType{
 					EventType: item[eventTypeKey].(string),
 				},
+				DisplayName: func() *wrapperspb.StringValue {
+					v, ok := item[routeDisplayKey].(string)
+					if !ok || v == "" {
+						return nil
+					}
+					return wrapperspb.String(v)
+				}(),
+				Id: func() *wrapperspb.StringValue {
+					v, ok := item[routeIDKey].(string)
+					if !ok || v == "" {
+						return nil
+					}
+					return wrapperspb.String(v)
+				}(),
 			}
 		}
 
 		// Handle contextKeyValueKey case
-		if val, ok := item[contextKeyValueKey]; ok {
-			if list, ok := val.([]any); ok {
-				if len(list) > 0 {
-					routes[i] = &configpb.EventSinkConfig_Route{
-						ProviderId:     item[providerIDKey].(string),
-						StopProcessing: item[stopProcessingKey].(bool),
-						Filter: &configpb.EventSinkConfig_Route_ContextKeyValue{
-							ContextKeyValue: &configpb.EventSinkConfig_Route_KeyValue{
-								Key:   item[contextKeyValueKey].([]any)[0].(map[string]any)[keyKey].(string),
-								Value: item[contextKeyValueKey].([]any)[0].(map[string]any)[valueKey].(string),
-							},
-						},
+		val, ok := item[contextKeyValueKey]
+		if !ok {
+			continue
+		}
+		list, ok := val.([]any)
+		if !ok {
+			continue
+		}
+		if len(list) > 0 {
+			routes[i] = &configpb.EventSinkConfig_Route{
+				ProviderId:     item[providerIDKey].(string),
+				StopProcessing: item[stopProcessingKey].(bool),
+				Filter: &configpb.EventSinkConfig_Route_ContextKeyValue{
+					ContextKeyValue: &configpb.EventSinkConfig_Route_KeyValue{
+						Key:       item[contextKeyValueKey].([]any)[0].(map[string]any)[keyKey].(string),
+						Value:     item[contextKeyValueKey].([]any)[0].(map[string]any)[valueKey].(string),
+						EventType: checkEventType(item),
+					},
+				},
+				DisplayName: func() *wrapperspb.StringValue {
+					v, ok := item[routeDisplayKey].(string)
+					if !ok || v == "" {
+						return nil
 					}
-				}
+					return wrapperspb.String(v)
+				}(),
+				Id: func() *wrapperspb.StringValue {
+					v, ok := item[routeIDKey].(string)
+					if !ok || v == "" {
+						return nil
+					}
+					return wrapperspb.String(v)
+				}(),
 			}
 		}
 	}
@@ -485,4 +603,16 @@ func validateProviderOneOf(providerTypes []string) schema.CustomizeDiffFunc {
 		}
 		return nil
 	}
+}
+
+func checkEventType(item map[string]any) string {
+	var eventType string
+	if innerMap, ok := item[contextKeyValueKey].([]any)[0].(map[string]any); ok {
+		if inn, ok := innerMap[evTypeKey]; ok {
+			if str, ok := inn.(string); ok {
+				eventType = str
+			}
+		}
+	}
+	return eventType
 }

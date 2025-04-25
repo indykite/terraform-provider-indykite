@@ -6,10 +6,11 @@ resource "indykite_event_sink" "create-event" {
   providers {
     provider_name = "kafka-provider-01"
     kafka {
-      brokers  = ["kafka-01:9092", "kafka-02:9092"]
-      topic    = "events"
-      username = "my-username"
-      password = "some-super-secret-password"
+      brokers               = ["kafka-01:9092", "kafka-02:9092"]
+      topic                 = "events"
+      username              = "my-username"
+      password              = "some-super-secret-password"
+      provider_display_name = "provider-display-name"
     }
   }
   providers {
@@ -36,9 +37,11 @@ resource "indykite_event_sink" "create-event" {
     }
   }
   routes {
-    provider_id       = "kafka-provider-01"
-    stop_processing   = false
-    event_type_filter = "indykite.eventsink.config.create"
+    provider_id        = "kafka-provider-01"
+    stop_processing    = false
+    event_type_filter  = "indykite.eventsink.config.create"
+    route_display_name = "route-display-name"
+    route_id           = "route-id"
   }
   routes {
     provider_id     = "kafka-provider-02"
@@ -57,8 +60,9 @@ resource "indykite_event_sink" "create-event" {
     provider_id     = "azurebus"
     stop_processing = false
     context_key_value_filter {
-      key   = "relationshipcreated"
-      value = "access-granted"
+      key        = "relationshipcreated"
+      value      = "access-granted"
+      event_type = "indykite.eventsink.config.create"
     }
   }
 }

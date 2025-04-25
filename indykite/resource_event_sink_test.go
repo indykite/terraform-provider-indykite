@@ -100,9 +100,10 @@ var _ = Describe("Resource EventSink", func() {
 							"kafka2": {
 								Provider: &configpb.EventSinkConfig_Provider_Kafka{
 									Kafka: &configpb.KafkaSinkConfig{
-										Brokers:  []string{"my.kafka.server.example.com"},
-										Topic:    "my-kafka-topic",
-										Username: "my-username",
+										Brokers:     []string{"my.kafka.server.example.com"},
+										Topic:       "my-kafka-topic",
+										Username:    "my-username",
+										DisplayName: wrapperspb.String("provider-display-name"),
 										// Password is never returned as it is sensitive value
 										// Password: "",
 									},
@@ -116,6 +117,8 @@ var _ = Describe("Resource EventSink", func() {
 								Filter: &configpb.EventSinkConfig_Route_EventType{
 									EventType: "indykite.eventsink.config.create",
 								},
+								DisplayName: wrapperspb.String("route-display-name"),
+								Id:          wrapperspb.String("route-id"),
 							},
 						},
 					},
@@ -143,6 +146,7 @@ var _ = Describe("Resource EventSink", func() {
 										// This doesn't make sense, but still valid testing scenario
 										DisableTls:    true,
 										TlsSkipVerify: true,
+										DisplayName:   wrapperspb.String("provider-display-name"),
 									},
 								},
 							},
@@ -154,6 +158,8 @@ var _ = Describe("Resource EventSink", func() {
 								Filter: &configpb.EventSinkConfig_Route_EventType{
 									EventType: "indykite.eventsink.config.update",
 								},
+								DisplayName: wrapperspb.String("route-display-name-upd"),
+								Id:          wrapperspb.String("route-id"),
 							},
 						},
 					},
@@ -224,8 +230,9 @@ var _ = Describe("Resource EventSink", func() {
 								StopProcessing: false,
 								Filter: &configpb.EventSinkConfig_Route_ContextKeyValue{
 									ContextKeyValue: &configpb.EventSinkConfig_Route_KeyValue{
-										Key:   "relationshipcreated",
-										Value: "access-granted",
+										Key:       "relationshipcreated",
+										Value:     "access-granted",
+										EventType: "indykite.eventsink.config.create",
 									},
 								},
 							},
@@ -250,10 +257,11 @@ var _ = Describe("Resource EventSink", func() {
 							"kafka2": {
 								Provider: &configpb.EventSinkConfig_Provider_Kafka{
 									Kafka: &configpb.KafkaSinkConfig{
-										Brokers:  []string{"my.kafka.server.example.com"},
-										Topic:    "my-kafka-topic",
-										Username: "my-username",
-										Password: "some-super-secret-password",
+										Brokers:     []string{"my.kafka.server.example.com"},
+										Topic:       "my-kafka-topic",
+										Username:    "my-username",
+										Password:    "some-super-secret-password",
+										DisplayName: wrapperspb.String("provider-display-name"),
 									},
 								},
 							},
@@ -265,6 +273,8 @@ var _ = Describe("Resource EventSink", func() {
 								Filter: &configpb.EventSinkConfig_Route_EventType{
 									EventType: "indykite.eventsink.config.create",
 								},
+								DisplayName: wrapperspb.String("route-display-name"),
+								Id:          wrapperspb.String("route-id"),
 							},
 						},
 					}),
@@ -297,6 +307,7 @@ var _ = Describe("Resource EventSink", func() {
 										// This doesn't make sense, but still valid testing scenario
 										DisableTls:    true,
 										TlsSkipVerify: true,
+										DisplayName:   wrapperspb.String("provider-display-name"),
 									},
 								},
 							},
@@ -308,6 +319,8 @@ var _ = Describe("Resource EventSink", func() {
 								Filter: &configpb.EventSinkConfig_Route_EventType{
 									EventType: "indykite.eventsink.config.update",
 								},
+								DisplayName: wrapperspb.String("route-display-name-upd"),
+								Id:          wrapperspb.String("route-id"),
 							},
 						},
 					}),
@@ -424,8 +437,9 @@ var _ = Describe("Resource EventSink", func() {
 								StopProcessing: false,
 								Filter: &configpb.EventSinkConfig_Route_ContextKeyValue{
 									ContextKeyValue: &configpb.EventSinkConfig_Route_KeyValue{
-										Key:   "relationshipcreated",
-										Value: "access-granted",
+										Key:       "relationshipcreated",
+										Value:     "access-granted",
+										EventType: "indykite.eventsink.config.create",
 									},
 								},
 							},
@@ -494,7 +508,7 @@ var _ = Describe("Resource EventSink", func() {
 						keys[fmt.Sprintf("providers.%d.kafka.#", i)] = Equal("1")
 						keys[fmt.Sprintf("providers.%d.azure_service_bus.#", i)] = Equal("0")
 						keys[fmt.Sprintf("providers.%d.azure_event_grid.#", i)] = Equal("0")
-						keys[fmt.Sprintf("providers.%d.kafka.0.%%", i)] = Equal("6")
+						keys[fmt.Sprintf("providers.%d.kafka.0.%%", i)] = Equal("7")
 						keys[fmt.Sprintf("providers.%d.kafka.0.brokers.#", i)] = Equal("1")
 						keys[fmt.Sprintf("providers.%d.kafka.0.brokers.0", i)] = Equal(p.GetKafka().GetBrokers()[0])
 						keys[fmt.Sprintf("providers.%d.kafka.0.disable_tls", i)] = Equal(strconv.
@@ -504,6 +518,8 @@ var _ = Describe("Resource EventSink", func() {
 							FormatBool(p.GetKafka().GetTlsSkipVerify()))
 						keys[fmt.Sprintf("providers.%d.kafka.0.topic", i)] = Equal(p.GetKafka().GetTopic())
 						keys[fmt.Sprintf("providers.%d.kafka.0.username", i)] = Equal(p.GetKafka().GetUsername())
+						keys[fmt.Sprintf("providers.%d.kafka.0.provider_display_name", i)] = Equal(
+							p.GetKafka().GetDisplayName().GetValue())
 					case *configpb.EventSinkConfig_Provider_AzureEventGrid:
 						keys["providers.#"] = Equal("1")
 						keys[fmt.Sprintf("providers.%d.%%", i)] = Equal("4")
@@ -511,10 +527,11 @@ var _ = Describe("Resource EventSink", func() {
 						keys[fmt.Sprintf("providers.%d.azure_event_grid.#", i)] = Equal("1")
 						keys[fmt.Sprintf("providers.%d.azure_service_bus.#", i)] = Equal("0")
 						keys[fmt.Sprintf("providers.%d.kafka.#", i)] = Equal("0")
-						keys[fmt.Sprintf("providers.%d.azure_event_grid.0.%%", i)] = Equal("2")
+						keys[fmt.Sprintf("providers.%d.azure_event_grid.0.%%", i)] = Equal("3")
 						keys[fmt.Sprintf("providers.%d.azure_event_grid.0.access_key", i)] = Equal(password)
 						keys[fmt.Sprintf("providers.%d.azure_event_grid.0.topic_endpoint", i)] = Equal(
 							p.GetAzureEventGrid().GetTopicEndpoint())
+						keys[fmt.Sprintf("providers.%d.azure_event_grid.0.provider_display_name", i)] = BeEmpty()
 					case *configpb.EventSinkConfig_Provider_AzureServiceBus:
 						keys["providers.#"] = Equal("1")
 						keys[fmt.Sprintf("providers.%d.%%", i)] = Equal("4")
@@ -522,29 +539,34 @@ var _ = Describe("Resource EventSink", func() {
 						keys[fmt.Sprintf("providers.%d.azure_service_bus.#", i)] = Equal("1")
 						keys[fmt.Sprintf("providers.%d.kafka.#", i)] = Equal("0")
 						keys[fmt.Sprintf("providers.%d.azure_event_grid.#", i)] = Equal("0")
-						keys[fmt.Sprintf("providers.%d.azure_service_bus.0.%%", i)] = Equal("2")
+						keys[fmt.Sprintf("providers.%d.azure_service_bus.0.%%", i)] = Equal("3")
 						keys[fmt.Sprintf("providers.%d.azure_service_bus.0.connection_string", i)] = Equal(password)
 						keys[fmt.Sprintf("providers.%d.azure_service_bus.0.queue_or_topic_name", i)] = Equal(
 							p.GetAzureServiceBus().GetQueueOrTopicName())
+						keys[fmt.Sprintf("providers.%d.azure_service_bus.0.provider_display_name", i)] = BeEmpty()
 					}
 				}
 				for j, p := range eventSink.GetRoutes() {
 					keys["routes.#"] = Equal("1")
-					keys[fmt.Sprintf("routes.%d.%%", j)] = Equal("4")
+					keys[fmt.Sprintf("routes.%d.%%", j)] = BeElementOf([]string{"4", "5", "6"})
 					keys[fmt.Sprintf("routes.%d.provider_id", j)] = Equal(p.GetProviderId())
 					keys[fmt.Sprintf("routes.%d.event_type_filter", j)] = Equal(p.GetEventType())
 					keys[fmt.Sprintf("routes.%d.context_key_value_filter.#", j)] = BeElementOf([]string{"0", "1"})
 					if p.GetContextKeyValue() != nil {
 						keys[fmt.Sprintf("routes.%d.context_key_value_filter.#", j)] = Equal("1")
-						keys[fmt.Sprintf("routes.%d.context_key_value_filter.0.%%", j)] = Equal("2")
+						keys[fmt.Sprintf("routes.%d.context_key_value_filter.0.%%", j)] = Equal("3")
 						keys[fmt.Sprintf("routes.%d.context_key_value_filter.0.key", j)] = Equal(
 							p.GetContextKeyValue().GetKey())
 						keys[fmt.Sprintf("routes.%d.context_key_value_filter.0.value", j)] = Equal(
 							p.GetContextKeyValue().GetValue())
+						keys[fmt.Sprintf("routes.%d.context_key_value_filter.0.event_type", j)] = Equal(
+							p.GetContextKeyValue().GetEventType())
 					} else {
 						keys[fmt.Sprintf("routes.%d.context_key_value_filter.#", j)] = Equal("0")
 					}
 					keys[fmt.Sprintf("routes.%d.stop_processing", j)] = Equal(strconv.FormatBool(p.GetStopProcessing()))
+					keys[fmt.Sprintf("routes.%d.route_display_name", j)] = Equal(p.GetDisplayName().GetValue())
+					keys[fmt.Sprintf("routes.%d.route_id", j)] = Equal(p.GetId().GetValue())
 				}
 				return convertOmegaMatcherToError(MatchAllKeys(keys), attrs)
 			}
@@ -558,6 +580,7 @@ var _ = Describe("Resource EventSink", func() {
 				topic = "my-kafka-topic"
 				username = "my-username"
 				password = "some-super-secret-password"
+				provider_display_name = "provider-display-name"
 			}
 		}
 		routes {
@@ -590,6 +613,7 @@ var _ = Describe("Resource EventSink", func() {
 							topic = "my-kafka-topic"
 							username = "my-username"
 							password = "some-super-secret-password"
+							provider_display_name = "provider-display-name"
 							}
 					}
 					routes {
@@ -611,12 +635,15 @@ var _ = Describe("Resource EventSink", func() {
 								topic = "my-kafka-topic"
 								username = "my-username"
 								password = "some-super-secret-password"
+								provider_display_name = "provider-display-name"
 							}
 						}
 						routes {
 							provider_id = "kafka-provider"
 	                        stop_processing = false
 							event_type_filter = "indykite.eventsink.config.create"
+							route_display_name = "route-display-name"
+							route_id = "route-id"
 						}
 						`,
 					),
@@ -643,12 +670,15 @@ var _ = Describe("Resource EventSink", func() {
 								password = "changed-password"
 								disable_tls = true
 								tls_skip_verify = true
+								provider_display_name = "provider-display-name"
 							}
 						}
 						routes {
 							provider_id = "kafka-provider"
 	                        stop_processing = false
 							event_type_filter = "indykite.eventsink.config.update"
+							route_display_name = "route-display-name-upd"
+							route_id = "route-id"
 						}
 					`,
 					),
@@ -701,6 +731,7 @@ var _ = Describe("Resource EventSink", func() {
 							context_key_value_filter {
 								key = "relationshipcreated"
 								value = "access-granted"
+								event_type = "indykite.eventsink.config.create"
 							}
 						}`,
 					),
