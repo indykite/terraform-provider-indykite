@@ -25,6 +25,7 @@ resource "indykite_event_sink" "create-event" {
       topic    = "events"
       username = "my-username"
       password = "some-super-secret-password"
+      provider_display_name = "provider-display-name"
     }
   }
   providers {
@@ -54,6 +55,8 @@ resource "indykite_event_sink" "create-event" {
     provider_id       = "kafka-provider-01"
     stop_processing   = false
     event_type_filter = "indykite.eventsink.config.create"
+    route_display_name = "route-display-name"
+		route_id = "route-id"
   }
   routes {
     provider_id     = "kafka-provider-02"
@@ -72,8 +75,9 @@ resource "indykite_event_sink" "create-event" {
     provider_id     = "azurebus"
     stop_processing = false
     context_key_value_filter {
-      key   = "relationshipcreated"
-      value = "access-granted"
+      key        = "relationshipcreated"
+      value      = "access-granted"
+      event_type = "indykite.eventsink.config.create"
     }
   }
 }
@@ -124,6 +128,10 @@ Required:
 - `access_key` (String, Sensitive)
 - `topic_endpoint` (String)
 
+Optional:
+
+- `provider_display_name` (String)
+
 
 <a id="nestedblock--providers--azure_service_bus"></a>
 ### Nested Schema for `providers.azure_service_bus`
@@ -132,6 +140,10 @@ Required:
 
 - `connection_string` (String, Sensitive)
 - `queue_or_topic_name` (String)
+
+Optional:
+
+- `provider_display_name` (String)
 
 
 <a id="nestedblock--providers--kafka"></a>
@@ -147,6 +159,7 @@ Required:
 Optional:
 
 - `disable_tls` (Boolean) Disable TLS for communication. Highly NOT RECOMMENDED.
+- `provider_display_name` (String)
 - `tls_skip_verify` (Boolean) Skip TLS certificate verification. NOT RECOMMENDED.
 
 
@@ -162,6 +175,8 @@ Optional:
 
 - `context_key_value_filter` (Block List, Max: 1) (see [below for nested schema](#nestedblock--routes--context_key_value_filter))
 - `event_type_filter` (String)
+- `route_display_name` (String)
+- `route_id` (String)
 - `stop_processing` (Boolean)
 
 <a id="nestedblock--routes--context_key_value_filter"></a>
@@ -171,6 +186,10 @@ Required:
 
 - `key` (String)
 - `value` (String)
+
+Optional:
+
+- `event_type` (String)
 
 
 
