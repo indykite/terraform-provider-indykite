@@ -21,10 +21,10 @@ resource "indykite_event_sink" "create-event" {
   providers {
     provider_name = "kafka-provider-01"
     kafka {
-      brokers  = ["kafka-01:9092", "kafka-02:9092"]
-      topic    = "events"
-      username = "my-username"
-      password = "some-super-secret-password"
+      brokers               = ["kafka-01:9092", "kafka-02:9092"]
+      topic                 = "events"
+      username              = "my-username"
+      password              = "some-super-secret-password"
       provider_display_name = "provider-display-name"
     }
   }
@@ -52,11 +52,11 @@ resource "indykite_event_sink" "create-event" {
     }
   }
   routes {
-    provider_id       = "kafka-provider-01"
-    stop_processing   = false
-    event_type_filter = "indykite.eventsink.config.create"
+    provider_id        = "kafka-provider-01"
+    stop_processing    = false
+    event_type_filter  = "indykite.eventsink.config.create"
     route_display_name = "route-display-name"
-		route_id = "route-id"
+    route_id           = "route-id"
   }
   routes {
     provider_id     = "kafka-provider-02"
