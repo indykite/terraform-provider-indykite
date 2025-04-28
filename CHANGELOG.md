@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.19.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.18.1...v0.19.0) (2025-04-28)
+
+
+### Features
+
+* add azure providers in eventsink ([79b4e5d](https://github.com/indykite/terraform-provider-indykite/commit/79b4e5df542910d929475b793aa2f241999fb120))
+* add eventType in routes.KeyValue in events ([4cf052f](https://github.com/indykite/terraform-provider-indykite/commit/4cf052fa11d856c603a288e017c29d6ffd5857b8))
+
+
+### Bug Fixes
+
+* upadting ciq policy test ([98836f3](https://github.com/indykite/terraform-provider-indykite/commit/98836f3ff6a7f89c29fcc1add2ac05e734382eaa))
+
 ## [0.18.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.18.0...v0.18.1) (2025-04-03)
 
 
