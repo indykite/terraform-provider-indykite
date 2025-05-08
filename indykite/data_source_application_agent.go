@@ -28,6 +28,10 @@ import (
 func dataSourceAppAgent() *schema.Resource {
 	oneOfAppID := []string{nameKey, appAgentIDKey}
 	return &schema.Resource{
+		Description: "Application agents are the profiles that contain the credentials " +
+			"used by applications to connect to the backend.  " +
+			"They represent the apps you develop or support, " +
+			"and need to integrate. ",
 		ReadContext: dataAppAgentReadContext,
 		Schema: map[string]*schema.Schema{
 			customerIDKey:    setComputed(customerIDSchema()),

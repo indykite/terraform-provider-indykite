@@ -24,6 +24,10 @@ import (
 
 func resourceApplication() *schema.Resource {
 	return &schema.Resource{
+		Description: "An application represents the center of the solution, " +
+			"and is also the legal entity users legally interact with. " +
+			"Each application is created in an ApplicationSpace or project, and has a profile, " +
+			"an application agent and application agent credentials. ",
 		CreateContext: resApplicationCreate,
 		ReadContext:   resApplicationRead,
 		UpdateContext: resApplicationUpdate,

@@ -17,7 +17,7 @@ description: |-
 
 ### Required
 
-- `customer_id` (String) identifier of Customer
+- `customer_id` (String) Identifier of Customer
 - `filter` (List of String) Filter customers based on given names. Using 'exact name match' strategy to find customer.
 
 ### Optional

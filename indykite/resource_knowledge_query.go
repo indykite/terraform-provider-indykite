@@ -35,6 +35,24 @@ func resourceKnowledgeQuery() *schema.Resource {
 	readContext := configReadContextFunc(resourceKnowledgeQueryFlatten)
 
 	return &schema.Resource{
+		Description: "**Creating Policy:**  <br>" +
+			"An authorization admin starts by creating a new subgraph or " +
+			"selecting an existing one as the container for the policy they wish to create. " +
+			"Next, the admin specifies a set of nodes and relationships within the subgraph and  " +
+			"specifies the static filters and partial filters on the selected nodes and relationship.  " +
+			"There must be exactly one node that is specified as the Subject node.  " +
+			"However, two separate policies may contain two different Subject nodes.  " +
+			"Note that not every node and relationship needs a filter or partial filter.  " +
+			"The nodes and relationships, along with the filters and partial filters,  " +
+			"form the necessary requirements for the queries that will be defined " +
+			"in the context of this policy.  <br>" +
+			"**Creating Query:**  <br>" +
+			"Every query is created in the context of a policy. " +
+			" While the policy describes the requirements, the query focuses on retrieving data.  " +
+			"The policy admin starts by selecting a subgraph and a policy for the context of the query.  " +
+			"The admin then specifies the read, upsert, and delete components for the query.  " +
+			"When the admin is done specifying the query, the query combined with the policy " +
+			"are translated to Cypher.  ",
 		CreateContext: configCreateContextFunc(resourceKnowledgeQueryBuild, readContext),
 		ReadContext:   readContext,
 		UpdateContext: configUpdateContextFunc(resourceKnowledgeQueryBuild, readContext),

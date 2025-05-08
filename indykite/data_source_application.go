@@ -28,6 +28,10 @@ import (
 func dataSourceApplication() *schema.Resource {
 	oneOfAppID := []string{nameKey, applicationIDKey}
 	return &schema.Resource{
+		Description: "An application represents the center of the solution, " +
+			"and is also the legal entity users legally interact with. " +
+			"Each application is created in an ApplicationSpace or project, and has a profile, " +
+			"an application agent and application agent credentials. ",
 		ReadContext: dataApplicationReadContext,
 		Schema: map[string]*schema.Schema{
 			customerIDKey:    setComputed(customerIDSchema()),

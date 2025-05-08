@@ -36,11 +36,11 @@ const (
 )
 
 const (
-	locationDescription      = `identifier of Location, where to create resource`
-	customerIDDescription    = `identifier of Customer`
-	appSpaceIDDescription    = `identifier of Application Space`
-	applicationIDDescription = `identifier of Application`
-	appAgentIDDescription    = `identifier of Application Agent`
+	locationDescription      = `Identifier of Location, where to create resource`
+	customerIDDescription    = `Identifier of Customer`
+	appSpaceIDDescription    = `Identifier of Application Space`
+	applicationIDDescription = `Identifier of Application`
+	appAgentIDDescription    = `Identifier of Application Agent`
 
 	nameDescription = `Unique client assigned immutable identifier. Can not be updated without creating a new resource.`
 )
@@ -128,7 +128,7 @@ func descriptionSchema() *schema.Schema {
 		Type:         schema.TypeString,
 		Optional:     true,
 		ValidateFunc: validation.StringLenBetween(0, 256),
-		Description:  `Your own description of resource. Must be less than or equal to 256 UTF-8 bytes.`,
+		Description:  `Your own description of the resource. Must be less than or equal to 256 UTF-8 bytes.`,
 	}
 }
 

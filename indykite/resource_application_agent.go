@@ -24,6 +24,10 @@ import (
 
 func resourceApplicationAgent() *schema.Resource {
 	return &schema.Resource{
+		Description: "Application agents are the profiles that contain the credentials " +
+			"used by applications to connect to the backend.  " +
+			"They represent the apps you develop or support, " +
+			"and need to integrate. ",
 		CreateContext: resAppAgentCreate,
 		ReadContext:   resAppAgentRead,
 		UpdateContext: resAppAgentUpdate,

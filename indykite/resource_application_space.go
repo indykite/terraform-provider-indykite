@@ -24,6 +24,7 @@ import (
 
 func resourceApplicationSpace() *schema.Resource {
 	return &schema.Resource{
+		Description:   "It is workspace or environment for your applications.  ",
 		CreateContext: resAppSpaceCreateContext,
 		ReadContext:   resAppSpaceReadContext,
 		UpdateContext: resAppSpaceUpdateContext,

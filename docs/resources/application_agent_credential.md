@@ -3,18 +3,18 @@
 page_title: "indykite_application_agent_credential Resource - IndyKite"
 subcategory: ""
 description: |-
-
+  App agent credentials is a JSON configuration file that contains a secret key or token.
 ---
 
 # indykite_application_agent_credential (Resource)
 
-
+App agent credentials is a JSON configuration file that contains a secret key or token.
 
 ## Example Usage
 
 ```terraform
 resource "indykite_application_agent_credential" "with_public" {
-  app_agent_id = indykite_application_agent.agent.id
+  app_agent_id = "ApplicationAgentGID"
   display_name = "Key with custom private-public key pair"
   expire_time  = "2026-12-31T12:34:56-01:00"
 }
@@ -25,7 +25,7 @@ resource "indykite_application_agent_credential" "with_public" {
 
 ### Required
 
-- `app_agent_id` (String) identifier of Application Agent
+- `app_agent_id` (String) Identifier of Application Agent
 
 ### Optional
 
@@ -38,10 +38,10 @@ resource "indykite_application_agent_credential" "with_public" {
 ### Read-Only
 
 - `agent_config` (String, Sensitive)
-- `app_space_id` (String) identifier of Application Space
-- `application_id` (String) identifier of Application
+- `app_space_id` (String) Identifier of Application Space
+- `application_id` (String) Identifier of Application
 - `create_time` (String) Timestamp when the Resource was created. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
-- `customer_id` (String) identifier of Customer
+- `customer_id` (String) Identifier of Customer
 - `id` (String) The ID of this resource.
 - `kid` (String)
 

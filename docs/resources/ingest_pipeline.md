@@ -18,22 +18,22 @@ Ingest pipeline configuration adds support for 3rd party data sources, which can
 ### Required
 
 - `app_agent_token` (String, Sensitive) Application agent token is used to identify the application space in IndyKite APIs.
-- `location` (String) identifier of Location, where to create resource
+- `location` (String) Identifier of Location, where to create resource
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 - `sources` (List of String) List of sources to be used in the ingest pipeline.
 
 ### Optional
 
-- `description` (String) Your own description of resource. Must be less than or equal to 256 UTF-8 bytes.
+- `description` (String) Your own description of the resource. Must be less than or equal to 256 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
 - `operations` (List of String, Deprecated) List of operations is no longer used. All previously saved values are ignored.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
 
-- `app_space_id` (String) identifier of Application Space
+- `app_space_id` (String) Identifier of Application Space
 - `create_time` (String) Timestamp when the Resource was created. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
-- `customer_id` (String) identifier of Customer
+- `customer_id` (String) Identifier of Customer
 - `id` (String) The ID of this resource.
 - `update_time` (String) Timestamp when the Resource was last updated. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
 
