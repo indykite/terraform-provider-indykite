@@ -35,6 +35,10 @@ func resourceAuthorizationPolicy() *schema.Resource {
 	readContext := configReadContextFunc(resourceAuthorizationPolicyFlatten)
 
 	return &schema.Resource{
+		Description: "KBAC leverages the IndyKite Knowledge Graph to express the relationships and  " +
+			"context present in the real-world, digitally and deliver context-aware, " +
+			"fine-grained authorization decisions.",
+
 		CreateContext: configCreateContextFunc(resourceAuthorizationPolicyBuild, readContext),
 		ReadContext:   readContext,
 		UpdateContext: configUpdateContextFunc(resourceAuthorizationPolicyBuild, readContext),

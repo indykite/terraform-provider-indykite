@@ -58,7 +58,7 @@ resource "indykite_external_data_resolver" "post-resolver" {
 
 ### Required
 
-- `location` (String) identifier of Location, where to create resource
+- `location` (String) Identifier of Location, where to create resource
 - `method` (String) HTTP method to be used for the request. Valid values are: GET, POST, PUT, PATCH.
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 - `request_type` (String) Request type specify format of request body payload and how to set Content-Type header. Currently only `json` is supported
@@ -68,7 +68,7 @@ resource "indykite_external_data_resolver" "post-resolver" {
 
 ### Optional
 
-- `description` (String) Your own description of resource. Must be less than or equal to 256 UTF-8 bytes.
+- `description` (String) Your own description of the resource. Must be less than or equal to 256 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
 - `headers` (Block Set) Headers to be sent with the request, including authorization if needed (see [below for nested schema](#nestedblock--headers))
 - `request_payload` (String) Request payload to be sent to the endpoint. It should be in proper format based on request type
@@ -76,9 +76,9 @@ resource "indykite_external_data_resolver" "post-resolver" {
 
 ### Read-Only
 
-- `app_space_id` (String) identifier of Application Space
+- `app_space_id` (String) Identifier of Application Space
 - `create_time` (String) Timestamp when the Resource was created. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
-- `customer_id` (String) identifier of Customer
+- `customer_id` (String) Identifier of Customer
 - `id` (String) The ID of this resource.
 - `update_time` (String) Timestamp when the Resource was last updated. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
 

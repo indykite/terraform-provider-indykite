@@ -25,6 +25,8 @@ import (
 func dataSourceCustomer() *schema.Resource {
 	oneOfIdentifiers := []string{nameKey, customerIDKey}
 	return &schema.Resource{
+		Description: "It is your entire workspace in the IndyKite platform, " +
+			"and will represent your specific company or organization.",
 		ReadContext: dataSourceCustomerRead,
 		Schema: map[string]*schema.Schema{
 			customerIDKey:  setExactlyOneOf(customerIDSchema(), customerIDKey, oneOfIdentifiers),

@@ -2,7 +2,7 @@ resource "indykite_event_sink" "create-event" {
   name         = "terraform-event-sink"
   display_name = "Terraform event sink"
   description  = "Event sink for terraform"
-  location     = indykite_application_space.appspace.id
+  location     = "AppSpaceID"
   providers {
     provider_name = "kafka-provider-01"
     kafka {

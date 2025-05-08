@@ -28,6 +28,7 @@ import (
 func dataSourceAppSpace() *schema.Resource {
 	appSpaceIdentifier := []string{nameKey, appSpaceIDKey}
 	return &schema.Resource{
+		Description: "It is workspace or environment for your applications.  ",
 		ReadContext: dataAppSpaceReadContext,
 		Schema: map[string]*schema.Schema{
 			appSpaceIDKey:  setExactlyOneOf(appSpaceIDSchema(), appSpaceIDKey, appSpaceIdentifier),

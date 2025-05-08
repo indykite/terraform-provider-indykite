@@ -39,6 +39,7 @@ const (
 
 func resourceApplicationAgentCredential() *schema.Resource {
 	return &schema.Resource{
+		Description:   "App agent credentials is a JSON configuration file that contains a secret key or token. ",
 		CreateContext: resAppAgentCredCreate,
 		UpdateContext: resAppAgentCredUpdate,
 		ReadContext:   resAppAgentCredRead,
