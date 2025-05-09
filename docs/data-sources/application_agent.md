@@ -16,7 +16,7 @@ Application agents are the profiles that contain the credentials used by applica
 data "indykite_application_agent" "application_agent" {
   app_space_id = "ApplicationSpaceGID"
   app_agent_id = "ApplicationAgentGID"
-  name = "AppAgentName"
+  name         = "AppAgentName"
 }
 ```
 
