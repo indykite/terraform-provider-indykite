@@ -26,7 +26,7 @@ resource "indykite_knowledge_query" "create-query" {
   location     = "AppSpaceID"
   query = jsonencode({
     "nodes" : ["ln.property.value"],
-    "relationships" : [], 
+    "relationships" : [],
     "filter" : { "attribute" : "ln.property.value", "operator" : "=", "value" : "$lnValue" }
   })
 

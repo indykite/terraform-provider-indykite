@@ -51,31 +51,31 @@ resource "indykite_authorization_policy" "policy_for_ciq" {
       "nodes" : ["ln.property.value", "ln.property.transferrable", "ln.external_id"],
       "relationships" : ["r1"]
     }
-    "allowed_upserts": {  # omitted if empty
-        "nodes": { # omitted if empty
-          "existing_nodes": [
-            "<string>"
-          ],
-          "node_labels": [
-            "<string>"
-          ]
-        },
-        "relationships": { # omitted if empty
-          "existing_relationships": [
-            "<string>"
-          ],
-          "relationship_types": [ # omitted if empty
-            {
-              "type": "<string>",
-              "source_node_label": "<string>",
-              "target_node_label": "<string>"
-            }
-          ]
-        }
-   },
-    "allowed_deletes": { # omitted if empty
-      "nodes": ["<string>"],
-      "relationships": ["<string>"]
+    "allowed_upserts" : { # omitted if empty
+      "nodes" : {         # omitted if empty
+        "existing_nodes" : [
+          "<string>"
+        ],
+        "node_labels" : [
+          "<string>"
+        ]
+      },
+      "relationships" : { # omitted if empty
+        "existing_relationships" : [
+          "<string>"
+        ],
+        "relationship_types" : [ # omitted if empty
+          {
+            "type" : "<string>",
+            "source_node_label" : "<string>",
+            "target_node_label" : "<string>"
+          }
+        ]
+      }
+    },
+    "allowed_deletes" : { # omitted if empty
+      "nodes" : ["<string>"],
+      "relationships" : ["<string>"]
     },
   })
   location = indykite_application_space.appspace.id
