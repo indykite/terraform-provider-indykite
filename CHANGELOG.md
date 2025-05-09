@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.19.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.19.0...v0.19.1) (2025-05-09)
+
+
+### Miscellaneous Chores
+
+* upgrade go version and dependencies ([e3486c8](https://github.com/indykite/terraform-provider-indykite/commit/e3486c8bc632914fcccc62f1341c73c0d6a8a5ab))
+* upgrade go version and dependencies ([608e2d8](https://github.com/indykite/terraform-provider-indykite/commit/608e2d8d648d8a8f84ae2bc535ae3f1876bc765b))
+
 ## [0.19.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.18.1...v0.19.0) (2025-04-28)
 
 
