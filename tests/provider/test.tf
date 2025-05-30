@@ -180,8 +180,8 @@ resource "indykite_authorization_policy" "policy_for_ciq" {
     "meta" : { "policy_version" : "1.0-ciq" },
     "subject" : { "type" : "Person" },
     "condition" : {
-      "cypher" : "MATCH (person:Person)-[r1:ACCEPTED]->(contract:Contract)-[r2:COVERS]->(vehicle:Vehicle)-[r3:HAS]->(ln:LicenseNumber)",
-      "filter" : [{ "app" : "app1", "attribute" : "person.property.username", "operator" : "=", "value" : "$username" }]
+      "cypher" : "MATCH (subject:Person)-[r1:ACCEPTED]->(contract:Contract)-[r2:COVERS]->(vehicle:Vehicle)-[r3:HAS]->(ln:LicenseNumber)",
+      "filter" : [{ "app" : "app1", "attribute" : "subject.property.username", "operator" : "=", "value" : "$username" }]
     },
     "allowed_reads" : {
       "nodes" : ["ln.property.value", "ln.property.transferrable", "ln.external_id"],
