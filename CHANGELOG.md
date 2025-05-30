@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.2](https://github.com/indykite/terraform-provider-indykite/compare/v0.19.1...v0.19.2) (2025-05-30)
+
+
+### Documentation
+
+* fix CIQ policy cypher ([aa548f9](https://github.com/indykite/terraform-provider-indykite/commit/aa548f9a28d6656b2ccc8f49fff21193608bdc8d))
+
 ## [0.19.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.19.0...v0.19.1) (2025-05-09)
 
 
