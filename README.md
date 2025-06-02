@@ -56,6 +56,6 @@ A complete script example is available [test.tf](tests/provider/test.tf).
 
 `tfplugindocs` GitHub workflow automatically re-generates the provider documentation once commit is pushed to `master`.
 It requires a PAT with the following permissions:
-- Read access to metadata
-- Read and Write access to administration
-- Read and Write access to code
+- Read access to metadata.
+- Read and Write access to administration.
+- Read and Write access to code.
