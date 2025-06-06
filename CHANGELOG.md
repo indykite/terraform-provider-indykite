@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.20.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.19.1...v0.20.0) (2025-06-06)
+
+
+### Features
+
+* refactor eventSink config filter ([05b12e6](https://github.com/indykite/terraform-provider-indykite/commit/05b12e6f9e4f1fde83387b678242f79e1c9043d3))
+
+
+### Documentation
+
+* fix CIQ policy cypher ([aa548f9](https://github.com/indykite/terraform-provider-indykite/commit/aa548f9a28d6656b2ccc8f49fff21193608bdc8d))
+
 ## [0.19.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.19.0...v0.19.1) (2025-05-09)
 
 
