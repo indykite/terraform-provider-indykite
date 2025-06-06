@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.20.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.20.0...v0.20.1) (2025-06-06)
+
+
+### Bug Fixes
+
+* add tests for eventSink + dep + fix ([c99d666](https://github.com/indykite/terraform-provider-indykite/commit/c99d6666cfb5e9f7e9c5a1797200126dd8e697ee))
+* change description + fix ([d60f174](https://github.com/indykite/terraform-provider-indykite/commit/d60f17488019e316bd24ff382b1aee603d0ac1f1))
+
 ## [0.20.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.19.1...v0.20.0) (2025-06-06)
 
 
