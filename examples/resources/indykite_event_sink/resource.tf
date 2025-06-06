@@ -1,8 +1,8 @@
 resource "indykite_event_sink" "create-event" {
-  name         = "terraform-event-sink"
-  display_name = "Terraform event sink"
+  name         = "terraform-event-sink-${time_static.example.unix}"
+  display_name = "Terraform event sink  ${time_static.example.unix}"
   description  = "Event sink for terraform"
-  location     = "AppSpaceID"
+  location     = indykite_application_space.appspace.id
   providers {
     provider_name = "kafka-provider-01"
     kafka {
@@ -37,32 +37,44 @@ resource "indykite_event_sink" "create-event" {
     }
   }
   routes {
-    provider_id        = "kafka-provider-01"
-    stop_processing    = false
-    event_type_filter  = "indykite.eventsink.config.create"
+    provider_id     = "kafka-provider-01"
+    stop_processing = false
+    keys_values_filter {
+      event_type = "indykite.audit.config.create"
+    }
     route_display_name = "route-display-name"
     route_id           = "route-id"
   }
   routes {
     provider_id     = "kafka-provider-02"
     stop_processing = false
-    context_key_value_filter {
-      key   = "relationshipcreated"
-      value = "access-granted"
+    keys_values_filter {
+      key_value_pairs {
+        key   = "relationshipcreated"
+        value = "access-granted"
+      }
+      event_type = "indykite.audit.ingest.*"
     }
   }
   routes {
-    provider_id       = "azuregrid"
-    stop_processing   = false
-    event_type_filter = "indykite.eventsink.config.create"
+    provider_id     = "azuregrid"
+    stop_processing = false
+    keys_values_filter {
+      event_type = "indykite.audit.config.create"
+    }
   }
   routes {
     provider_id     = "azurebus"
     stop_processing = false
-    context_key_value_filter {
-      key        = "relationshipcreated"
-      value      = "access-granted"
-      event_type = "indykite.eventsink.config.create"
+    keys_values_filter {
+      key_value_pairs {
+        key   = "relationshipcreated"
+        value = "access-granted"
+      }
+      event_type = "indykite.audit.ingest.*"
     }
+  }
+  lifecycle {
+    create_before_destroy = true
   }
 }

@@ -114,8 +114,10 @@ var _ = Describe("Resource EventSink", func() {
 							{
 								ProviderId:     "kafka-provider",
 								StopProcessing: false,
-								Filter: &configpb.EventSinkConfig_Route_EventType{
-									EventType: "indykite.eventsink.config.create",
+								Filter: &configpb.EventSinkConfig_Route_KeysValues{
+									KeysValues: &configpb.EventSinkConfig_Route_EventTypeKeysValues{
+										EventType: "indykite.audit.config.create",
+									},
 								},
 								DisplayName: wrapperspb.String("route-display-name"),
 								Id:          wrapperspb.String("route-id"),
@@ -155,8 +157,10 @@ var _ = Describe("Resource EventSink", func() {
 							{
 								ProviderId:     "kafka-provider",
 								StopProcessing: false,
-								Filter: &configpb.EventSinkConfig_Route_EventType{
-									EventType: "indykite.eventsink.config.update",
+								Filter: &configpb.EventSinkConfig_Route_KeysValues{
+									KeysValues: &configpb.EventSinkConfig_Route_EventTypeKeysValues{
+										EventType: "indykite.audit.config.update",
+									},
 								},
 								DisplayName: wrapperspb.String("route-display-name-upd"),
 								Id:          wrapperspb.String("route-id"),
@@ -192,8 +196,10 @@ var _ = Describe("Resource EventSink", func() {
 							{
 								ProviderId:     "azuregrid",
 								StopProcessing: false,
-								Filter: &configpb.EventSinkConfig_Route_EventType{
-									EventType: "indykite.eventsink.config.create",
+								Filter: &configpb.EventSinkConfig_Route_KeysValues{
+									KeysValues: &configpb.EventSinkConfig_Route_EventTypeKeysValues{
+										EventType: "indykite.audit.config.create",
+									},
 								},
 							},
 						},
@@ -228,11 +234,12 @@ var _ = Describe("Resource EventSink", func() {
 							{
 								ProviderId:     "azurebus",
 								StopProcessing: false,
-								Filter: &configpb.EventSinkConfig_Route_ContextKeyValue{
-									ContextKeyValue: &configpb.EventSinkConfig_Route_KeyValue{
-										Key:       "relationshipcreated",
-										Value:     "access-granted",
-										EventType: "indykite.eventsink.config.create",
+								Filter: &configpb.EventSinkConfig_Route_KeysValues{
+									KeysValues: &configpb.EventSinkConfig_Route_EventTypeKeysValues{
+										KeyValuePairs: []*configpb.EventSinkConfig_Route_KeyValuePair{
+											{Key: "ingestRelationshipType", Value: "HAS"},
+										},
+										EventType: "indykite.audit.ingest.*",
 									},
 								},
 							},
@@ -270,8 +277,10 @@ var _ = Describe("Resource EventSink", func() {
 							{
 								ProviderId:     "kafka-provider",
 								StopProcessing: false,
-								Filter: &configpb.EventSinkConfig_Route_EventType{
-									EventType: "indykite.eventsink.config.create",
+								Filter: &configpb.EventSinkConfig_Route_KeysValues{
+									KeysValues: &configpb.EventSinkConfig_Route_EventTypeKeysValues{
+										EventType: "indykite.audit.config.create",
+									},
 								},
 								DisplayName: wrapperspb.String("route-display-name"),
 								Id:          wrapperspb.String("route-id"),
@@ -316,8 +325,10 @@ var _ = Describe("Resource EventSink", func() {
 							{
 								ProviderId:     "kafka-provider",
 								StopProcessing: false,
-								Filter: &configpb.EventSinkConfig_Route_EventType{
-									EventType: "indykite.eventsink.config.update",
+								Filter: &configpb.EventSinkConfig_Route_KeysValues{
+									KeysValues: &configpb.EventSinkConfig_Route_EventTypeKeysValues{
+										EventType: "indykite.audit.config.update",
+									},
 								},
 								DisplayName: wrapperspb.String("route-display-name-upd"),
 								Id:          wrapperspb.String("route-id"),
@@ -379,8 +390,10 @@ var _ = Describe("Resource EventSink", func() {
 							{
 								ProviderId:     "azuregrid",
 								StopProcessing: false,
-								Filter: &configpb.EventSinkConfig_Route_EventType{
-									EventType: "indykite.eventsink.config.create",
+								Filter: &configpb.EventSinkConfig_Route_KeysValues{
+									KeysValues: &configpb.EventSinkConfig_Route_EventTypeKeysValues{
+										EventType: "indykite.audit.config.create",
+									},
 								},
 							},
 						},
@@ -413,7 +426,7 @@ var _ = Describe("Resource EventSink", func() {
 		// Create
 		mockConfigClient.EXPECT().
 			CreateConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Name": Equal(expectedRespGrid.GetConfigNode().GetName()),
+				"Name": Equal(expectedRespBus.GetConfigNode().GetName()),
 				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal(
 					expectedResp.GetConfigNode().GetDisplayName(),
 				)})),
@@ -435,11 +448,12 @@ var _ = Describe("Resource EventSink", func() {
 							{
 								ProviderId:     "azurebus",
 								StopProcessing: false,
-								Filter: &configpb.EventSinkConfig_Route_ContextKeyValue{
-									ContextKeyValue: &configpb.EventSinkConfig_Route_KeyValue{
-										Key:       "relationshipcreated",
-										Value:     "access-granted",
-										EventType: "indykite.eventsink.config.create",
+								Filter: &configpb.EventSinkConfig_Route_KeysValues{
+									KeysValues: &configpb.EventSinkConfig_Route_EventTypeKeysValues{
+										KeyValuePairs: []*configpb.EventSinkConfig_Route_KeyValuePair{
+											{Key: "ingestRelationshipType", Value: "HAS"},
+										},
+										EventType: "indykite.audit.ingest.*",
 									},
 								},
 							},
@@ -550,20 +564,26 @@ var _ = Describe("Resource EventSink", func() {
 					keys["routes.#"] = Equal("1")
 					keys[fmt.Sprintf("routes.%d.%%", j)] = BeElementOf([]string{"4", "5", "6"})
 					keys[fmt.Sprintf("routes.%d.provider_id", j)] = Equal(p.GetProviderId())
-					keys[fmt.Sprintf("routes.%d.event_type_filter", j)] = Equal(p.GetEventType())
-					keys[fmt.Sprintf("routes.%d.context_key_value_filter.#", j)] = BeElementOf([]string{"0", "1"})
-					if p.GetContextKeyValue() != nil {
-						keys[fmt.Sprintf("routes.%d.context_key_value_filter.#", j)] = Equal("1")
-						keys[fmt.Sprintf("routes.%d.context_key_value_filter.0.%%", j)] = Equal("3")
-						keys[fmt.Sprintf("routes.%d.context_key_value_filter.0.key", j)] = Equal(
-							p.GetContextKeyValue().GetKey())
-						keys[fmt.Sprintf("routes.%d.context_key_value_filter.0.value", j)] = Equal(
-							p.GetContextKeyValue().GetValue())
-						keys[fmt.Sprintf("routes.%d.context_key_value_filter.0.event_type", j)] = Equal(
-							p.GetContextKeyValue().GetEventType())
+					keys[fmt.Sprintf("routes.%d.keys_values_filter.#", j)] = BeElementOf([]string{"0", "1"})
+					if p.GetKeysValues() != nil {
+						keys[fmt.Sprintf("routes.%d.keys_values_filter.#", j)] = Equal("1")
+						keys[fmt.Sprintf("routes.%d.keys_values_filter.0.%%", j)] = Equal("2")
+						keys[fmt.Sprintf("routes.%d.keys_values_filter.0.key_value_pairs.#", j)] =
+							BeElementOf([]string{"0", "1"})
+						if p.GetKeysValues().GetKeyValuePairs() != nil {
+							keys[fmt.Sprintf("routes.%d.keys_values_filter.0.key_value_pairs.0.%%", j)] =
+								BeElementOf([]string{"1", "2"})
+							keys[fmt.Sprintf("routes.%d.keys_values_filter.0.key_value_pairs.0.key", j)] =
+								Equal(p.GetKeysValues().GetKeyValuePairs()[0].GetKey())
+							keys[fmt.Sprintf("routes.%d.keys_values_filter.0.key_value_pairs.0.value", j)] =
+								Equal(p.GetKeysValues().GetKeyValuePairs()[0].GetValue())
+						}
+						keys[fmt.Sprintf("routes.%d.keys_values_filter.0.event_type", j)] = Equal(
+							p.GetKeysValues().GetEventType())
 					} else {
-						keys[fmt.Sprintf("routes.%d.context_key_value_filter.#", j)] = Equal("0")
+						keys[fmt.Sprintf("routes.%d.keys_values_filter.#", j)] = Equal("0")
 					}
+
 					keys[fmt.Sprintf("routes.%d.stop_processing", j)] = Equal(strconv.FormatBool(p.GetStopProcessing()))
 					keys[fmt.Sprintf("routes.%d.route_display_name", j)] = Equal(p.GetDisplayName().GetValue())
 					keys[fmt.Sprintf("routes.%d.route_id", j)] = Equal(p.GetId().GetValue())
@@ -586,7 +606,9 @@ var _ = Describe("Resource EventSink", func() {
 		routes {
 			provider_id = "kafka-provider"
 			stop_processing = false
-			event_type_filter = "indykite.eventsink.config.create"
+			keys_values_filter {
+				event_type = "indykite.audit.config.create"
+			}
 		}`
 
 		resource.Test(GinkgoT(), resource.TestCase{
@@ -618,7 +640,9 @@ var _ = Describe("Resource EventSink", func() {
 					}
 					routes {
 	                        stop_processing = false
-							event_type_filter = "indykite.eventsink.config.create"
+							keys_values_filter {
+								event_type = "indykite.audit.config.create"
+							}
 						}
 					`),
 					ExpectError: regexp.MustCompile(
@@ -641,7 +665,9 @@ var _ = Describe("Resource EventSink", func() {
 						routes {
 							provider_id = "kafka-provider"
 	                        stop_processing = false
-							event_type_filter = "indykite.eventsink.config.create"
+							keys_values_filter {
+								event_type = "indykite.audit.config.create"
+							}
 							route_display_name = "route-display-name"
 							route_id = "route-id"
 						}
@@ -676,7 +702,9 @@ var _ = Describe("Resource EventSink", func() {
 						routes {
 							provider_id = "kafka-provider"
 	                        stop_processing = false
-							event_type_filter = "indykite.eventsink.config.update"
+							keys_values_filter {
+								event_type = "indykite.audit.config.update"
+							}
 							route_display_name = "route-display-name-upd"
 							route_id = "route-id"
 						}
@@ -700,7 +728,9 @@ var _ = Describe("Resource EventSink", func() {
 						routes {
 							provider_id = "azuregrid"
 	                        stop_processing = false
-							event_type_filter = "indykite.eventsink.config.create"
+							keys_values_filter {
+								event_type = "indykite.audit.config.create"
+							}
 						}
 						`,
 					),
@@ -728,10 +758,12 @@ var _ = Describe("Resource EventSink", func() {
 						routes {
 							provider_id = "azurebus"
 	                        stop_processing = false
-							context_key_value_filter {
-								key = "relationshipcreated"
-								value = "access-granted"
-								event_type = "indykite.eventsink.config.create"
+							keys_values_filter {
+								key_value_pairs{
+									key        = "ingestRelationshipType"
+									value      = "HAS"
+								}
+								event_type  = "indykite.audit.ingest.*"
 							}
 						}`,
 					),

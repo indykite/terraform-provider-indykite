@@ -33,8 +33,8 @@ const (
 	providerNameKey     = "provider_name"
 	providerIDKey       = "provider_id"
 	stopProcessingKey   = "stop_processing"
-	eventTypeKey        = "event_type_filter"
-	contextKeyValueKey  = "context_key_value_filter"
+	keysValuesKey       = "keys_values_filter"
+	keyValuePairsKey    = "key_value_pairs"
 	providerKey         = "provider"
 	kafkaKey            = "kafka"
 	azureEventGridKey   = "azure_event_grid"
@@ -55,6 +55,46 @@ const (
 	providerDisplayKey  = "provider_display_name"
 	routeDisplayKey     = "route_display_name"
 	routeIDKey          = "route_id"
+	supportedFilters    = `
+## Supported filters
+
+| **Method** | **Event Type** | **Key** | **Value (example)** |
+| --- | --- | --- | --- |
+|  | **Ingest Events** |  |  |
+| **IngestRecord, StreamRecords, Ingest (internal)** | indykite.audit.ingest.upsert.node | ingestNodeType | Car |
+|  |  | ingestNodeLabel | Green |
+|  | indykite.audit.ingest.upsert.relationship | ingestRelationshipType | RENT |
+|  | indykite.audit.ingest.delete.node | ingestNodeType | Car |
+|  |  | ingestNodeLabel | Green |
+|  | indykite.audit.ingest.delete.relationship | ingestRelationshipType | RENT |
+|  | indykite.audit.ingest.delete.node.property |  |  |
+|  | indykite.audit.ingest.delete.relationship.property |  |  |
+| **BatchUpsertNodes** | indykite.audit.ingest.batch.upsert.node | ingestNodeType | Car |
+|  |  | ingestNodeLabel | Green |
+| **BatchUpsertRelationships** | indykite.audit.ingest.batch.upsert.relationship | ingestRelationshipType | RENT |
+| **BatchDeleteNodes** | indykite.audit.ingest.batch.delete.node | ingestNodeType | Car |
+|  |  | ingestNodeLabel | Green |
+| **BatchDeleteRelationships** | indykite.audit.ingest.batch.delete.relationship | ingestRelationshipType | RENT |
+| **BatchDeleteNodeProperties** | indykite.audit.ingest.batch.delete.node.property |  |  |
+| **BatchDeleteRelationshipProperties** | indykite.audit.ingest.delete.relationship.property |  |  |
+| **BatchDeleteNodeTags** | indykite.audit.ingest.batch.delete.node.tag | ingestNodeType | Car |
+|  |  | ingestNodeLabel | Green |
+|  | **Configuration Events** |  |  |
+| Atlas, Hermes | indykite.audit.config.create |  |  |
+|  | indykite.audit.config.read |  |  |
+|  | indykite.audit.config.update |  |  |
+|  | indykite.audit.config.delete |  |  |
+|  | indykite.audit.config.permission.assign |  |  |
+|  | indykite.audit.config.permission.revoke |  |  |
+|  | **Token Events** |  |  |
+| TokenIntrospect | indykite.audit.credentials.token.introspected |  |  |
+|  | **Authorization Events** |  |  |
+| Authorization | indykite.audit.authorization.isauthorized |  |  |
+|  | indykite.audit.authorization.whatauthorized |  |  |
+|  | indykite.audit.authorization.whoauthorized |  |  |
+|  | **Ciq Events** |  |  |
+| Ciq | indykite.audit.ciq.execute |  |  |
+|  |  |  |  | `
 )
 
 func resourceEventSink() *schema.Resource {
@@ -62,7 +102,17 @@ func resourceEventSink() *schema.Resource {
 	providerOneOf := []string{kafkaKey, azureEventGridKey, azureServiceBusKey}
 
 	return &schema.Resource{
-		Description: `Event Sink configuration is used to configure outbound events.`,
+		Description: `Event Sink configuration is used to configure outbound events.
+
+		There can be only one configuration per AppSpace (Project).
+
+		Outbound events are designed to notify external systems about important changes within
+		the IndyKite Knowledge Graph (IKG).
+
+		These external systems may require real-time synchronization or need to react to
+		changes occurring in the platform.
+
+		` + supportedFilters,
 
 		CreateContext: configCreateContextFunc(resourceEventSinkBuild, readContext),
 		ReadContext:   readContext,
@@ -237,17 +287,9 @@ func routeSchema() map[string]*schema.Schema {
 			Type:     schema.TypeBool,
 			Optional: true,
 		},
-		eventTypeKey: {
-			Type:     schema.TypeString,
-			Optional: true,
-			ValidateFunc: validation.All(
-				validation.StringMatch(regexp.MustCompile(`^[a-zA-Z0-9_*\\.]+$`),
-					"must contain only letters, numbers, underscores, asterisks and dots"),
-			),
-		},
-		contextKeyValueKey: {
+		keysValuesKey: {
 			Type:     schema.TypeList,
-			Elem:     &schema.Resource{Schema: keyValueSchema()},
+			Elem:     &schema.Resource{Schema: keysValuesSchema()},
 			Optional: true,
 			MaxItems: 1,
 		},
@@ -268,19 +310,30 @@ func routeSchema() map[string]*schema.Schema {
 	}
 }
 
-func keyValueSchema() map[string]*schema.Schema {
+func keysValuesSchema() map[string]*schema.Schema {
 	return map[string]*schema.Schema{
-		keyKey: {
-			Type:     schema.TypeString,
-			Required: true,
-		},
-		valueKey: {
-			Type:     schema.TypeString,
-			Required: true,
+		keyValuePairsKey: {
+			Type:        schema.TypeList,
+			Description: "List of key/value pairs for the ingest event types. ",
+			Optional:    true,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					keyKey: {
+						Type:        schema.TypeString,
+						Required:    true,
+						Description: "Key for the ingest eventType",
+					},
+					valueKey: {
+						Type:        schema.TypeString,
+						Required:    true,
+						Description: "Value for the ingest eventType",
+					},
+				},
+			},
 		},
 		evTypeKey: {
 			Type:     schema.TypeString,
-			Optional: true,
+			Required: true,
 			ValidateFunc: validation.All(
 				validation.StringMatch(regexp.MustCompile(`^[a-zA-Z0-9_*\\.]+$`),
 					"must contain only letters, numbers, underscores, asterisks and dots"),
@@ -371,30 +424,26 @@ func resourceEventSinkFlatten(
 	routes := make([]any, len(eventSink.GetRoutes()))
 	for i, route := range eventSink.GetRoutes() {
 		switch filter := route.GetFilter().(type) {
-		case *configpb.EventSinkConfig_Route_EventType:
-			routes[i] = map[string]any{
-				providerIDKey:     route.GetProviderId(),
-				stopProcessingKey: route.GetStopProcessing(),
-				eventTypeKey:      filter.EventType,
-				routeDisplayKey:   route.GetDisplayName().GetValue(),
-				routeIDKey:        route.GetId().GetValue(),
+		case *configpb.EventSinkConfig_Route_KeysValues:
+			keyValuePairs := make([]any, len(route.GetKeysValues().GetKeyValuePairs()))
+			for i, pair := range route.GetKeysValues().GetKeyValuePairs() {
+				keyValuePairs[i] = map[string]any{
+					keyKey:   pair.GetKey(),
+					valueKey: pair.GetValue(),
+				}
 			}
-
-		case *configpb.EventSinkConfig_Route_ContextKeyValue:
 			routes[i] = map[string]any{
 				providerIDKey:     route.GetProviderId(),
 				stopProcessingKey: route.GetStopProcessing(),
-				contextKeyValueKey: []map[string]any{
+				keysValuesKey: []map[string]any{
 					{
-						keyKey:    filter.ContextKeyValue.GetKey(),
-						valueKey:  filter.ContextKeyValue.GetValue(),
-						evTypeKey: filter.ContextKeyValue.GetEventType(),
+						keyValuePairsKey: keyValuePairs,
+						evTypeKey:        filter.KeysValues.GetEventType(),
 					},
 				},
 				routeDisplayKey: route.GetDisplayName().GetValue(),
 				routeIDKey:      route.GetId().GetValue(),
 			}
-
 		default:
 			return append(d, buildPluginError(fmt.Sprintf("unsupported EventSink Filter: %T", route)))
 		}
@@ -507,33 +556,7 @@ func getRoutes(data *schema.ResourceData) []*configpb.EventSinkConfig_Route {
 		if !exists {
 			continue
 		}
-		// Handle eventTypeKey case
-		if _, ok := item[eventTypeKey]; ok {
-			routes[i] = &configpb.EventSinkConfig_Route{
-				ProviderId:     item[providerIDKey].(string),
-				StopProcessing: item[stopProcessingKey].(bool),
-				Filter: &configpb.EventSinkConfig_Route_EventType{
-					EventType: item[eventTypeKey].(string),
-				},
-				DisplayName: func() *wrapperspb.StringValue {
-					v, ok := item[routeDisplayKey].(string)
-					if !ok || v == "" {
-						return nil
-					}
-					return wrapperspb.String(v)
-				}(),
-				Id: func() *wrapperspb.StringValue {
-					v, ok := item[routeIDKey].(string)
-					if !ok || v == "" {
-						return nil
-					}
-					return wrapperspb.String(v)
-				}(),
-			}
-		}
-
-		// Handle contextKeyValueKey case
-		val, ok := item[contextKeyValueKey]
+		val, ok := item[keysValuesKey]
 		if !ok {
 			continue
 		}
@@ -541,15 +564,15 @@ func getRoutes(data *schema.ResourceData) []*configpb.EventSinkConfig_Route {
 		if !ok {
 			continue
 		}
+
 		if len(list) > 0 {
 			routes[i] = &configpb.EventSinkConfig_Route{
 				ProviderId:     item[providerIDKey].(string),
 				StopProcessing: item[stopProcessingKey].(bool),
-				Filter: &configpb.EventSinkConfig_Route_ContextKeyValue{
-					ContextKeyValue: &configpb.EventSinkConfig_Route_KeyValue{
-						Key:       item[contextKeyValueKey].([]any)[0].(map[string]any)[keyKey].(string),
-						Value:     item[contextKeyValueKey].([]any)[0].(map[string]any)[valueKey].(string),
-						EventType: checkEventType(item),
+				Filter: &configpb.EventSinkConfig_Route_KeysValues{
+					KeysValues: &configpb.EventSinkConfig_Route_EventTypeKeysValues{
+						KeyValuePairs: getKeyValuePairs(item),
+						EventType:     checkEventType(item),
 					},
 				},
 				DisplayName: func() *wrapperspb.StringValue {
@@ -607,7 +630,7 @@ func validateProviderOneOf(providerTypes []string) schema.CustomizeDiffFunc {
 
 func checkEventType(item map[string]any) string {
 	var eventType string
-	if innerMap, ok := item[contextKeyValueKey].([]any)[0].(map[string]any); ok {
+	if innerMap, ok := item[keysValuesKey].([]any)[0].(map[string]any); ok {
 		if inn, ok := innerMap[evTypeKey]; ok {
 			if str, ok := inn.(string); ok {
 				eventType = str
@@ -615,4 +638,28 @@ func checkEventType(item map[string]any) string {
 		}
 	}
 	return eventType
+}
+
+func getKeyValuePairs(item map[string]any) []*configpb.EventSinkConfig_Route_KeyValuePair {
+	innerMap, ok := item[keysValuesKey].([]any)[0].(map[string]any)
+	if !ok {
+		return nil
+	}
+	if pairsMap, ok := innerMap[keyValuePairsKey]; ok {
+		var pairs = make([]*configpb.EventSinkConfig_Route_KeyValuePair, len(pairsMap.([]any)))
+		pairsSet, ok := pairsMap.([]any)
+		if !ok {
+			return nil
+		}
+		for i, o := range pairsSet {
+			if pairMap, ok := o.(map[string]any); ok {
+				pairs[i] = &configpb.EventSinkConfig_Route_KeyValuePair{
+					Key:   pairMap[keyKey].(string),
+					Value: pairMap[valueKey].(string),
+				}
+			}
+		}
+		return pairs
+	}
+	return nil
 }
