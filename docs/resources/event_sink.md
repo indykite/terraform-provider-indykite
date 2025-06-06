@@ -148,8 +148,8 @@ resource "indykite_event_sink" "create-event" {
     }
   }
   routes {
-    provider_id        = "kafka-provider-01"
-    stop_processing    = false
+    provider_id     = "kafka-provider-01"
+    stop_processing = false
     keys_values_filter {
       event_type = "indykite.audit.config.create"
     }
@@ -160,16 +160,16 @@ resource "indykite_event_sink" "create-event" {
     provider_id     = "kafka-provider-02"
     stop_processing = false
     keys_values_filter {
-      key_value_pairs{
-        key        = "relationshipcreated"
-        value      = "access-granted"
+      key_value_pairs {
+        key   = "relationshipcreated"
+        value = "access-granted"
       }
-      event_type  = "indykite.audit.ingest.*"
+      event_type = "indykite.audit.ingest.*"
     }
   }
   routes {
-    provider_id       = "azuregrid"
-    stop_processing   = false
+    provider_id     = "azuregrid"
+    stop_processing = false
     keys_values_filter {
       event_type = "indykite.audit.config.create"
     }
@@ -178,7 +178,7 @@ resource "indykite_event_sink" "create-event" {
     provider_id     = "azurebus"
     stop_processing = false
     keys_values_filter {
-      key_value_pairs{
+      key_value_pairs {
         key   = "relationshipcreated"
         value = "access-granted"
       }
