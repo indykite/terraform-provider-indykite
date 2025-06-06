@@ -63,8 +63,11 @@ func resourceTokenIntrospect() *schema.Resource {
 	validationOneOf := []string{tokenIntrospectOfflineKey, tokenIntrospectOnlineKey}
 
 	return &schema.Resource{
-		Description: `Token introspect configuration adds support for 3rd party tokens to identify the user within IndyKite APIs.`,
-
+		Description: `Token introspect configuration adds support for 3rd party tokens to identify the user within IndyKite APIs.
+		Token introspect enables the IndyKite platform to identify end users by third party tokens,
+		validate these tokens, and use their content in the IndyKite platform.
+		To verify these tokens, you need to create a configuration that describes how to do the token introspection.
+		`,
 		CreateContext: configCreateContextFunc(resourceTokenIntrospectBuild, readContext),
 		ReadContext:   readContext,
 		UpdateContext: configUpdateContextFunc(resourceTokenIntrospectBuild, readContext),

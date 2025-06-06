@@ -4,11 +4,17 @@ page_title: "indykite_token_introspect Resource - IndyKite"
 subcategory: ""
 description: |-
   Token introspect configuration adds support for 3rd party tokens to identify the user within IndyKite APIs.
+  Token introspect enables the IndyKite platform to identify end users by third party tokens,
+  validate these tokens, and use their content in the IndyKite platform.
+  To verify these tokens, you need to create a configuration that describes how to do the token introspection.
 ---
 
 # indykite_token_introspect (Resource)
 
 Token introspect configuration adds support for 3rd party tokens to identify the user within IndyKite APIs.
+		Token introspect enables the IndyKite platform to identify end users by third party tokens,
+		validate these tokens, and use their content in the IndyKite platform.
+		To verify these tokens, you need to create a configuration that describes how to do the token introspection.
 
 ## Example Usage
 
