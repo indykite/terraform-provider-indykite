@@ -4,6 +4,7 @@ page_title: "indykite_event_sink Resource - IndyKite"
 subcategory: ""
 description: |-
   Event Sink configuration is used to configure outbound events.
+
   	There can be only one configuration per AppSpace (Project).
 
   	Outbound events are designed to notify external systems about important changes within
@@ -35,7 +36,7 @@ description: |-
   | **BatchDeleteNodeTags** | indykite.audit.ingest.batch.delete.node.tag | ingestNodeType | Car |
   |  |  | ingestNodeLabel | Green |
   |  | **Configuration Events** |  |  |
-  | Atlas, Hermes | indykite.audit.config.create |  |  |
+  | Config | indykite.audit.config.create |  |  |
   |  | indykite.audit.config.read |  |  |
   |  | indykite.audit.config.update |  |  |
   |  | indykite.audit.config.delete |  |  |
@@ -89,7 +90,7 @@ Event Sink configuration is used to configure outbound events.
 | **BatchDeleteNodeTags** | indykite.audit.ingest.batch.delete.node.tag | ingestNodeType | Car |
 |  |  | ingestNodeLabel | Green |
 |  | **Configuration Events** |  |  |
-| Atlas, Hermes | indykite.audit.config.create |  |  |
+| Config | indykite.audit.config.create |  |  |
 |  | indykite.audit.config.read |  |  |
 |  | indykite.audit.config.update |  |  |
 |  | indykite.audit.config.delete |  |  |
@@ -147,8 +148,8 @@ resource "indykite_event_sink" "create-event" {
     }
   }
   routes {
-    provider_id     = "kafka-provider-01"
-    stop_processing = false
+    provider_id        = "kafka-provider-01"
+    stop_processing    = false
     keys_values_filter {
       event_type = "indykite.audit.config.create"
     }
@@ -159,16 +160,16 @@ resource "indykite_event_sink" "create-event" {
     provider_id     = "kafka-provider-02"
     stop_processing = false
     keys_values_filter {
-      key_value_pairs {
-        key   = "relationshipcreated"
-        value = "access-granted"
+      key_value_pairs{
+        key        = "relationshipcreated"
+        value      = "access-granted"
       }
-      event_type = "indykite.audit.ingest.*"
+      event_type  = "indykite.audit.ingest.*"
     }
   }
   routes {
-    provider_id     = "azuregrid"
-    stop_processing = false
+    provider_id       = "azuregrid"
+    stop_processing   = false
     keys_values_filter {
       event_type = "indykite.audit.config.create"
     }
@@ -177,7 +178,7 @@ resource "indykite_event_sink" "create-event" {
     provider_id     = "azurebus"
     stop_processing = false
     keys_values_filter {
-      key_value_pairs {
+      key_value_pairs{
         key   = "relationshipcreated"
         value = "access-granted"
       }
