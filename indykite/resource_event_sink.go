@@ -80,7 +80,7 @@ const (
 | **BatchDeleteNodeTags** | indykite.audit.ingest.batch.delete.node.tag | ingestNodeType | Car |
 |  |  | ingestNodeLabel | Green |
 |  | **Configuration Events** |  |  |
-| Atlas, Hermes | indykite.audit.config.create |  |  |
+| Config | indykite.audit.config.create |  |  |
 |  | indykite.audit.config.read |  |  |
 |  | indykite.audit.config.update |  |  |
 |  | indykite.audit.config.delete |  |  |
@@ -102,7 +102,8 @@ func resourceEventSink() *schema.Resource {
 	providerOneOf := []string{kafkaKey, azureEventGridKey, azureServiceBusKey}
 
 	return &schema.Resource{
-		Description: `Event Sink configuration is used to configure outbound events.
+		Description: `
+		Event Sink configuration is used to configure outbound events.
 
 		There can be only one configuration per AppSpace (Project).
 
