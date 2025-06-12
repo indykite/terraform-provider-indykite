@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.20.1...v0.21.0) (2025-06-12)
+
+
+### Features
+
+* replace ingest with capture in eventtypes ([05f7ea2](https://github.com/indykite/terraform-provider-indykite/commit/05f7ea28c792fb53d0685790b0164f341701f210))
+
 ## [0.20.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.20.0...v0.20.1) (2025-06-06)
 
 
