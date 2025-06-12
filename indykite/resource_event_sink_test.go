@@ -237,9 +237,9 @@ var _ = Describe("Resource EventSink", func() {
 								Filter: &configpb.EventSinkConfig_Route_KeysValues{
 									KeysValues: &configpb.EventSinkConfig_Route_EventTypeKeysValues{
 										KeyValuePairs: []*configpb.EventSinkConfig_Route_KeyValuePair{
-											{Key: "ingestRelationshipType", Value: "HAS"},
+											{Key: "captureLabel", Value: "HAS"},
 										},
-										EventType: "indykite.audit.ingest.*",
+										EventType: "indykite.audit.capture.*",
 									},
 								},
 							},
@@ -451,9 +451,9 @@ var _ = Describe("Resource EventSink", func() {
 								Filter: &configpb.EventSinkConfig_Route_KeysValues{
 									KeysValues: &configpb.EventSinkConfig_Route_EventTypeKeysValues{
 										KeyValuePairs: []*configpb.EventSinkConfig_Route_KeyValuePair{
-											{Key: "ingestRelationshipType", Value: "HAS"},
+											{Key: "captureLabel", Value: "HAS"},
 										},
-										EventType: "indykite.audit.ingest.*",
+										EventType: "indykite.audit.capture.*",
 									},
 								},
 							},
@@ -760,10 +760,10 @@ var _ = Describe("Resource EventSink", func() {
 	                        stop_processing = false
 							keys_values_filter {
 								key_value_pairs{
-									key        = "ingestRelationshipType"
+									key        = "captureLabel"
 									value      = "HAS"
 								}
-								event_type  = "indykite.audit.ingest.*"
+								event_type  = "indykite.audit.capture.*"
 							}
 						}`,
 					),

@@ -17,24 +17,24 @@ description: |-
   | **Method** | **Event Type** | **Key** | **Value (example)** |
   | --- | --- | --- | --- |
   |  | **Ingest Events** |  |  |
-  | **IngestRecord, StreamRecords, Ingest (internal)** | indykite.audit.ingest.upsert.node | ingestNodeType | Car |
-  |  |  | ingestNodeLabel | Green |
-  |  | indykite.audit.ingest.upsert.relationship | ingestRelationshipType | RENT |
-  |  | indykite.audit.ingest.delete.node | ingestNodeType | Car |
-  |  |  | ingestNodeLabel | Green |
-  |  | indykite.audit.ingest.delete.relationship | ingestRelationshipType | RENT |
-  |  | indykite.audit.ingest.delete.node.property |  |  |
-  |  | indykite.audit.ingest.delete.relationship.property |  |  |
-  | **BatchUpsertNodes** | indykite.audit.ingest.batch.upsert.node | ingestNodeType | Car |
-  |  |  | ingestNodeLabel | Green |
-  | **BatchUpsertRelationships** | indykite.audit.ingest.batch.upsert.relationship | ingestRelationshipType | RENT |
-  | **BatchDeleteNodes** | indykite.audit.ingest.batch.delete.node | ingestNodeType | Car |
-  |  |  | ingestNodeLabel | Green |
-  | **BatchDeleteRelationships** | indykite.audit.ingest.batch.delete.relationship | ingestRelationshipType | RENT |
-  | **BatchDeleteNodeProperties** | indykite.audit.ingest.batch.delete.node.property |  |  |
-  | **BatchDeleteRelationshipProperties** | indykite.audit.ingest.delete.relationship.property |  |  |
-  | **BatchDeleteNodeTags** | indykite.audit.ingest.batch.delete.node.tag | ingestNodeType | Car |
-  |  |  | ingestNodeLabel | Green |
+  | **IngestRecord, StreamRecords, Ingest (internal)** | indykite.audit.capture.upsert.node | captureLabel | Car |
+  |  |  | captureLabel | Green |
+  |  | indykite.audit.capture.upsert.relationship | captureLabel | RENT |
+  |  | indykite.audit.capture.delete.node | captureLabel | Car |
+  |  |  | captureLabel | Green |
+  |  | indykite.audit.capture.delete.relationship | captureLabel | RENT |
+  |  | indykite.audit.capture.delete.node.property |  |  |
+  |  | indykite.audit.capture.delete.relationship.property |  |  |
+  | **BatchUpsertNodes** | indykite.audit.capture.batch.upsert.node | captureLabel | Car |
+  |  |  | captureLabel | Green |
+  | **BatchUpsertRelationships** | indykite.audit.capture.batch.upsert.relationship | captureLabel | RENT |
+  | **BatchDeleteNodes** | indykite.audit.capture.batch.delete.node | captureLabel | Car |
+  |  |  | captureLabel | Green |
+  | **BatchDeleteRelationships** | indykite.audit.capture.batch.delete.relationship | captureLabel | RENT |
+  | **BatchDeleteNodeProperties** | indykite.audit.capture.batch.delete.node.property |  |  |
+  | **BatchDeleteRelationshipProperties** | indykite.audit.capture.delete.relationship.property |  |  |
+  | **BatchDeleteNodeTags** | indykite.audit.capture.batch.delete.node.tag | captureLabel | Car |
+  |  |  | captureLabel | Green |
   |  | **Configuration Events** |  |  |
   | Config | indykite.audit.config.create |  |  |
   |  | indykite.audit.config.read |  |  |
@@ -71,24 +71,24 @@ Event Sink configuration is used to configure outbound events.
 | **Method** | **Event Type** | **Key** | **Value (example)** |
 | --- | --- | --- | --- |
 |  | **Ingest Events** |  |  |
-| **IngestRecord, StreamRecords, Ingest (internal)** | indykite.audit.ingest.upsert.node | ingestNodeType | Car |
-|  |  | ingestNodeLabel | Green |
-|  | indykite.audit.ingest.upsert.relationship | ingestRelationshipType | RENT |
-|  | indykite.audit.ingest.delete.node | ingestNodeType | Car |
-|  |  | ingestNodeLabel | Green |
-|  | indykite.audit.ingest.delete.relationship | ingestRelationshipType | RENT |
-|  | indykite.audit.ingest.delete.node.property |  |  |
-|  | indykite.audit.ingest.delete.relationship.property |  |  |
-| **BatchUpsertNodes** | indykite.audit.ingest.batch.upsert.node | ingestNodeType | Car |
-|  |  | ingestNodeLabel | Green |
-| **BatchUpsertRelationships** | indykite.audit.ingest.batch.upsert.relationship | ingestRelationshipType | RENT |
-| **BatchDeleteNodes** | indykite.audit.ingest.batch.delete.node | ingestNodeType | Car |
-|  |  | ingestNodeLabel | Green |
-| **BatchDeleteRelationships** | indykite.audit.ingest.batch.delete.relationship | ingestRelationshipType | RENT |
-| **BatchDeleteNodeProperties** | indykite.audit.ingest.batch.delete.node.property |  |  |
-| **BatchDeleteRelationshipProperties** | indykite.audit.ingest.delete.relationship.property |  |  |
-| **BatchDeleteNodeTags** | indykite.audit.ingest.batch.delete.node.tag | ingestNodeType | Car |
-|  |  | ingestNodeLabel | Green |
+| **IngestRecord, StreamRecords, Ingest (internal)** | indykite.audit.capture.upsert.node | captureLabel | Car |
+|  |  | captureLabel | Green |
+|  | indykite.audit.capture.upsert.relationship | captureLabel | RENT |
+|  | indykite.audit.capture.delete.node | captureLabel | Car |
+|  |  | captureLabel | Green |
+|  | indykite.audit.capture.delete.relationship | captureLabel | RENT |
+|  | indykite.audit.capture.delete.node.property |  |  |
+|  | indykite.audit.capture.delete.relationship.property |  |  |
+| **BatchUpsertNodes** | indykite.audit.capture.batch.upsert.node | captureLabel | Car |
+|  |  | captureLabel | Green |
+| **BatchUpsertRelationships** | indykite.audit.capture.batch.upsert.relationship | captureLabel | RENT |
+| **BatchDeleteNodes** | indykite.audit.capture.batch.delete.node | captureLabel | Car |
+|  |  | captureLabel | Green |
+| **BatchDeleteRelationships** | indykite.audit.capture.batch.delete.relationship | captureLabel | RENT |
+| **BatchDeleteNodeProperties** | indykite.audit.capture.batch.delete.node.property |  |  |
+| **BatchDeleteRelationshipProperties** | indykite.audit.capture.delete.relationship.property |  |  |
+| **BatchDeleteNodeTags** | indykite.audit.capture.batch.delete.node.tag | captureLabel | Car |
+|  |  | captureLabel | Green |
 |  | **Configuration Events** |  |  |
 | Config | indykite.audit.config.create |  |  |
 |  | indykite.audit.config.read |  |  |
@@ -161,10 +161,10 @@ resource "indykite_event_sink" "create-event" {
     stop_processing = false
     keys_values_filter {
       key_value_pairs {
-        key   = "relationshipcreated"
+        key   = "captureLabel"
         value = "access-granted"
       }
-      event_type = "indykite.audit.ingest.*"
+      event_type = "indykite.audit.capture.*"
     }
   }
   routes {
@@ -179,10 +179,10 @@ resource "indykite_event_sink" "create-event" {
     stop_processing = false
     keys_values_filter {
       key_value_pairs {
-        key   = "relationshipcreated"
+        key   = "captureLabel"
         value = "access-granted"
       }
-      event_type = "indykite.audit.ingest.*"
+      event_type = "indykite.audit.capture.*"
     }
   }
   lifecycle {
