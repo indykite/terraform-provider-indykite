@@ -50,10 +50,10 @@ resource "indykite_event_sink" "create-event" {
     stop_processing = false
     keys_values_filter {
       key_value_pairs {
-        key   = "relationshipcreated"
+        key   = "captureLabel"
         value = "access-granted"
       }
-      event_type = "indykite.audit.ingest.*"
+      event_type = "indykite.audit.capture.*"
     }
   }
   routes {
@@ -68,10 +68,10 @@ resource "indykite_event_sink" "create-event" {
     stop_processing = false
     keys_values_filter {
       key_value_pairs {
-        key   = "relationshipcreated"
+        key   = "captureLabel"
         value = "access-granted"
       }
-      event_type = "indykite.audit.ingest.*"
+      event_type = "indykite.audit.capture.*"
     }
   }
   lifecycle {

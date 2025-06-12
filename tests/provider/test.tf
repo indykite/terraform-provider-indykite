@@ -269,7 +269,7 @@ resource "indykite_event_sink" "create-event" {
         key   = "relationshipcreated"
         value = "access-granted"
       }
-      event_type = "indykite.audit.ingest.*"
+      event_type = "indykite.audit.capture.*"
     }
   }
   routes {
@@ -287,7 +287,7 @@ resource "indykite_event_sink" "create-event" {
         key   = "relationshipcreated"
         value = "access-granted"
       }
-      event_type = "indykite.audit.ingest.*"
+      event_type = "indykite.audit.capture.*"
     }
   }
   lifecycle {
