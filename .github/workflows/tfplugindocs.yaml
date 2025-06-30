@@ -48,7 +48,7 @@ jobs:
                   enforce_admins: false
 
             - name: Commit generated docs
-              uses: stefanzweifel/git-auto-commit-action@v5
+              uses: stefanzweifel/git-auto-commit-action@v6
               with:
                   # [skip ci] is NOT added to ensure that new workflow runs (release-please needs to update its PR)
                   # This should not add an infinite loop because the next time docs are generated they will be the same

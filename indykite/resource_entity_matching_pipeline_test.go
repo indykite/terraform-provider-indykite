@@ -116,6 +116,7 @@ var _ = Describe("Resource EntityMatchingPipeline", func() {
 								SourceNodeTypes: []string{"Person"},
 								TargetNodeTypes: []string{"Person"},
 							},
+							SimilarityScoreCutoff: 0.7,
 						},
 					},
 				},
@@ -135,7 +136,8 @@ var _ = Describe("Resource EntityMatchingPipeline", func() {
 								SourceNodeTypes: []string{"Person"},
 								TargetNodeTypes: []string{"Person"},
 							},
-							RerunInterval: "1 day",
+							SimilarityScoreCutoff: 0.7,
+							RerunInterval:         "1 day",
 						},
 					},
 				},
@@ -156,6 +158,7 @@ var _ = Describe("Resource EntityMatchingPipeline", func() {
 								SourceNodeTypes: []string{"Person"},
 								TargetNodeTypes: []string{"Car"},
 							},
+							SimilarityScoreCutoff: 0.7,
 						},
 					},
 				},
@@ -259,6 +262,7 @@ var _ = Describe("Resource EntityMatchingPipeline", func() {
 							`display_name = "Display name of EntityMatchingPipeline configuration"
 							source_node_filter = ["Person"]
 							target_node_filter = ["Person"]
+							similarity_score_cutoff =  0.7
 							`,
 						),
 						Check: resource.ComposeTestCheckFunc(
@@ -271,6 +275,7 @@ var _ = Describe("Resource EntityMatchingPipeline", func() {
 							`display_name = "Display name of EntityMatchingPipeline configuration"
 							source_node_filter = ["Person"]
 							target_node_filter = ["Person"]
+							similarity_score_cutoff =  0.7
 							rerun_interval = "1 day"
 							`),
 						Check: resource.ComposeTestCheckFunc(
@@ -283,6 +288,7 @@ var _ = Describe("Resource EntityMatchingPipeline", func() {
 							`display_name = "Display name of EntityMatchingPipeline configuration"
 							source_node_filter = ["Person"]
 							target_node_filter = ["Car"]
+							similarity_score_cutoff =  0.7
 							`),
 						// ExpectError: regexp.MustCompile(
 						// "InvalidArgument desc = update source or target node is not allowed"),
@@ -336,6 +342,12 @@ func testResourceEntityMatchingPipelineExists(
 			GetTargetNodeTypes()
 		keys["target_node_filter.#"] = Equal(strconv.Itoa(len(targetNodeFilter)))
 		addStringArrayToKeys(keys, "target_node_filter", targetNodeFilter)
+
+		similarityScoreCutoff := data.GetConfigNode().
+			GetEntityMatchingPipelineConfig().
+			GetSimilarityScoreCutoff()
+
+		keys["similarity_score_cutoff"] = BeTerraformNumerically("~", similarityScoreCutoff)
 
 		rerunInterval := data.GetConfigNode().
 			GetEntityMatchingPipelineConfig().
