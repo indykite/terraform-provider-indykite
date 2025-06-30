@@ -15,6 +15,8 @@
 package indykite
 
 import (
+	"math"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -110,8 +112,10 @@ func resourceEntityMatchingPipelineFlatten(
 	}
 	setData(&d, data, entityMatchingPipelineTargetNodeFilterKey, targetTypes)
 
+	var ratio float64 = 10000 // 4 decimal places to round number when converting float32 to float64
 	similarityScoreCutoff := entitymatching.GetSimilarityScoreCutoff()
-	setData(&d, data, entityMatchingPipelineSimilarityScoreCutOffKey, float32(similarityScoreCutoff))
+	setData(&d, data, entityMatchingPipelineSimilarityScoreCutOffKey,
+		math.Round(float64(similarityScoreCutoff)*ratio)/ratio)
 
 	rerunInterval := entitymatching.GetRerunInterval()
 	setData(&d, data, entityMatchingPipelineRerunInterval, rerunInterval)
@@ -137,7 +141,7 @@ func resourceEntityMatchingPipelineBuild(
 	// Check if SimilarityScoreCutOffKey is available
 	if similarityScoreCutoff, hasSimilarityScore := data.GetOk(
 		entityMatchingPipelineSimilarityScoreCutOffKey); hasSimilarityScore {
-		cfg.SimilarityScoreCutoff = similarityScoreCutoff.(float32)
+		cfg.SimilarityScoreCutoff = float32(similarityScoreCutoff.(float64))
 	}
 	// Check if RerunInterval is available
 	if rerunInterval, hasRerunInterval := data.GetOk(

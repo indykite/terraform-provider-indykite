@@ -154,6 +154,12 @@ func providerSchema() map[string]*schema.Schema {
 		providerNameKey: {
 			Type:     schema.TypeString,
 			Required: true,
+			ValidateFunc: validation.All(
+				validation.StringLenBetween(2, 63),
+				validation.StringMatch(regexp.MustCompile(`^[a-z](?:[-a-z0-9]{0,61}[a-z0-9])$`),
+					"must start with a lowercase letter, followed by 0-62 characters "+
+						"(lowercase letters, digits, and hyphens in the middle)."),
+			),
 		},
 		kafkaKey: {
 			Type:        schema.TypeList,
