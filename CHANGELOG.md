@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.21.0...v0.21.1) (2025-07-01)
+
+
+### Bug Fixes
+
+* fix similarity_score_cutoff ([bb2abe5](https://github.com/indykite/terraform-provider-indykite/commit/bb2abe5c1d296f9c24e73317cf93b826035d5256))
+
 ## [0.21.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.20.1...v0.21.0) (2025-06-12)
 
 
