@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.21.1...v0.22.0) (2025-07-07)
+
+
+### Features
+
+* add api_permissions in appAgent ([58944b0](https://github.com/indykite/terraform-provider-indykite/commit/58944b08e2d010498c80e8651151302372df2d72))
+
 ## [0.21.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.21.0...v0.21.1) (2025-07-01)
 
 
