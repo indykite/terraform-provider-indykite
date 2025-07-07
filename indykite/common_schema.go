@@ -33,6 +33,7 @@ const (
 	deletionProtectionKey = "deletion_protection"
 	filterKey             = "filter"
 	regionKey             = "region"
+	apiPermissionsKey     = "api_permissions"
 )
 
 const (
@@ -157,6 +158,18 @@ func exactNameFilterSchema() *schema.Schema {
 		MinItems:    1,
 		Description: `Filter customers based on given names. Using 'exact name match' strategy to find customer.`,
 		Elem:        &schema.Schema{Type: schema.TypeString, ValidateDiagFunc: ValidateName},
+	}
+}
+
+func apiPermissionsSchema() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeList,
+		Optional: true,
+		Elem: &schema.Schema{
+			Type:         schema.TypeString,
+			ValidateFunc: validation.StringLenBetween(1, 64),
+		},
+		Description: `List of API permissions for the agent: Authorization, Capture, ContXIQ, EntityMatching, IKGRead and TrustedDataAccess.`,
 	}
 }
 

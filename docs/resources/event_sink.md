@@ -17,23 +17,15 @@ description: |-
   | **Method** | **Event Type** | **Key** | **Value (example)** |
   | --- | --- | --- | --- |
   |  | **Ingest Events** |  |  |
-  | **IngestRecord, StreamRecords, Ingest (internal)** | indykite.audit.capture.upsert.node | captureLabel | Car |
+  | **BatchUpsertNodes** | indykite.audit.capture.upsert.node | captureLabel | Car |
   |  |  | captureLabel | Green |
-  |  | indykite.audit.capture.upsert.relationship | captureLabel | RENT |
-  |  | indykite.audit.capture.delete.node | captureLabel | Car |
+  | **BatchUpsertRelationships** | indykite.audit.capture.upsert.relationship | captureLabel | RENT |
+  | **BatchDeleteNodes** | indykite.audit.capture.delete.node | captureLabel | Car |
   |  |  | captureLabel | Green |
-  |  | indykite.audit.capture.delete.relationship | captureLabel | RENT |
-  |  | indykite.audit.capture.delete.node.property |  |  |
-  |  | indykite.audit.capture.delete.relationship.property |  |  |
-  | **BatchUpsertNodes** | indykite.audit.capture.batch.upsert.node | captureLabel | Car |
-  |  |  | captureLabel | Green |
-  | **BatchUpsertRelationships** | indykite.audit.capture.batch.upsert.relationship | captureLabel | RENT |
-  | **BatchDeleteNodes** | indykite.audit.capture.batch.delete.node | captureLabel | Car |
-  |  |  | captureLabel | Green |
-  | **BatchDeleteRelationships** | indykite.audit.capture.batch.delete.relationship | captureLabel | RENT |
-  | **BatchDeleteNodeProperties** | indykite.audit.capture.batch.delete.node.property |  |  |
+  | **BatchDeleteRelationships** | indykite.audit.capture.delete.relationship | captureLabel | RENT |
+  | **BatchDeleteNodeProperties** | indykite.audit.capture.delete.node.property |  |  |
   | **BatchDeleteRelationshipProperties** | indykite.audit.capture.delete.relationship.property |  |  |
-  | **BatchDeleteNodeTags** | indykite.audit.capture.batch.delete.node.tag | captureLabel | Car |
+  | **BatchDeleteNodeTags** | indykite.audit.capture.delete.node.tag | captureLabel | Car |
   |  |  | captureLabel | Green |
   |  | **Configuration Events** |  |  |
   | Config | indykite.audit.config.create |  |  |
@@ -71,23 +63,15 @@ Event Sink configuration is used to configure outbound events.
 | **Method** | **Event Type** | **Key** | **Value (example)** |
 | --- | --- | --- | --- |
 |  | **Ingest Events** |  |  |
-| **IngestRecord, StreamRecords, Ingest (internal)** | indykite.audit.capture.upsert.node | captureLabel | Car |
+| **BatchUpsertNodes** | indykite.audit.capture.upsert.node | captureLabel | Car |
 |  |  | captureLabel | Green |
-|  | indykite.audit.capture.upsert.relationship | captureLabel | RENT |
-|  | indykite.audit.capture.delete.node | captureLabel | Car |
+| **BatchUpsertRelationships** | indykite.audit.capture.upsert.relationship | captureLabel | RENT |
+| **BatchDeleteNodes** | indykite.audit.capture.delete.node | captureLabel | Car |
 |  |  | captureLabel | Green |
-|  | indykite.audit.capture.delete.relationship | captureLabel | RENT |
-|  | indykite.audit.capture.delete.node.property |  |  |
-|  | indykite.audit.capture.delete.relationship.property |  |  |
-| **BatchUpsertNodes** | indykite.audit.capture.batch.upsert.node | captureLabel | Car |
-|  |  | captureLabel | Green |
-| **BatchUpsertRelationships** | indykite.audit.capture.batch.upsert.relationship | captureLabel | RENT |
-| **BatchDeleteNodes** | indykite.audit.capture.batch.delete.node | captureLabel | Car |
-|  |  | captureLabel | Green |
-| **BatchDeleteRelationships** | indykite.audit.capture.batch.delete.relationship | captureLabel | RENT |
-| **BatchDeleteNodeProperties** | indykite.audit.capture.batch.delete.node.property |  |  |
+| **BatchDeleteRelationships** | indykite.audit.capture.delete.relationship | captureLabel | RENT |
+| **BatchDeleteNodeProperties** | indykite.audit.capture.delete.node.property |  |  |
 | **BatchDeleteRelationshipProperties** | indykite.audit.capture.delete.relationship.property |  |  |
-| **BatchDeleteNodeTags** | indykite.audit.capture.batch.delete.node.tag | captureLabel | Car |
+| **BatchDeleteNodeTags** | indykite.audit.capture.delete.node.tag | captureLabel | Car |
 |  |  | captureLabel | Green |
 |  | **Configuration Events** |  |  |
 | Config | indykite.audit.config.create |  |  |

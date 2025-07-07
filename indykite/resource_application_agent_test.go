@@ -71,41 +71,45 @@ var _ = Describe("Resource ApplicationAgent", func() {
 				name = "acme"
 				display_name = "%s"
 				description = "%s"
+				api_permissions = ["Authorization","Capture"]
 				%s
 			}`
 		initialAppAgentResp := &configpb.ApplicationAgent{
-			CustomerId:    customerID,
-			AppSpaceId:    appSpaceID,
-			ApplicationId: applicationID,
-			Id:            appAgentID,
-			Name:          "acme",
-			DisplayName:   "acme",
-			Description:   wrapperspb.String("Just some App description"),
-			CreateTime:    timestamppb.Now(),
-			UpdateTime:    timestamppb.Now(),
+			CustomerId:           customerID,
+			AppSpaceId:           appSpaceID,
+			ApplicationId:        applicationID,
+			Id:                   appAgentID,
+			Name:                 "acme",
+			DisplayName:          "acme",
+			Description:          wrapperspb.String("Just some App description"),
+			ApiAccessRestriction: []string{"Authorization", "Capture"},
+			CreateTime:           timestamppb.Now(),
+			UpdateTime:           timestamppb.Now(),
 		}
 
 		readAfter1stUpdateResp := &configpb.ApplicationAgent{
-			CustomerId:    initialAppAgentResp.GetCustomerId(),
-			AppSpaceId:    initialAppAgentResp.GetAppSpaceId(),
-			ApplicationId: initialAppAgentResp.GetApplicationId(),
-			Id:            initialAppAgentResp.GetId(),
-			Name:          "acme",
-			DisplayName:   "acme",
-			Description:   wrapperspb.String("Another App description"),
-			CreateTime:    initialAppAgentResp.GetCreateTime(),
-			UpdateTime:    timestamppb.Now(),
+			CustomerId:           initialAppAgentResp.GetCustomerId(),
+			AppSpaceId:           initialAppAgentResp.GetAppSpaceId(),
+			ApplicationId:        initialAppAgentResp.GetApplicationId(),
+			Id:                   initialAppAgentResp.GetId(),
+			Name:                 "acme",
+			DisplayName:          "acme",
+			Description:          wrapperspb.String("Another App description"),
+			ApiAccessRestriction: []string{"Authorization", "Capture"},
+			CreateTime:           initialAppAgentResp.GetCreateTime(),
+			UpdateTime:           timestamppb.Now(),
 		}
 		readAfter2ndUpdateResp := &configpb.ApplicationAgent{
-			CustomerId:    initialAppAgentResp.GetCustomerId(),
-			AppSpaceId:    initialAppAgentResp.GetAppSpaceId(),
-			ApplicationId: initialAppAgentResp.GetApplicationId(),
-			Id:            initialAppAgentResp.GetId(),
-			Name:          "acme",
-			DisplayName:   "Some new display name",
-			Description:   nil,
-			CreateTime:    initialAppAgentResp.GetCreateTime(),
-			UpdateTime:    timestamppb.Now(),
+			CustomerId:           initialAppAgentResp.GetCustomerId(),
+			AppSpaceId:           initialAppAgentResp.GetAppSpaceId(),
+			ApplicationId:        initialAppAgentResp.GetApplicationId(),
+			Id:                   initialAppAgentResp.GetId(),
+			Name:                 "acme",
+			DisplayName:          "Some new display name",
+			Description:          nil,
+			ApiAccessRestriction: []string{"Authorization", "Capture"},
+			CreateTime:           initialAppAgentResp.GetCreateTime(),
+			UpdateTime:           timestamppb.Now(),
 		}
 
 		// Create
@@ -117,6 +121,7 @@ var _ = Describe("Resource ApplicationAgent", func() {
 				"Description": PointTo(MatchFields(IgnoreExtras, Fields{
 					"Value": Equal(initialAppAgentResp.GetDescription().GetValue()),
 				})),
+				"ApiPermissions": Equal(initialAppAgentResp.GetApiAccessRestriction()),
 			})))).
 			Return(&configpb.CreateApplicationAgentResponse{Id: initialAppAgentResp.GetId()}, nil)
 
@@ -241,8 +246,11 @@ func testAppAgentResourceDataExists(n string, data *configpb.ApplicationAgent) r
 		}
 
 		keys := Keys{
-			"id": Equal(data.GetId()),
-			"%":  Not(BeEmpty()), // This is Terraform helper
+			"id":                Equal(data.GetId()),
+			"%":                 Not(BeEmpty()), // This is Terraform helper
+			"api_permissions.#": Equal("2"),
+			"api_permissions.0": Equal("Authorization"),
+			"api_permissions.1": Equal("Capture"),
 
 			"customer_id":         Equal(data.GetCustomerId()),
 			"app_space_id":        Equal(data.GetAppSpaceId()),
