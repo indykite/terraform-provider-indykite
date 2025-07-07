@@ -46,6 +46,7 @@ func resourceApplicationAgent() *schema.Resource {
 			createTimeKey:         createTimeSchema(),
 			updateTimeKey:         updateTimeSchema(),
 			deletionProtectionKey: deletionProtectionSchema(),
+			apiPermissionsKey:     apiPermissionsSchema(),
 		},
 	}
 }
@@ -60,11 +61,13 @@ func resAppAgentCreate(ctx context.Context, data *schema.ResourceData, meta any)
 	defer cancel()
 
 	name := data.Get(nameKey).(string)
+	apiPermissions := rawArrayToTypedArray[string](data.Get(apiPermissionsKey).([]any))
 	resp, err := clientCtx.GetClient().CreateApplicationAgent(ctx, &config.CreateApplicationAgentRequest{
-		ApplicationId: data.Get(applicationIDKey).(string),
-		Name:          name,
-		DisplayName:   optionalString(data, displayNameKey),
-		Description:   optionalString(data, descriptionKey),
+		ApplicationId:  data.Get(applicationIDKey).(string),
+		Name:           name,
+		DisplayName:    optionalString(data, displayNameKey),
+		Description:    optionalString(data, descriptionKey),
+		ApiPermissions: apiPermissions,
 	})
 	if HasFailed(&d, err) {
 		return d
@@ -104,6 +107,7 @@ func resAppAgentRead(ctx context.Context, data *schema.ResourceData, meta any) d
 	setData(&d, data, descriptionKey, resp.GetApplicationAgent().GetDescription())
 	setData(&d, data, createTimeKey, resp.GetApplicationAgent().GetCreateTime())
 	setData(&d, data, updateTimeKey, resp.GetApplicationAgent().GetUpdateTime())
+	setData(&d, data, apiPermissionsKey, resp.GetApplicationAgent().GetApiAccessRestriction())
 	return d
 }
 
