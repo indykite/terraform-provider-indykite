@@ -38,10 +38,11 @@ resource "indykite_application" "application" {
 }
 
 resource "indykite_application_agent" "agent" {
-  application_id = indykite_application.application.id
-  name           = "terraform-pipeline-agent-${time_static.example.unix}"
-  display_name   = "Terraform agent ${time_static.example.unix}"
-  description    = "Agent for terraform pipeline"
+  application_id  = indykite_application.application.id
+  name            = "terraform-pipeline-agent-${time_static.example.unix}"
+  display_name    = "Terraform agent ${time_static.example.unix}"
+  description     = "Agent for terraform pipeline"
+  api_permissions = ["Authorization", "Capture"]
   lifecycle {
     create_before_destroy = true
   }

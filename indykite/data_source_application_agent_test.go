@@ -56,7 +56,6 @@ var _ = Describe("DataSource ApplicationAgent", func() {
 		mockCtrl = gomock.NewController(TerraformGomockT(GinkgoT()))
 		mockConfigClient = configm.NewMockConfigManagementAPIClient(mockCtrl)
 		mockListApplicationAgentsClient = configm.NewMockConfigManagementAPI_ListApplicationAgentsClient(mockCtrl)
-
 		provider = indykite.Provider()
 		cfgFunc := provider.ConfigureContextFunc
 		provider.ConfigureContextFunc =
@@ -69,15 +68,16 @@ var _ = Describe("DataSource ApplicationAgent", func() {
 
 	It("Test load by ID and name", func() {
 		appAgentResp := &configpb.ApplicationAgent{
-			CustomerId:    customerID,
-			AppSpaceId:    appSpaceID,
-			ApplicationId: applicationID,
-			Id:            appAgentID,
-			Name:          "acme",
-			DisplayName:   "Some Cool Display name",
-			Description:   wrapperspb.String("ApplicationAgent description"),
-			CreateTime:    timestamppb.Now(),
-			UpdateTime:    timestamppb.Now(),
+			CustomerId:           customerID,
+			AppSpaceId:           appSpaceID,
+			ApplicationId:        applicationID,
+			Id:                   appAgentID,
+			Name:                 "acme",
+			DisplayName:          "Some Cool Display name",
+			Description:          wrapperspb.String("ApplicationAgent description"),
+			ApiAccessRestriction: []string{"Authorization", "Capture"},
+			CreateTime:           timestamppb.Now(),
+			UpdateTime:           timestamppb.Now(),
 		}
 
 		// Read in given order
@@ -124,6 +124,7 @@ var _ = Describe("DataSource ApplicationAgent", func() {
 						customer_id = "` + customerID + `"
 						app_space_id = "` + appSpaceID + `"
 						name = "acme"
+						api_permissions = ["Authorization","Capture"]
 					}`,
 					ExpectError: regexp.MustCompile(`Can't configure a value for "customer_id"`),
 				},
@@ -132,12 +133,14 @@ var _ = Describe("DataSource ApplicationAgent", func() {
 						application_id = "` + applicationID + `"
 						app_space_id = "` + appSpaceID + `"
 						name = "acme"
+						api_permissions = ["Authorization","Capture"]
 					}`,
 					ExpectError: regexp.MustCompile(`Can't configure a value for "application_id"`),
 				},
 				{
 					Config: `data "indykite_application_agent" "development" {
 						name = "acme"
+						api_permissions = ["Authorization","Capture"]
 						app_agent_id = "` + applicationID + `"
 					}`,
 					ExpectError: regexp.MustCompile("only one of `app_agent_id,name` can be specified"),
@@ -145,12 +148,14 @@ var _ = Describe("DataSource ApplicationAgent", func() {
 				{
 					Config: `data "indykite_application_agent" "development" {
 						display_name = "anything"
+						api_permissions = ["Authorization","Capture"]
 					}`,
 					ExpectError: regexp.MustCompile("one of `app_agent_id,name` must be specified"),
 				},
 				{
 					Config: `data "indykite_application_agent" "development" {
 						name = "anything"
+						api_permissions = ["Authorization","Capture"]
 					}`,
 					ExpectError: regexp.MustCompile("\"name\": all of `app_space_id,name` must be specified"),
 				},
@@ -158,10 +163,10 @@ var _ = Describe("DataSource ApplicationAgent", func() {
 					Config: `data "indykite_application_agent" "development" {
 						app_space_id = "` + appSpaceID + `"
 						name = "acme"
+						api_permissions = ["Authorization","Capture"]
 					}`,
 					ExpectError: regexp.MustCompile("unknown name"),
 				},
-
 				// Success test cases
 				{
 					Check: resource.ComposeTestCheckFunc(
@@ -169,6 +174,7 @@ var _ = Describe("DataSource ApplicationAgent", func() {
 					),
 					Config: `data "indykite_application_agent" "development" {
 						app_agent_id = "` + appAgentID + `"
+						api_permissions = ["Authorization","Capture"]
 					}`,
 				},
 				{
@@ -177,6 +183,7 @@ var _ = Describe("DataSource ApplicationAgent", func() {
 					Config: `data "indykite_application_agent" "development" {
 						app_space_id = "` + appSpaceID + `"
 						name = "acme"
+						api_permissions = ["Authorization","Capture"]
 					}`,
 				},
 			},
@@ -185,24 +192,26 @@ var _ = Describe("DataSource ApplicationAgent", func() {
 
 	It("Test list by multiple names", func() {
 		appAgentResp := &configpb.ApplicationAgent{
-			CustomerId:    customerID,
-			AppSpaceId:    appSpaceID,
-			ApplicationId: applicationID,
-			Id:            appAgentID,
-			Name:          "loompaland",
-			DisplayName:   "Some Cool Display name",
-			Description:   wrapperspb.String("Just some ApplicationAgent description"),
-			CreateTime:    timestamppb.Now(),
-			UpdateTime:    timestamppb.Now(),
+			CustomerId:           customerID,
+			AppSpaceId:           appSpaceID,
+			ApplicationId:        applicationID,
+			Id:                   appAgentID,
+			Name:                 "loompaland",
+			DisplayName:          "Some Cool Display name",
+			Description:          wrapperspb.String("Just some ApplicationAgent description"),
+			CreateTime:           timestamppb.Now(),
+			UpdateTime:           timestamppb.Now(),
+			ApiAccessRestriction: []string{"Authorization", "Capture"},
 		}
 		appAgentResp2 := &configpb.ApplicationAgent{
-			CustomerId:    customerID,
-			AppSpaceId:    appSpaceID,
-			ApplicationId: applicationID,
-			Id:            sampleID,
-			Name:          "wonka-opa-agent",
-			CreateTime:    timestamppb.Now(),
-			UpdateTime:    timestamppb.Now(),
+			CustomerId:           customerID,
+			AppSpaceId:           appSpaceID,
+			ApplicationId:        applicationID,
+			Id:                   sampleID,
+			Name:                 "wonka-opa-agent",
+			CreateTime:           timestamppb.Now(),
+			UpdateTime:           timestamppb.Now(),
+			ApiAccessRestriction: []string{"Authorization", "Capture"},
 		}
 
 		mockConfigClient.EXPECT().
@@ -274,7 +283,6 @@ var _ = Describe("DataSource ApplicationAgent", func() {
 					}`,
 					ExpectError: regexp.MustCompile(`Can't configure a value for "app_agents":`),
 				},
-
 				// Success test cases
 				{
 					Check: resource.ComposeTestCheckFunc(testApplicationAgentListDataExists(
@@ -306,8 +314,11 @@ func testApplicationAgentDataExists(
 		}
 
 		keys := Keys{
-			"id": Equal(data.GetId()),
-			"%":  Not(BeEmpty()), // This is Terraform helper
+			"id":                Equal(data.GetId()),
+			"%":                 Not(BeEmpty()), // This is Terraform helper
+			"api_permissions.#": Equal("2"),
+			"api_permissions.0": Equal("Authorization"),
+			"api_permissions.1": Equal("Capture"),
 
 			"customer_id":    Equal(data.GetCustomerId()),
 			"app_space_id":   Equal(data.GetAppSpaceId()),
@@ -354,7 +365,9 @@ func testApplicationAgentListDataExists(n string, data ...*configpb.ApplicationA
 		for i, d := range data {
 			k := "app_agents." + strconv.Itoa(i) + "."
 			keys[k+"%"] = Not(BeEmpty()) // This is Terraform helper
-
+			keys[k+"api_permissions.#"] = Equal("2")
+			keys[k+"api_permissions.0"] = Equal("Authorization")
+			keys[k+"api_permissions.1"] = Equal("Capture")
 			keys[k+"id"] = Equal(d.GetId())
 			keys[k+"customer_id"] = Equal(d.GetCustomerId())
 			keys[k+"app_space_id"] = Equal(d.GetAppSpaceId())

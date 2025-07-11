@@ -164,10 +164,12 @@ func exactNameFilterSchema() *schema.Schema {
 func apiPermissionsSchema() *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeList,
-		Optional: true,
+		Required: true,
 		Elem: &schema.Schema{
-			Type:         schema.TypeString,
-			ValidateFunc: validation.StringLenBetween(1, 64),
+			Type: schema.TypeString,
+			ValidateFunc: validation.StringInSlice([]string{
+				"Authorization", "Capture", "ContXIQ", "EntityMatching", "IKGRead", "TrustedDataAccess",
+			}, false),
 		},
 		Description: `List of API permissions for the agent: Authorization, Capture, ContXIQ, EntityMatching, IKGRead and TrustedDataAccess.`,
 	}

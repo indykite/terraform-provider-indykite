@@ -125,10 +125,12 @@ func resAppAgentUpdate(ctx context.Context, data *schema.ResourceData, meta any)
 		return d
 	}
 
+	apiPermissions := rawArrayToTypedArray[string](data.Get(apiPermissionsKey).([]any))
 	req := &config.UpdateApplicationAgentRequest{
-		Id:          data.Id(),
-		DisplayName: updateOptionalString(data, displayNameKey),
-		Description: updateOptionalString(data, descriptionKey),
+		Id:             data.Id(),
+		DisplayName:    updateOptionalString(data, displayNameKey),
+		Description:    updateOptionalString(data, descriptionKey),
+		ApiPermissions: apiPermissions,
 	}
 
 	_, err := clientCtx.GetClient().UpdateApplicationAgent(ctx, req)
