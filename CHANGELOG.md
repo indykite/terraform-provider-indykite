@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.22.0...v0.23.0) (2025-07-11)
+
+
+### Features
+
+* make appAgent api_permissions mandatory ([0bcf6fb](https://github.com/indykite/terraform-provider-indykite/commit/0bcf6fba781a3d97b7651dc20865e18b999d2c6e))
+
 ## [0.22.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.21.1...v0.22.0) (2025-07-07)
 
 
