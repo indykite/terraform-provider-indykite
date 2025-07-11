@@ -133,6 +133,7 @@ var _ = Describe("Resource ApplicationAgent", func() {
 				"Description": PointTo(MatchFields(IgnoreExtras, Fields{
 					"Value": Equal(readAfter1stUpdateResp.GetDescription().GetValue()),
 				})),
+				"ApiPermissions": Equal(readAfter1stUpdateResp.GetApiAccessRestriction()),
 			})))).
 			Return(&configpb.UpdateApplicationAgentResponse{Id: initialAppAgentResp.GetId()}, nil)
 
@@ -142,7 +143,8 @@ var _ = Describe("Resource ApplicationAgent", func() {
 				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{
 					"Value": Equal(readAfter2ndUpdateResp.GetDisplayName()),
 				})),
-				"Description": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal("")})),
+				"Description":    PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal("")})),
+				"ApiPermissions": Equal(readAfter2ndUpdateResp.GetApiAccessRestriction()),
 			})))).
 			Return(&configpb.UpdateApplicationAgentResponse{Id: initialAppAgentResp.GetId()}, nil)
 

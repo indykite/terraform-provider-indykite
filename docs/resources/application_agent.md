@@ -14,10 +14,11 @@ Application agents are the profiles that contain the credentials used by applica
 
 ```terraform
 resource "indykite_application_agent" "agent" {
-  application_id = "ApplicationGID"
-  name           = "terraform-agent"
-  display_name   = "Terraform agent"
-  description    = "Agent for terraform configuration"
+  application_id  = "ApplicationGID"
+  name            = "terraform-agent"
+  display_name    = "Terraform agent"
+  description     = "Agent for terraform configuration"
+  api_permissions = ["Authorization", "Capture"]
 }
 ```
 
@@ -26,12 +27,12 @@ resource "indykite_application_agent" "agent" {
 
 ### Required
 
+- `api_permissions` (List of String) List of API permissions for the agent: Authorization, Capture, ContXIQ, EntityMatching, IKGRead and TrustedDataAccess.
 - `application_id` (String) Identifier of Application
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 
 ### Optional
 
-- `api_permissions` (List of String) List of API permissions for the agent: Authorization, Capture, ContXIQ, EntityMatching, IKGRead and TrustedDataAccess.
 - `deletion_protection` (Boolean) Whether or not to allow Terraform to destroy the instance. Unless this field is set to false in Terraform state, a terraform destroy or terraform apply that would delete the instance will fail.
 - `description` (String) Your own description of the resource. Must be less than or equal to 256 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.

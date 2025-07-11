@@ -34,15 +34,16 @@ func dataSourceAppAgent() *schema.Resource {
 			"and need to integrate. ",
 		ReadContext: dataAppAgentReadContext,
 		Schema: map[string]*schema.Schema{
-			customerIDKey:    setComputed(customerIDSchema()),
-			applicationIDKey: setComputed(applicationIDSchema()),
-			appAgentIDKey:    setExactlyOneOf(appAgentIDSchema(), appAgentIDKey, oneOfAppID),
-			nameKey:          setRequiredWith(setExactlyOneOf(nameSchema(), nameKey, oneOfAppID), appSpaceIDKey),
-			appSpaceIDKey:    setRequiredWith(appSpaceIDSchema(), nameKey),
-			displayNameKey:   displayNameSchema(),
-			descriptionKey:   descriptionSchema(),
-			createTimeKey:    createTimeSchema(),
-			updateTimeKey:    updateTimeSchema(),
+			customerIDKey:     setComputed(customerIDSchema()),
+			applicationIDKey:  setComputed(applicationIDSchema()),
+			appAgentIDKey:     setExactlyOneOf(appAgentIDSchema(), appAgentIDKey, oneOfAppID),
+			nameKey:           setRequiredWith(setExactlyOneOf(nameSchema(), nameKey, oneOfAppID), appSpaceIDKey),
+			appSpaceIDKey:     setRequiredWith(appSpaceIDSchema(), nameKey),
+			displayNameKey:    displayNameSchema(),
+			descriptionKey:    descriptionSchema(),
+			apiPermissionsKey: apiPermissionsSchema(),
+			createTimeKey:     createTimeSchema(),
+			updateTimeKey:     updateTimeSchema(),
 		},
 		Timeouts: defaultDataTimeouts(),
 	}
@@ -59,13 +60,14 @@ func dataSourceAppAgentList() *schema.Resource {
 				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						customerIDKey:    setComputed(customerIDSchema()),
-						appSpaceIDKey:    setComputed(appSpaceIDSchema()),
-						applicationIDKey: setComputed(applicationIDSchema()),
-						"id":             setComputed(appAgentIDSchema()),
-						nameKey:          nameSchema(),
-						displayNameKey:   displayNameSchema(),
-						descriptionKey:   descriptionSchema(),
+						customerIDKey:     setComputed(customerIDSchema()),
+						appSpaceIDKey:     setComputed(appSpaceIDSchema()),
+						applicationIDKey:  setComputed(applicationIDSchema()),
+						"id":              setComputed(appAgentIDSchema()),
+						nameKey:           nameSchema(),
+						displayNameKey:    displayNameSchema(),
+						descriptionKey:    descriptionSchema(),
+						apiPermissionsKey: apiPermissionsSchema(),
 					},
 				},
 			},
@@ -115,6 +117,7 @@ func dataAppAgentReadContext(ctx context.Context, data *schema.ResourceData, met
 	setData(&d, data, descriptionKey, resp.GetApplicationAgent().GetDescription())
 	setData(&d, data, createTimeKey, resp.GetApplicationAgent().GetCreateTime())
 	setData(&d, data, updateTimeKey, resp.GetApplicationAgent().GetUpdateTime())
+	setData(&d, data, apiPermissionsKey, resp.GetApplicationAgent().GetApiAccessRestriction())
 	return d
 }
 
@@ -151,13 +154,14 @@ func dataAppAgentListContext(ctx context.Context, data *schema.ResourceData, met
 			return d
 		}
 		allApplicationAgents = append(allApplicationAgents, map[string]any{
-			customerIDKey:    app.GetApplicationAgent().GetCustomerId(),
-			appSpaceIDKey:    app.GetApplicationAgent().GetAppSpaceId(),
-			applicationIDKey: app.GetApplicationAgent().GetApplicationId(),
-			"id":             app.GetApplicationAgent().GetId(),
-			nameKey:          app.GetApplicationAgent().GetName(),
-			displayNameKey:   app.GetApplicationAgent().GetDisplayName(),
-			descriptionKey:   flattenOptionalString(app.GetApplicationAgent().GetDescription()),
+			customerIDKey:     app.GetApplicationAgent().GetCustomerId(),
+			appSpaceIDKey:     app.GetApplicationAgent().GetAppSpaceId(),
+			applicationIDKey:  app.GetApplicationAgent().GetApplicationId(),
+			"id":              app.GetApplicationAgent().GetId(),
+			nameKey:           app.GetApplicationAgent().GetName(),
+			displayNameKey:    app.GetApplicationAgent().GetDisplayName(),
+			descriptionKey:    flattenOptionalString(app.GetApplicationAgent().GetDescription()),
+			apiPermissionsKey: app.GetApplicationAgent().GetApiAccessRestriction(),
 		})
 	}
 	setData(&d, data, "app_agents", allApplicationAgents)

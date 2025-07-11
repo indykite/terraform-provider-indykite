@@ -43,6 +43,7 @@ Optional:
 
 Read-Only:
 
+- `api_permissions` (List of String)
 - `app_space_id` (String)
 - `application_id` (String)
 - `customer_id` (String)
