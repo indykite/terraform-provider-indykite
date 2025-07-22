@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.23.0...v0.24.0) (2025-07-22)
+
+
+### Features
+
+* add multi region in projects ([1ff75c9](https://github.com/indykite/terraform-provider-indykite/commit/1ff75c92737449948b8c3e8440883b57f628a7c2))
+
 ## [0.23.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.22.0...v0.23.0) (2025-07-11)
 
 
