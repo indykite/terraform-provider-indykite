@@ -41,6 +41,7 @@ import (
 
 var _ = Describe("Resource Application Space", func() {
 	const resourceName = "indykite_application_space.development"
+	const resourceNameSimple = "indykite_application_space.developmentSimple"
 	var (
 		mockCtrl         *gomock.Controller
 		mockConfigClient *configm.MockConfigManagementAPIClient
@@ -61,52 +62,226 @@ var _ = Describe("Resource Application Space", func() {
 			}
 	})
 
-	It("Test all CRUD", func() {
+	It("Test all CRUD Simple", func() {
 		turnOffDelProtection := "deletion_protection=false"
 		// Terraform create config must be in sync with returned data in expectedAppSpace and expectedUpdatedAppSpace
 		// otherwise "After applying this test step, the plan was not empty" error is thrown
-		tfConfigDef :=
-			`resource "indykite_application_space" "development" {
+		tfConfigDefSimple :=
+			`resource "indykite_application_space" "developmentSimple" {
 				customer_id = "` + customerID + `"
-				name = "acme"
+				name = "acme0"
 				display_name = "%s"
 				description = "%s"
 				region = "europe-west1"
 				%s
 			}`
-		initialAppSpaceResp := &configpb.ApplicationSpace{
+
+		initialAppSpaceRespSimple := &configpb.ApplicationSpace{
 			CustomerId:  customerID,
 			Id:          appSpaceID,
-			Name:        "acme",
-			DisplayName: "acme",
+			Name:        "acme0",
+			DisplayName: "acme0",
 			Description: wrapperspb.String("Just some AppSpace description"),
 			CreateTime:  timestamppb.Now(),
 			UpdateTime:  timestamppb.Now(),
 			Region:      "europe-west1",
 		}
 
-		readAfter1stUpdateResp := &configpb.ApplicationSpace{
+		readAfter1stUpdateRespSimple := &configpb.ApplicationSpace{
 			CustomerId:  customerID,
-			Id:          initialAppSpaceResp.GetId(),
-			Name:        "acme",
-			DisplayName: "acme",
+			Id:          initialAppSpaceRespSimple.GetId(),
+			Name:        "acme0",
+			DisplayName: "acme0",
 			Description: wrapperspb.String("Another AppSpace description"),
-			CreateTime:  initialAppSpaceResp.GetCreateTime(),
+			CreateTime:  initialAppSpaceRespSimple.GetCreateTime(),
 			UpdateTime:  timestamppb.Now(),
 			Region:      "europe-west1",
 		}
-		readAfter2ndUpdateResp := &configpb.ApplicationSpace{
+		readAfter2ndUpdateRespSimple := &configpb.ApplicationSpace{
 			CustomerId:  customerID,
-			Id:          initialAppSpaceResp.GetId(),
-			Name:        "acme",
+			Id:          initialAppSpaceRespSimple.GetId(),
+			Name:        "acme0",
 			DisplayName: "Some new display name",
 			Description: nil,
-			CreateTime:  initialAppSpaceResp.GetCreateTime(),
+			CreateTime:  initialAppSpaceRespSimple.GetCreateTime(),
 			UpdateTime:  timestamppb.Now(),
 			Region:      "europe-west1",
 		}
 
-		// Create
+		// Create1
+		mockConfigClient.EXPECT().
+			CreateApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
+				"CustomerId":  Equal(customerID),
+				"Name":        Equal(initialAppSpaceRespSimple.GetName()),
+				"DisplayName": BeNil(),
+				"Description": PointTo(MatchFields(IgnoreExtras, Fields{
+					"Value": Equal(initialAppSpaceRespSimple.GetDescription().GetValue()),
+				})),
+				"Region": Equal(initialAppSpaceRespSimple.GetRegion()),
+			})))).
+			Return(&configpb.CreateApplicationSpaceResponse{Id: initialAppSpaceRespSimple.GetId()}, nil)
+
+		// 2x update
+		mockConfigClient.EXPECT().
+			UpdateApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Id":          Equal(initialAppSpaceRespSimple.GetId()),
+				"DisplayName": BeNil(),
+				"Description": PointTo(MatchFields(IgnoreExtras, Fields{
+					"Value": Equal(readAfter1stUpdateRespSimple.GetDescription().GetValue()),
+				})),
+			})))).
+			Return(&configpb.UpdateApplicationSpaceResponse{Id: initialAppSpaceRespSimple.GetId()}, nil)
+
+		mockConfigClient.EXPECT().
+			UpdateApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Id": Equal(initialAppSpaceRespSimple.GetId()),
+				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{
+					"Value": Equal(readAfter2ndUpdateRespSimple.GetDisplayName()),
+				})),
+				"Description": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal("")})),
+			})))).
+			Return(&configpb.UpdateApplicationSpaceResponse{Id: initialAppSpaceRespSimple.GetId()}, nil)
+
+		// Read in given order
+		gomock.InOrder(
+			mockConfigClient.EXPECT().
+				ReadApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{
+						"Id": Equal(initialAppSpaceRespSimple.GetId())})),
+				})))).
+				Times(4).
+				Return(&configpb.ReadApplicationSpaceResponse{AppSpace: initialAppSpaceRespSimple}, nil),
+
+			mockConfigClient.EXPECT().
+				ReadApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{
+						"Id": Equal(initialAppSpaceRespSimple.GetId())})),
+				})))).
+				Times(3).
+				Return(&configpb.ReadApplicationSpaceResponse{AppSpace: readAfter1stUpdateRespSimple}, nil),
+
+			mockConfigClient.EXPECT().
+				ReadApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
+					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{
+						"Id": Equal(initialAppSpaceRespSimple.GetId())})),
+				})))).
+				Times(5).
+				Return(&configpb.ReadApplicationSpaceResponse{AppSpace: readAfter2ndUpdateRespSimple}, nil),
+		)
+
+		// Delete
+		mockConfigClient.EXPECT().
+			DeleteApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
+				"Id": Equal(initialAppSpaceRespSimple.GetId()),
+			})))).
+			Return(&configpb.DeleteApplicationSpaceResponse{}, nil)
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			Providers: map[string]*schema.Provider{
+				"indykite": provider,
+			},
+			Steps: []resource.TestStep{
+				// Errors cases must be always first
+				{
+					// Checking Create and Read (initialAppSpaceRespSimple)
+					Config: fmt.Sprintf(
+						tfConfigDefSimple, "", initialAppSpaceRespSimple.GetDescription().GetValue(), ""),
+					Check: resource.ComposeTestCheckFunc(
+						testAppSpaceResourceDataExists(resourceNameSimple, initialAppSpaceRespSimple),
+					),
+				},
+				{
+					// Performs 1 read (initialAppSpaceRespSimple)
+					ResourceName:  resourceNameSimple,
+					ImportState:   true,
+					ImportStateId: initialAppSpaceRespSimple.GetId(),
+				},
+				{
+					// Checking Read (initialAppSpaceRespSimple), Update and Read(readAfter1stUpdateRespSimple)
+					Config: fmt.Sprintf(
+						tfConfigDefSimple, "", readAfter1stUpdateRespSimple.GetDescription().GetValue(), ""),
+					Check: resource.ComposeTestCheckFunc(
+						testAppSpaceResourceDataExists(resourceNameSimple, readAfter1stUpdateRespSimple),
+					),
+				},
+				{
+					// Checking Read(readAfter1stUpdateRespSimple), Update and Read(readAfter2ndUpdateRespSimple)
+					Config: fmt.Sprintf(tfConfigDefSimple, readAfter2ndUpdateRespSimple.GetDisplayName(), "", ""),
+					Check: resource.ComposeTestCheckFunc(
+						testAppSpaceResourceDataExists(resourceNameSimple, readAfter2ndUpdateRespSimple),
+					),
+				},
+				{
+					// Checking Read(readAfter2ndUpdateRespSimple) -> no changes but tries to destroy with error
+					Config:      fmt.Sprintf(tfConfigDefSimple, readAfter2ndUpdateRespSimple.GetDisplayName(), "", ""),
+					Destroy:     true,
+					ExpectError: regexp.MustCompile("Cannot destroy instance"),
+				},
+				{
+					// Checking Read(readAfter2ndUpdateRespSimple), Update (del protection, no API call)
+					// and final Read (readAfter2ndUpdateRespSimple)
+					Config: fmt.Sprintf(
+						tfConfigDefSimple, readAfter2ndUpdateRespSimple.GetDisplayName(), "", turnOffDelProtection),
+				},
+			},
+		})
+	})
+
+	It("Test all CRUD", func() {
+		turnOffDelProtection := "deletion_protection=false"
+		// Terraform create config must be in sync with returned data in expectedAppSpace and expectedUpdatedAppSpace
+		// otherwise "After applying this test step, the plan was not empty" error is thrown
+		tfConfigDef :=
+			`resource "indykite_application_space" "development" {
+					customer_id = "` + customerID + `"
+					name = "acme"
+					display_name = "%s"
+					description = "%s"
+					region = "us-east1"
+					ikg_size = "4GB"
+					replica_region = "us-west1"
+					%s
+				}`
+
+		initialAppSpaceResp := &configpb.ApplicationSpace{
+			CustomerId:    customerID,
+			Id:            appSpaceID,
+			Name:          "acme",
+			DisplayName:   "acme",
+			Description:   wrapperspb.String("Just some AppSpace description"),
+			CreateTime:    timestamppb.Now(),
+			UpdateTime:    timestamppb.Now(),
+			Region:        "us-east1",
+			IkgSize:       "4GB",
+			ReplicaRegion: "us-west1",
+		}
+
+		readAfter1stUpdateResp := &configpb.ApplicationSpace{
+			CustomerId:    customerID,
+			Id:            initialAppSpaceResp.GetId(),
+			Name:          "acme",
+			DisplayName:   "acme",
+			Description:   wrapperspb.String("Another AppSpace description"),
+			CreateTime:    initialAppSpaceResp.GetCreateTime(),
+			UpdateTime:    timestamppb.Now(),
+			Region:        "us-east1",
+			IkgSize:       "4GB",
+			ReplicaRegion: "us-west1",
+		}
+		readAfter2ndUpdateResp := &configpb.ApplicationSpace{
+			CustomerId:    customerID,
+			Id:            initialAppSpaceResp.GetId(),
+			Name:          "acme",
+			DisplayName:   "Some new display name",
+			Description:   nil,
+			CreateTime:    initialAppSpaceResp.GetCreateTime(),
+			UpdateTime:    timestamppb.Now(),
+			Region:        "us-east1",
+			IkgSize:       "4GB",
+			ReplicaRegion: "us-west1",
+		}
+
+		// Create2
 		mockConfigClient.EXPECT().
 			CreateApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
 				"CustomerId":  Equal(customerID),
@@ -242,6 +417,8 @@ func testAppSpaceResourceDataExists(n string, data *configpb.ApplicationSpace) r
 			"update_time":         Not(BeEmpty()),
 			"deletion_protection": Not(BeEmpty()),
 			"region":              Equal(data.GetRegion()),
+			"ikg_size":            Equal(data.GetIkgSize()),
+			"replica_region":      Equal(data.GetReplicaRegion()),
 		}
 
 		return convertOmegaMatcherToError(MatchAllKeys(keys), rs.Primary.Attributes)
