@@ -42,6 +42,8 @@ func resourceApplicationSpace() *schema.Resource {
 			updateTimeKey:         updateTimeSchema(),
 			deletionProtectionKey: deletionProtectionSchema(),
 			regionKey:             regionSchema(),
+			ikgSizeKey:            ikgSizeSchema(),
+			replicaRegionKey:      replicaRegionSchema(),
 		},
 	}
 }
@@ -57,11 +59,13 @@ func resAppSpaceCreateContext(ctx context.Context, data *schema.ResourceData, me
 
 	name := data.Get(nameKey).(string)
 	resp, err := clientCtx.GetClient().CreateApplicationSpace(ctx, &config.CreateApplicationSpaceRequest{
-		CustomerId:  data.Get(customerIDKey).(string),
-		Name:        name,
-		DisplayName: optionalString(data, displayNameKey),
-		Description: optionalString(data, descriptionKey),
-		Region:      data.Get(regionKey).(string),
+		CustomerId:    data.Get(customerIDKey).(string),
+		Name:          name,
+		DisplayName:   optionalString(data, displayNameKey),
+		Description:   optionalString(data, descriptionKey),
+		Region:        data.Get(regionKey).(string),
+		IkgSize:       data.Get(ikgSizeKey).(string),
+		ReplicaRegion: data.Get(replicaRegionKey).(string),
 	})
 	if HasFailed(&d, err) {
 		return d
@@ -100,6 +104,8 @@ func resAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta
 	setData(&d, data, createTimeKey, resp.GetAppSpace().GetCreateTime())
 	setData(&d, data, updateTimeKey, resp.GetAppSpace().GetUpdateTime())
 	setData(&d, data, regionKey, resp.GetAppSpace().GetRegion())
+	setData(&d, data, ikgSizeKey, resp.GetAppSpace().GetIkgSize())
+	setData(&d, data, replicaRegionKey, resp.GetAppSpace().GetReplicaRegion())
 	return d
 }
 

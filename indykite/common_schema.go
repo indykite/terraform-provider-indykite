@@ -34,6 +34,8 @@ const (
 	filterKey             = "filter"
 	regionKey             = "region"
 	apiPermissionsKey     = "api_permissions"
+	ikgSizeKey            = "ikg_size"
+	replicaRegionKey      = "replica_region"
 )
 
 const (
@@ -48,11 +50,38 @@ const (
 
 func regionSchema() *schema.Schema {
 	return &schema.Schema{
-		Type:        schema.TypeString,
-		Required:    true,
-		Description: `Region where the application space is located.`,
+		Type:     schema.TypeString,
+		Required: true,
+		Description: `Region where the application space is located.
+		Valid values are: europe-west1, us-east1.`,
 		ValidateFunc: validation.StringInSlice([]string{
 			"europe-west1", "us-east1",
+		}, false),
+	}
+}
+
+func ikgSizeSchema() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeString,
+		Optional: true,
+		Description: `IKG size that will be allocated, which corresponds also to number of CPU nodes (default 2GB).
+		Valid values are: 2GB (1 CPU), 4GB (1 CPU), 8GB (2 CPUs), 16GB (3 CPUs), 32GB (6 CPUs), 64GB (12 CPUs),
+		128GB (24 CPUs), 192GB (36 CPUs), 256GB (48 CPUs), 384GB (82 CPUs), and 512GB (96 CPUs).`,
+		ValidateFunc: validation.StringInSlice([]string{
+			"2GB", "4GB", "8GB", "16GB", "32GB", "64GB", "128GB", "192GB", "256GB", "384GB", "512GB",
+		}, false),
+	}
+}
+
+func replicaRegionSchema() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeString,
+		Optional: true,
+		Description: `Replica region specifies where the replica IKG is created.
+		Replica must be a different region than the master, but also on the same geographical continent.
+		Valid values are: europe-west1, us-east1, us-west1.`,
+		ValidateFunc: validation.StringInSlice([]string{
+			"europe-west1", "us-east1", "us-west1",
 		}, false),
 	}
 }
