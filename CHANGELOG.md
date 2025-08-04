@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.24.0...v0.24.1) (2025-08-04)
+
+
+### Bug Fixes
+
+* remove updates in app_space ([7befee7](https://github.com/indykite/terraform-provider-indykite/commit/7befee731e1ce5a009680c9bbc6b867de37abcfb))
+
 ## [0.24.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.23.0...v0.24.0) (2025-07-22)
 
 
