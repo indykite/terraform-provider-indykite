@@ -15,11 +15,13 @@ data "indykite_customer" "customer" {
 }
 
 resource "indykite_application_space" "appspace" {
-  customer_id  = data.indykite_customer.customer.id
-  name         = local.app_space_name
-  display_name = "Terraform appspace ${time_static.example.unix}"
-  description  = "Application space for terraform pipeline"
-  region       = "europe-west1"
+  customer_id    = data.indykite_customer.customer.id
+  name           = local.app_space_name
+  display_name   = "Terraform appspace ${time_static.example.unix}"
+  description    = "Application space for terraform pipeline"
+  region         = "us-east1"
+  ikg_size       = "4GB"
+  replica_region = "us-west1"
   lifecycle {
     create_before_destroy = true
   }
