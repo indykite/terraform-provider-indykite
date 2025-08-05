@@ -65,6 +65,7 @@ func ikgSizeSchema() *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeString,
 		Optional: true,
+		Default:  "2GB",
 		ForceNew: true,
 		Description: `IKG size that will be allocated, which corresponds also to number of CPU nodes (default 2GB).
 		Valid values are: 2GB (1 CPU), 4GB (1 CPU), 8GB (2 CPUs), 16GB (3 CPUs), 32GB (6 CPUs), 64GB (12 CPUs),

@@ -73,6 +73,7 @@ var _ = Describe("Resource Application Space", func() {
 				display_name = "%s"
 				description = "%s"
 				region = "europe-west1"
+				ikg_size = "4GB"
 				%s
 			}`
 
@@ -85,6 +86,7 @@ var _ = Describe("Resource Application Space", func() {
 			CreateTime:  timestamppb.Now(),
 			UpdateTime:  timestamppb.Now(),
 			Region:      "europe-west1",
+			IkgSize:     "4GB",
 		}
 
 		readAfter1stUpdateRespSimple := &configpb.ApplicationSpace{
@@ -96,6 +98,7 @@ var _ = Describe("Resource Application Space", func() {
 			CreateTime:  initialAppSpaceRespSimple.GetCreateTime(),
 			UpdateTime:  timestamppb.Now(),
 			Region:      "europe-west1",
+			IkgSize:     "4GB",
 		}
 		readAfter2ndUpdateRespSimple := &configpb.ApplicationSpace{
 			CustomerId:  customerID,
@@ -106,6 +109,7 @@ var _ = Describe("Resource Application Space", func() {
 			CreateTime:  initialAppSpaceRespSimple.GetCreateTime(),
 			UpdateTime:  timestamppb.Now(),
 			Region:      "europe-west1",
+			IkgSize:     "4GB",
 		}
 
 		// Create1
@@ -117,7 +121,8 @@ var _ = Describe("Resource Application Space", func() {
 				"Description": PointTo(MatchFields(IgnoreExtras, Fields{
 					"Value": Equal(initialAppSpaceRespSimple.GetDescription().GetValue()),
 				})),
-				"Region": Equal(initialAppSpaceRespSimple.GetRegion()),
+				"Region":  Equal(initialAppSpaceRespSimple.GetRegion()),
+				"IkgSize": Equal(initialAppSpaceRespSimple.GetIkgSize()),
 			})))).
 			Return(&configpb.CreateApplicationSpaceResponse{Id: initialAppSpaceRespSimple.GetId()}, nil)
 
