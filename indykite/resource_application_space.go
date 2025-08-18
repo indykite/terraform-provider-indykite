@@ -16,6 +16,7 @@ package indykite
 
 import (
 	"context"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -71,8 +72,92 @@ func resAppSpaceCreateContext(ctx context.Context, data *schema.ResourceData, me
 		return d
 	}
 	data.SetId(resp.GetId())
+	return resAppSpaceReadAfterCreateContext(ctx, data, meta)
+}
 
-	return resAppSpaceReadContext(ctx, data, meta)
+func getStatus(ctx context.Context, clientCtx *ClientContext, data *schema.ResourceData) (string, diag.Diagnostics) {
+	var d diag.Diagnostics
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
+	defer cancel()
+	resp, err := clientCtx.GetClient().ReadApplicationSpace(ctx, &config.ReadApplicationSpaceRequest{
+		Identifier: &config.ReadApplicationSpaceRequest_Id{
+			Id: data.Id(),
+		},
+	})
+
+	if err != nil {
+		return "", diag.Diagnostics{buildPluginError("read application space failed")}
+	}
+	if resp == nil {
+		return "", diag.Diagnostics{buildPluginError("read application space: empty response")}
+	}
+	if resp.GetAppSpace() == nil {
+		return "", diag.Diagnostics{buildPluginError("read application space: missing AppSpace in response")}
+	}
+
+	data.SetId(resp.GetAppSpace().GetId())
+	setData(&d, data, customerIDKey, resp.GetAppSpace().GetCustomerId())
+	setData(&d, data, nameKey, resp.GetAppSpace().GetName())
+	setData(&d, data, displayNameKey, resp.GetAppSpace().GetDisplayName())
+	setData(&d, data, descriptionKey, resp.GetAppSpace().GetDescription())
+	setData(&d, data, createTimeKey, resp.GetAppSpace().GetCreateTime())
+	setData(&d, data, updateTimeKey, resp.GetAppSpace().GetUpdateTime())
+	setData(&d, data, regionKey, resp.GetAppSpace().GetRegion())
+	setData(&d, data, ikgSizeKey, resp.GetAppSpace().GetIkgSize())
+	setData(&d, data, replicaRegionKey, resp.GetAppSpace().GetReplicaRegion())
+
+	s := resp.GetAppSpace().GetIkgStatus().String()
+	return s, d
+}
+
+func waitForActive(ctx context.Context, clientCtx *ClientContext, data *schema.ResourceData) diag.Diagnostics {
+	const (
+		maxWait = 15 * time.Minute
+		target  = config.AppSpaceIKGStatus_APP_SPACE_IKG_STATUS_STATUS_ACTIVE
+	)
+	intervals := []time.Duration{
+		0, // immediate
+		10 * time.Second,
+		1 * time.Minute,
+		2 * time.Minute,
+	}
+	ctx, cancel := context.WithTimeout(ctx, maxWait)
+	defer cancel()
+
+	deadline := time.Now().Add(maxWait)
+
+	for i := 0; ; i++ {
+		// compute next wait
+		var wait time.Duration
+		if i < len(intervals) {
+			wait = intervals[i]
+		} else {
+			wait = 10 * time.Second
+		}
+
+		// if we already passed the deadline, stop
+		if time.Now().Add(wait).After(deadline) {
+			return diag.Diagnostics{buildPluginError("timed out waiting for IKG status to become active")}
+		}
+
+		// sleep before the check unless it's the immediate one
+		if wait > 0 {
+			select {
+			case <-time.After(wait):
+			case <-ctx.Done():
+				return diag.Diagnostics{buildPluginError("timed out waiting for IKG status to become active")}
+			}
+		}
+
+		// do the check
+		status, d := getStatus(ctx, clientCtx, data)
+		if d != nil {
+			continue
+		}
+		if status == target.String() {
+			return d
+		}
+	}
 }
 
 func resAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
@@ -106,6 +191,21 @@ func resAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta
 	setData(&d, data, regionKey, resp.GetAppSpace().GetRegion())
 	setData(&d, data, ikgSizeKey, resp.GetAppSpace().GetIkgSize())
 	setData(&d, data, replicaRegionKey, resp.GetAppSpace().GetReplicaRegion())
+
+	return d
+}
+
+func resAppSpaceReadAfterCreateContext(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
+	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
+	defer cancel()
+
+	waitForActive(ctx, clientCtx, data)
+
 	return d
 }
 
@@ -133,6 +233,7 @@ func resAppSpaceUpdateContext(ctx context.Context, data *schema.ResourceData, me
 	if HasFailed(&d, err) {
 		return d
 	}
+
 	return resAppSpaceReadContext(ctx, data, meta)
 }
 
@@ -151,5 +252,6 @@ func resAppSpaceDeleteContext(ctx context.Context, data *schema.ResourceData, me
 		Id: data.Id(),
 	})
 	HasFailed(&d, err)
+
 	return d
 }
