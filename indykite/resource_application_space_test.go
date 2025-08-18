@@ -87,6 +87,7 @@ var _ = Describe("Resource Application Space", func() {
 			UpdateTime:  timestamppb.Now(),
 			Region:      "europe-west1",
 			IkgSize:     "4GB",
+			IkgStatus:   configpb.AppSpaceIKGStatus_APP_SPACE_IKG_STATUS_STATUS_ACTIVE,
 		}
 
 		readAfter1stUpdateRespSimple := &configpb.ApplicationSpace{
@@ -259,6 +260,7 @@ var _ = Describe("Resource Application Space", func() {
 			Region:        "us-east1",
 			IkgSize:       "4GB",
 			ReplicaRegion: "us-west1",
+			IkgStatus:     configpb.AppSpaceIKGStatus_APP_SPACE_IKG_STATUS_STATUS_ACTIVE,
 		}
 
 		readAfter1stUpdateResp := &configpb.ApplicationSpace{

@@ -47,7 +47,7 @@ Be sure you have the correct Terraform version (0.12.0+), you can choose the bin
 
 ## Example
 
-You can find Terraform examples in our [Provider documentation](https://registry.terraform.io/providers/indykite/indykite/latest/docs).
+You can find Terraform examples for all the configurations in our [Provider documentation](https://registry.terraform.io/providers/indykite/indykite/latest/docs).
 A complete script example is available [test.tf](tests/provider/test.tf).
 
 ## Provider development
