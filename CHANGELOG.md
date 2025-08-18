@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.3](https://github.com/indykite/terraform-provider-indykite/compare/v0.24.2...v0.24.3) (2025-08-18)
+
+
+### Bug Fixes
+
+* wait for appspace status active ([4b9b1e9](https://github.com/indykite/terraform-provider-indykite/commit/4b9b1e96db48fcfe60dfc994a4dcf4eac6414c2e))
+
 ## [0.24.2](https://github.com/indykite/terraform-provider-indykite/compare/v0.24.1...v0.24.2) (2025-08-05)
 
 
