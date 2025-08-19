@@ -51,11 +51,12 @@ func resourceApplicationSpace() *schema.Resource {
 
 func resAppSpaceCreateContext(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
 	var d diag.Diagnostics
+	const maxWait = 20 * time.Minute
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
 	}
-	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
+	ctx, cancel := context.WithTimeout(ctx, maxWait)
 	defer cancel()
 
 	name := data.Get(nameKey).(string)
@@ -112,7 +113,7 @@ func getStatus(ctx context.Context, clientCtx *ClientContext, data *schema.Resou
 
 func waitForActive(ctx context.Context, clientCtx *ClientContext, data *schema.ResourceData) diag.Diagnostics {
 	const (
-		maxWait = 15 * time.Minute
+		maxWait = 20 * time.Minute
 		target  = config.AppSpaceIKGStatus_APP_SPACE_IKG_STATUS_STATUS_ACTIVE
 	)
 	intervals := []time.Duration{
@@ -197,11 +198,12 @@ func resAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta
 
 func resAppSpaceReadAfterCreateContext(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
 	var d diag.Diagnostics
+	const maxWait = 20 * time.Minute
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
 	}
-	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
+	ctx, cancel := context.WithTimeout(ctx, maxWait)
 	defer cancel()
 
 	waitForActive(ctx, clientCtx, data)

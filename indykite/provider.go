@@ -155,7 +155,7 @@ func defaultTimeouts(exclude ...string) *schema.ResourceTimeout {
 		Default: schema.DefaultTimeout(4 * time.Minute),
 	}
 	if !contains(exclude, "create") {
-		rs.Create = schema.DefaultTimeout(4 * time.Minute)
+		rs.Create = schema.DefaultTimeout(20 * time.Minute)
 	}
 	if !contains(exclude, "read") {
 		rs.Read = schema.DefaultTimeout(4 * time.Minute)
