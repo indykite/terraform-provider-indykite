@@ -1,4 +1,4 @@
-FROM golang:1.24
+FROM golang:1.25
 #You can start with any base Docker Image that works for you
 RUN apt-get update && apt-get install -y --no-install-recommends \
 		build-essential \
