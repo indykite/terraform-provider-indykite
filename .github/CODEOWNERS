@@ -2,7 +2,7 @@
 # Later match takes precedence over earlier rule.
 
 # Global rule set for everything, and special cases exclude later
-* @indykite/be-code-reviewers
+* @indykite/be-team
 
 # Pipeline files
 .github/workflows/ @maprokes @arxeiss
