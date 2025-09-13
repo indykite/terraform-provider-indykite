@@ -4,10 +4,18 @@
 # Global rule set for everything, and special cases exclude later
 * @indykite/be-team
 
-# Pipeline files
-.github/workflows/ @maprokes @arxeiss
-release-please-config.json @maprokes
-
-# Dependencies and build files
-go.mod @marvinkite
-go.sum @marvinkite
+#
+# CI/CD, SAST & linting configs
+/.github/               @indykite/be-team @indykite/ops
+.pre-commit-config.yaml @indykite/be-team @indykite/ops
+.checkov.yaml           @indykite/be-team @indykite/ops
+.deepsource.toml        @indykite/be-team @indykite/ops
+.golangci.yml           @indykite/be-team @indykite/ops
+.hadolint.yml           @indykite/be-team @indykite/ops
+.markdownlint.yaml      @indykite/be-team @indykite/ops
+.shellcheckrc           @indykite/be-team @indykite/ops
+.tfdocs-config.yaml     @indykite/be-team @indykite/ops
+.tflint.hcl             @indykite/be-team @indykite/ops
+.trivy*.                @indykite/be-team @indykite/ops
+.yamlfmt.yml            @indykite/be-team @indykite/ops
+.yamllint.yml           @indykite/be-team @indykite/ops

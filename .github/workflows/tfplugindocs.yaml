@@ -1,64 +1,63 @@
 ---
 name: Terraform plugin docs
 
-on:
-    push:
-        branches:
-            - master
+on: # yamllint disable-line rule:truthy
+  push:
+    branches:
+      - master
 
 concurrency:
-    group: tfdocs-${{ github.ref }}
-    cancel-in-progress: true
+  group: tfdocs-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
-    contents: write
+  contents: write
 
 jobs:
-    tfplugindocs:
-        name: Generate Terraform plugin docs
-        runs-on: ubuntu-latest
-        steps:
-            - name: Check out code
-              uses: actions/checkout@v4
-              with:
-                  token: ${{ secrets.INDYKITEONE_PAT }}
+  tfplugindocs:
+    name: Generate Terraform plugin docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: actions/checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0 - https://github.com/actions/checkout/releases
+        with:
+          token: ${{ secrets.INDYKITEONE_PAT }}
 
-            - name: Set up Go
-              uses: actions/setup-go@v5
-              with:
-                  go-version-file: go.mod
+      - name: setup/golang
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0 - https://github.com/actions/setup-go/releases
+        with:
+          go-version-file: go.mod
 
-            - name: Generate docs
-              run: |
-                  make install-tools tfdocs_generate
+      - name: Generate docs
+        run: |
+          make install-tools tfdocs_generate
 
-            - name: Fix trailing whitespace & EOF in generated docs
-              uses: pre-commit/action@v3.0.1
-              # ignoring errors, as pre-commit will fail if files were modified
-              continue-on-error: true
-              with:
-                  extra_args: --hook-stage=manual --all-files
+      - name: Fix trailing whitespace & EOF in generated docs
+        uses: pre-commit/action@v3.0.1
+        # ignoring errors, as pre-commit will fail if files were modified
+        continue-on-error: true
+        with:
+          extra_args: --hook-stage=manual --all-files
 
+      - name: Temporarily disable "include administrators" branch protection
+        uses: benjefferies/branch-protection-bot@v1.1.2
+        if: always()
+        with:
+          access_token: ${{ secrets.INDYKITEONE_PAT }}
+          enforce_admins: false
 
-            - name: Temporarily disable "include administrators" branch protection
-              uses: benjefferies/branch-protection-bot@v1.1.2
-              if: always()
-              with:
-                  access_token: ${{ secrets.INDYKITEONE_PAT }}
-                  enforce_admins: false
+      - name: Commit generated docs
+        uses: stefanzweifel/git-auto-commit-action@v6
+        with:
+          # [skip ci] is NOT added to ensure that new workflow runs (release-please needs to update its PR)
+          # This should not add an infinite loop because the next time docs are generated they will be the same
+          # https://docs.github.com/en/actions/managing-workflow-runs/skipping-workflow-runs
+          commit_message: 'ci: update Terraform plugin docs'
+          commit_options: --no-verify --signoff
 
-            - name: Commit generated docs
-              uses: stefanzweifel/git-auto-commit-action@v6
-              with:
-                  # [skip ci] is NOT added to ensure that new workflow runs (release-please needs to update its PR)
-                  # This should not add an infinite loop because the next time docs are generated they will be the same
-                  # https://docs.github.com/en/actions/managing-workflow-runs/skipping-workflow-runs
-                  commit_message: 'ci: update Terraform plugin docs'
-                  commit_options: --no-verify --signoff
-
-            - name: Enable "include administrators" branch protection
-              uses: benjefferies/branch-protection-bot@v1.1.2
-              if: always()    # Force to always run this step to ensure "include administrators" is always turned back on
-              with:
-                  access_token: ${{ secrets.INDYKITEONE_PAT }}
-                  enforce_admins: true
+      - name: Enable "include administrators" branch protection
+        uses: benjefferies/branch-protection-bot@v1.1.2
+        if: always() # Force to always run this step to ensure "include administrators" is always turned back on
+        with:
+          access_token: ${{ secrets.INDYKITEONE_PAT }}
+          enforce_admins: true

@@ -1,0 +1,43 @@
+---
+name: pre-commit cache
+
+#
+# as per '_pr-pre-commit.md', branch protection is enforced via an org-wide ruleset. But GitHub does NOT allow to do
+# a similar approach for the 'master' (or default) branches, hence necessity of duplicating of the same file across all repos.
+#
+
+on: # yamllint disable-line rule:truthy
+  push:
+    branches: ["dev", "develop", "main", "master"] # TODO: not able to use ${{ github.event.repository.default_branch }} directly?
+  schedule:
+    # GitHub Actions does not support the non-standard syntax @monthly, @weekly, @daily, etc.
+    # - cron: "15 2 1 * *" # low activity repos can do just the first day of the month at 02:15 UTC
+    - cron: "15 0 * * *" # daily at 00:15 UTC
+
+# CKV2_GHA_1, see https://www.checkov.io/5.Policy%20Index/github_actions.html for details
+permissions:
+  contents: write # required for trivy to upload artifacts
+
+jobs:
+  pre-commit:
+    name: pre-commit-cache
+    runs-on: ubuntu-latest
+    steps:
+      - name: pre-commit
+        uses: indykite/ops-common/.github/actions/pre-commit@master
+        with:
+          # shared workflow; required for 'ops-common/pre-commit-autoupdate' to do ssh://git@github.com... from another repos
+          github_token: ${{ secrets.INDYKITEONE_PAT }}
+          # comma separated list of hook ids; exclude autoupdate and branch checks on scheduled runs for cache purposes
+          pre_commit_skip: >-
+            commitlint,trivy,trivy-conf,trivy-filesystem
+            ${{ vars.PRE_COMMIT_SKIP != null && ',' || '' }}${{ vars.PRE_COMMIT_SKIP }}
+            ${{ format('{0}', github.event_name != 'pull_request' && ',pre-commit-autoupdate,no-commit-to-branch' || '' ) }}
+  trivy:
+    name: trivy
+    runs-on: ubuntu-latest
+    steps:
+      - name: trivy
+        uses: indykite/ops-common/.github/actions/trivy@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}

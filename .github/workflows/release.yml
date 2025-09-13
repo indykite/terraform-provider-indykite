@@ -2,54 +2,54 @@
 # In case this action is failing, try to check for any updates or follow Publishing Provider tutorial at HashiCorp.
 # https://developer.hashicorp.com/terraform/registry/providers/publishing#github-actions-preferred
 name: Terraform release
-on:
-    push:
-        tags:
-            - v*
+on: # yamllint disable-line rule:truthy
+  push:
+    tags:
+      - v*
 
 permissions:
-    contents: write
+  contents: write
 
 jobs:
-    goreleaser:
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: actions/checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0 - https://github.com/actions/checkout/releases
+        with:
+          fetch-depth: 0
 
-            - name: Set up Go
-              uses: actions/setup-go@v5
-              with:
-                  go-version-file: go.mod
-                  cache: true
+      - name: setup/golang
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0 - https://github.com/actions/setup-go/releases
+        with:
+          go-version-file: go.mod
+          cache: true
 
-            - name: Import GPG key
-              uses: crazy-max/ghaction-import-gpg@v6
-              id: import_gpg
-              with:
-                  gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-                  passphrase: ${{ secrets.PASSPHRASE }}
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        id: import_gpg
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.PASSPHRASE }}
 
-            - name: Run GoReleaser
-              uses: goreleaser/goreleaser-action@v6.3.0
-              with:
-                  version: latest
-                  args: release --clean
-              env:
-                  GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
-                  # GitHub sets this automatically
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6.3.0
+        with:
+          version: latest
+          args: release --clean
+        env:
+          GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+          # GitHub sets this automatically
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Slack Notification Failure
-              if: ${{ failure() }}
-              uses: rtCamp/action-slack-notify@master
-              env:
-                  SLACK_WEBHOOK: ${{ secrets.SLACK_RELEASE_WEBHOOK }}
-                  SLACK_COLOR: ${{ job.status }}
-                  SLACK_TITLE: 'Publishing to Terraform Registry failed :boom:'
-                  SLACK_MESSAGE: See the action for more info.`
-                  SLACK_USERNAME: Release BOT
-                  SLACK_ICON_EMOJI: ':alert:'
-                  SLACK_FOOTER: Kick ass!!!
+      - name: Slack Notification Failure
+        if: ${{ failure() }}
+        uses: rtCamp/action-slack-notify@master
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_RELEASE_WEBHOOK }}
+          SLACK_COLOR: ${{ job.status }}
+          SLACK_TITLE: 'Publishing to Terraform Registry failed :boom:'
+          SLACK_MESSAGE: See the action for more info.`
+          SLACK_USERNAME: Release BOT
+          SLACK_ICON_EMOJI: ':alert:'
+          SLACK_FOOTER: Kick ass!!!

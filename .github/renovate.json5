@@ -1,0 +1,85 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    ":enableRenovate",
+    "config:best-practices",
+    "schedule:weekly",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    ":semanticCommitTypeAll(ci)",
+    ":npm",
+    ":gomod",
+    ":docker",
+    ":enablePreCommit",
+    ":enableVulnerabilityAlerts",
+    ":ignoreModulesAndTests",
+    ":ignoreUnstable",
+    "security:openssf-scorecard"
+  ],
+  "osvVulnerabilityAlerts": true,
+  "semanticCommits": "disabled",
+  "commitMessagePrefix": "chore(deps): ",
+  "commitMessageAction": "update",
+  "draftPR": true,
+  "labels": [
+    "dependencies",
+    "renovate"
+  ],
+  "dependencyDashboardLabels": [
+    "dependencies",
+    "renovate"
+  ],
+  "dependencyDashboardFooter": "@indykite/ops, here's your overview of Renovate-managed dependencies",
+  "dependencyDashboardOSVVulnerabilitySummary": "all",
+  "major": {
+    "minimumReleaseAge": "14 days"
+  },
+  "ignoreDeps": [],
+  "ignorePaths": [
+    "**/vendor/**",
+    "**/examples/**",
+    "**/testdata/**"
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": [
+        "*"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "addLabels": [
+        "SemVer Major"
+      ]
+    },
+    {
+      "matchUpdateTypes": [
+        "minor"
+      ],
+      "addLabels": [
+        "SemVer Minor"
+      ]
+    },
+    {
+      "matchUpdateTypes": [
+        "patch",
+        "digest",
+        "bump"
+      ],
+      "addLabels": [
+        "SemVer Patch"
+      ]
+    },
+    {
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "all non-major dependencies",
+      "groupSlug": "all-minor-patch"
+    }
+  ],
+  "postUpdateOptions": [
+    "gomodTidy"
+  ]
+}

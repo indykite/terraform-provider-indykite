@@ -1,5 +1,10 @@
+# checkov:skip=CKV_DOCKER_2:ensure that HEALTHCHECK instructions have been added
 FROM golang:1.24
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 #You can start with any base Docker Image that works for you
+# hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends \
 		build-essential \
         git \
@@ -14,14 +19,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         && rm -rf /var/lib/apt/lists/*
 
 # Install terraform
-RUN wget -O- https://apt.releases.hashicorp.com/gpg | \
+# hadolint ignore=DL3008,DL3016
+RUN curl -fsSL https://apt.releases.hashicorp.com/gpg | \
     gpg --dearmor | \
-    tee /usr/share/keyrings/hashicorp-archive-keyring.gpg \
+    tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null \
     && echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] \
     https://apt.releases.hashicorp.com $(lsb_release -cs) main" | \
-    tee /etc/apt/sources.list.d/hashicorp.list \
-    && apt-get update && apt-get install -y --no-install-recommends \
-    terraform
+    tee /etc/apt/sources.list.d/hashicorp.list > /dev/null \
+	&& rm -rf /var/lib/apt/lists/* \
+    && apt-get update && apt-get install -y --no-install-recommends terraform
 
 # Add new user and not using root to run the tests for security reasons
 RUN useradd --create-home -u 10001 appuser
@@ -47,4 +53,6 @@ ENV CI=true
 RUN mkdir ${APPUSER_HOME}/github
 WORKDIR ${APPUSER_HOME}/github
 
+# trivy:ignore:AVD-DS-0026 - TODO: Add HEALTHCHECK instruction in your Dockerfile
+# HEALTHCHECK
 CMD ["../startscript.sh"]
