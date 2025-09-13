@@ -7,14 +7,14 @@ name: pre-commit cache
 #
 
 on: # yamllint disable-line rule:truthy
+  pull_request:
+    branches: ["dev", "develop", "main", "master"]
   push:
     branches: ["dev", "develop", "main", "master"]
   schedule:
     # GitHub Actions does not support the non-standard syntax @monthly, @weekly, @daily, etc.
     # - cron: "15 2 1 * *" # low activity repos can do just the first day of the month at 02:15 UTC
     - cron: "15 0 * * *" # daily at 00:15 UTC
-  pull_request:
-    branches: ["dev", "develop", "main", "master"]
 
 # CKV2_GHA_1, see https://www.checkov.io/5.Policy%20Index/github_actions.html for details
 permissions:
@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   pre-commit-proxy-test:
-    uses: indykite/ops-common/.github/workflows/pre-commit.yaml@master
+    uses: indykite/ops-common/.github/workflows/pre-commit.yaml@ENG-6678/pre-commit-public-repo-proxy-call
     secrets: inherit
 
   pre-commit:
