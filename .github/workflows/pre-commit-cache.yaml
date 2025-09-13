@@ -8,7 +8,8 @@ name: pre-commit cache
 
 on: # yamllint disable-line rule:truthy
   pull_request:
-    branches: ["dev", "develop", "main", "master"]
+    types: [opened, synchronize, reopened]
+    # branches: ["dev", "develop", "main", "master"]
   push:
     branches: ["dev", "develop", "main", "master"]
   schedule:
@@ -21,29 +22,29 @@ permissions:
   contents: write # required for trivy to upload artifacts
 
 jobs:
+  # pre-commit:
+  #   name: pre-commit-cache
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: pre-commit
+  #       uses: indykite/ops-common/.github/actions/pre-commit@master
+  #       with:
+  #         # shared workflow; required for 'ops-common/pre-commit-autoupdate' to do ssh://git@github.com... from another repos
+  #         github_token: ${{ secrets.INDYKITEONE_PAT }}
+  #         # comma separated list of hook ids; exclude autoupdate and branch checks on scheduled runs for cache purposes
+  #         pre_commit_skip: >-
+  #           commitlint,trivy,trivy-conf,trivy-filesystem
+  #           ${{ vars.PRE_COMMIT_SKIP != null && ',' || '' }}${{ vars.PRE_COMMIT_SKIP }}
+  #           ${{ format('{0}', github.event_name != 'pull_request' && ',pre-commit-autoupdate,no-commit-to-branch' || '' ) }}
+  # trivy:
+  #   name: trivy
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: trivy
+  #       uses: indykite/ops-common/.github/actions/trivy@master
+  #       with:
+  #         github_token: ${{ secrets.GITHUB_TOKEN }}
+
   pre-commit-proxy-test:
     uses: indykite/ops-common/.github/workflows/pre-commit.yaml@ENG-6678/pre-commit-public-repo-proxy-call
     secrets: inherit
-
-  pre-commit:
-    name: pre-commit-cache
-    runs-on: ubuntu-latest
-    steps:
-      - name: pre-commit
-        uses: indykite/ops-common/.github/actions/pre-commit@master
-        with:
-          # shared workflow; required for 'ops-common/pre-commit-autoupdate' to do ssh://git@github.com... from another repos
-          github_token: ${{ secrets.INDYKITEONE_PAT }}
-          # comma separated list of hook ids; exclude autoupdate and branch checks on scheduled runs for cache purposes
-          pre_commit_skip: >-
-            commitlint,trivy,trivy-conf,trivy-filesystem
-            ${{ vars.PRE_COMMIT_SKIP != null && ',' || '' }}${{ vars.PRE_COMMIT_SKIP }}
-            ${{ format('{0}', github.event_name != 'pull_request' && ',pre-commit-autoupdate,no-commit-to-branch' || '' ) }}
-  trivy:
-    name: trivy
-    runs-on: ubuntu-latest
-    steps:
-      - name: trivy
-        uses: indykite/ops-common/.github/actions/trivy@master
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
