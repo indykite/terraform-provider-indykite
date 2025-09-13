@@ -8,17 +8,23 @@ name: pre-commit cache
 
 on: # yamllint disable-line rule:truthy
   push:
-    branches: ["dev", "develop", "main", "master"] # TODO: not able to use ${{ github.event.repository.default_branch }} directly?
+    branches: ["dev", "develop", "main", "master"]
   schedule:
     # GitHub Actions does not support the non-standard syntax @monthly, @weekly, @daily, etc.
     # - cron: "15 2 1 * *" # low activity repos can do just the first day of the month at 02:15 UTC
     - cron: "15 0 * * *" # daily at 00:15 UTC
+  pull_request:
+    branches: ["dev", "develop", "main", "master"]
 
 # CKV2_GHA_1, see https://www.checkov.io/5.Policy%20Index/github_actions.html for details
 permissions:
   contents: write # required for trivy to upload artifacts
 
 jobs:
+  pre-commit-proxy-test:
+    uses: indykite/ops-common/.github/workflows/pre-commit.yaml@master
+    secrets: inherit
+
   pre-commit:
     name: pre-commit-cache
     runs-on: ubuntu-latest
