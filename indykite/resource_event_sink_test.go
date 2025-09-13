@@ -264,9 +264,10 @@ var _ = Describe("Resource EventSink", func() {
 							"kafka2": {
 								Provider: &configpb.EventSinkConfig_Provider_Kafka{
 									Kafka: &configpb.KafkaSinkConfig{
-										Brokers:     []string{"my.kafka.server.example.com"},
-										Topic:       "my-kafka-topic",
-										Username:    "my-username",
+										Brokers:  []string{"my.kafka.server.example.com"},
+										Topic:    "my-kafka-topic",
+										Username: "my-username",
+										// checkov:skip=CKV_SECRET_6:acceptance test
 										Password:    "some-super-secret-password",
 										DisplayName: wrapperspb.String("provider-display-name"),
 									},
@@ -312,7 +313,7 @@ var _ = Describe("Resource EventSink", func() {
 										Brokers:  []string{"my.kafka.server.example.com"},
 										Topic:    "event-topic",
 										Username: "my-username",
-										Password: "changed-password",
+										Password: "changed-password", // checkov:skip=CKV_SECRET_6:acceptance test
 										// This doesn't make sense, but still valid testing scenario
 										DisableTls:    true,
 										TlsSkipVerify: true,
