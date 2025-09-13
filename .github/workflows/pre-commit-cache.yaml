@@ -1,11 +1,6 @@
 ---
 name: pre-commit cache
 
-#
-# as per '_pr-pre-commit.md', branch protection is enforced via an org-wide ruleset. But GitHub does NOT allow to do
-# a similar approach for the 'master' (or default) branches, hence necessity of duplicating of the same file across all repos.
-#
-
 on: # yamllint disable-line rule:truthy
   pull_request:
     types: [opened, synchronize, reopened]
