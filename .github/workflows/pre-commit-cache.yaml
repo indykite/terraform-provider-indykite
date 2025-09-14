@@ -2,66 +2,34 @@
 name: pre-commit cache
 
 on: # yamllint disable-line rule:truthy
-  pull_request:
-    types: [opened, synchronize, reopened]
-    # branches: ["dev", "develop", "main", "master"]
   push:
     branches: ["dev", "develop", "main", "master"]
   schedule:
     # GitHub Actions does not support the non-standard syntax @monthly, @weekly, @daily, etc.
-    # - cron: "15 2 1 * *" # low activity repos can do just the first day of the month at 02:15 UTC
-    - cron: "15 0 * * *" # daily at 00:15 UTC
+    # - cron: "15 0 * * *" # daily at 00:15 UTC
+    - cron: "15 0 1 * *" # low activity repos can do just the first day of the month at 00:15 UTC
 
-# CKV2_GHA_1, see https://www.checkov.io/5.Policy%20Index/github_actions.html for details
 permissions:
   contents: write # required for trivy to upload artifacts
 
 jobs:
-  # pre-commit:
-  #   name: pre-commit-cache
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: pre-commit
-  #       uses: indykite/ops-common/.github/actions/pre-commit@master
-  #       with:
-  #         # shared workflow; required for 'ops-common/pre-commit-autoupdate' to do ssh://git@github.com... from another repos
-  #         github_token: ${{ secrets.INDYKITEONE_PAT }}
-  #         # comma separated list of hook ids; exclude autoupdate and branch checks on scheduled runs for cache purposes
-  #         pre_commit_skip: >-
-  #           commitlint,trivy,trivy-conf,trivy-filesystem
-  #           ${{ vars.PRE_COMMIT_SKIP != null && ',' || '' }}${{ vars.PRE_COMMIT_SKIP }}
-  #           ${{ format('{0}', github.event_name != 'pull_request' && ',pre-commit-autoupdate,no-commit-to-branch' || '' ) }}
-  # trivy:
-  #   name: trivy
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: trivy
-  #       uses: indykite/ops-common/.github/actions/trivy@master
-  #       with:
-  #         github_token: ${{ secrets.GITHUB_TOKEN }}
-
-  code-checkout:
-    name: actions/checkout/ops-common
+  pre-commit:
+    name: pre-commit-cache
     runs-on: ubuntu-latest
     steps:
-      - name: actions/checkout/ops-common
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0 - https://github.com/actions/checkout/releases
+      - name: pre-commit
+        uses: indykite/.github/.github/actions/pre-commit@master
         with:
-          repository: indykite/ops-common
-          token: "${{ secrets.INDYKITEONE_PAT }}"
-          ref: ENG-6678/pre-commit-public-repo-proxy-call
-          path: ops-common
-      - name: copy shared workflows
-        shell: bash
-        run: |
-          mkdir -p .github/shared/
-          cp -R ./ops-common/.github/workflows .github/shared/
-          cp -R ./ops-common/.github/actions .github/shared/
-          sed -i 's~uses: indykite/ops-common/.github/actions/~uses: ./.github/shared/actions/~g' .github/shared/workflows/pre-commit.yaml
-          sed -i 's/@master//g' .github/shared/workflows/pre-commit.yaml
-
-  pre-commit-proxy-test:
+          github_token: ${{ secrets.INDYKITEONE_PAT }}
+          pre_commit_skip: >-
+            commitlint,trivy,trivy-conf,trivy-filesystem
+            ${{ vars.PRE_COMMIT_SKIP != null && ',' || '' }}${{ vars.PRE_COMMIT_SKIP }}
+            ${{ format('{0}', github.event_name != 'pull_request' && ',pre-commit-autoupdate,no-commit-to-branch' || '' ) }}
+  trivy:
     name: trivy
-    needs: [code-checkout]
-    uses: ./.github/shared/workflows/pre-commit.yaml # actionlint ignore=via .actionlint.yaml
-    secrets: inherit
+    runs-on: ubuntu-latest
+    steps:
+      - name: trivy
+        uses: indykite/.github/.github/actions/trivy@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}

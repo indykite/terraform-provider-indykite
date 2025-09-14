@@ -4,6 +4,7 @@ FROM golang:1.24
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 #You can start with any base Docker Image that works for you
+#        software-properties-common \
 # hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends \
 		build-essential \
@@ -15,7 +16,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         openssh-client \
         ca-certificates \
         gnupg \
-        software-properties-common \
         && rm -rf /var/lib/apt/lists/*
 
 # Install terraform
