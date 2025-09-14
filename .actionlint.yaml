@@ -1,0 +1,9 @@
+---
+# https://github.com/rhysd/actionlint/blob/v1.7.7/docs/config.md
+
+#
+paths:
+  .github/workflows/pre-commit-cache.yaml:
+    # List of regular expressions to filter errors by the error messages.
+    ignore:
+      - 'could not read reusable workflow file for "./ops-common/.github/workflows/pre-commit.yaml"'

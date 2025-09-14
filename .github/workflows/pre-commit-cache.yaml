@@ -40,6 +40,20 @@ jobs:
   #       with:
   #         github_token: ${{ secrets.GITHUB_TOKEN }}
 
+  code-checkout:
+    name: actions/checkout/ops-common
+    runs-on: ubuntu-latest
+    steps:
+      - name: actions/checkout/ops-common
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0 - https://github.com/actions/checkout/releases
+        with:
+          repository: indykite/ops-common
+          token: "${{ secrets.INDYKITEONE_PAT }}"
+          ref: ENG-6678/pre-commit-public-repo-proxy-call
+          path: ops-common
+
   pre-commit-proxy-test:
-    uses: indykite/ops-common/.github/workflows/pre-commit.yaml@ENG-6678/pre-commit-public-repo-proxy-call
+    name: trivy
+    needs: [code-checkout]
+    uses: ./ops-common/.github/workflows/pre-commit.yaml # actionlint ignore=via .actionlint.yaml
     secrets: inherit

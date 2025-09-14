@@ -143,11 +143,11 @@ repos:
   - repo: local
     hooks:
       # place any overrides in '.actionlint.yaml' https://github.com/rhysd/actionlint/blob/main/docs/config.md
-      #  args: ["-config-file=.actionlint.yaml"]
       - id: actionlint-system
         name: github-actionlint
         language: system
         entry: actionlint
+        args: ["-config-file=.actionlint.yaml"]
         types: ["yaml"]
         files: ^\.github/workflows/
   # - repo: https://github.com/google/yamlfmt <- "language: g.olang" slower & takes larger CI cache comparing to "system"
