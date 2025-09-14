@@ -51,9 +51,17 @@ jobs:
           token: "${{ secrets.INDYKITEONE_PAT }}"
           ref: ENG-6678/pre-commit-public-repo-proxy-call
           path: ops-common
+      - name: copy shared workflows
+        shell: bash
+        run: |
+          mkdir -p .github/shared/
+          cp -R ./ops-common/.github/workflows .github/shared/
+          cp -R ./ops-common/.github/actions .github/shared/
+          sed -i 's~uses: indykite/ops-common/.github/actions/~uses: ./.github/shared/actions/~g' .github/shared/workflows/pre-commit.yaml
+          sed -i 's/@master//g' .github/shared/workflows/pre-commit.yaml
 
   pre-commit-proxy-test:
     name: trivy
     needs: [code-checkout]
-    uses: ./ops-common/.github/workflows/pre-commit.yaml # actionlint ignore=via .actionlint.yaml
+    uses: ./.github/shared/workflows/pre-commit.yaml # actionlint ignore=via .actionlint.yaml
     secrets: inherit

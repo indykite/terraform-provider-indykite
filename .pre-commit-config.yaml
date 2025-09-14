@@ -19,7 +19,7 @@
 #
 # Prerequisites:
 #   - if using 'make install-tools', then '~/go/bin' must be added to $PATH in ~/.bash_profile
-# yamllint disable rule:line-length
+# yamllint disable-line rule:line-length
 #   brew install pre-commit yamlfmt yamllint actionlint markdownlint-cli2 shellcheck shfmt checkov trivy go gci golangci-lint hadolint terraform-docs tflint terragrunt
 #
 # Update hooks and their dependencies regularly via:
