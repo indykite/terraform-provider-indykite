@@ -32,20 +32,21 @@ resource "indykite_application_space" "appspace" {
 - `customer_id` (String) Identifier of Customer
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 - `region` (String) Region where the application space is located.
-  Valid values are: europe-west1, us-east1.
+		Valid values are: europe-west1, us-east1.
 
 ### Optional
 
+- `db_connection` (Block List, Max: 1) DBConnection (see [below for nested schema](#nestedblock--db_connection))
 - `deletion_protection` (Boolean) Whether or not to allow Terraform to destroy the instance. Unless this field is set to false in Terraform state, a terraform destroy or terraform apply that would delete the instance will fail.
 - `description` (String) Your own description of the resource. Must be less than or equal to 256 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
 - `ikg_size` (String) IKG size that will be allocated, which corresponds also to number of CPU nodes (default 2GB).
-  Valid values are: 2GB (1 CPU), 4GB (1 CPU), 8GB (2 CPUs), 16GB (3 CPUs), 32GB (6 CPUs), 64GB (12 CPUs),
-  128GB (24 CPUs), 192GB (36 CPUs), 256GB (48 CPUs), 384GB (82 CPUs), and 512GB (96 CPUs).
+		Valid values are: 2GB (1 CPU), 4GB (1 CPU), 8GB (2 CPUs), 16GB (3 CPUs), 32GB (6 CPUs), 64GB (12 CPUs),
+		128GB (24 CPUs), 192GB (36 CPUs), 256GB (48 CPUs), 384GB (82 CPUs), and 512GB (96 CPUs).
 - `replica_region` (String) Replica region specifies where the replica IKG is created.
-  Replica must be a different region than the master, but also on the same geographical continent.
-  Valid values are: europe-west1, us-east1, us-west1.
-- `timeouts` (Block, Optional) (see [below for nested schema](#nested-schema-for-timeouts))
+		Replica must be a different region than the master, but also on the same geographical continent.
+		Valid values are: europe-west1, us-east1, us-west1.
+- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
 
@@ -53,6 +54,21 @@ resource "indykite_application_space" "appspace" {
 - `id` (String) The ID of this resource.
 - `update_time` (String) Timestamp when the Resource was last updated. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
 
+<a id="nestedblock--db_connection"></a>
+### Nested Schema for `db_connection`
+
+Required:
+
+- `password` (String, Sensitive) Password for database authentication
+- `url` (String) Connection URL for the database
+- `username` (String) Username for database authentication
+
+Optional:
+
+- `name` (String) Optional database name
+
+
+<a id="nestedblock--timeouts"></a>
 ### Nested Schema for `timeouts`
 
 Optional:

@@ -45,8 +45,61 @@ func resourceApplicationSpace() *schema.Resource {
 			regionKey:             regionSchema(),
 			ikgSizeKey:            ikgSizeSchema(),
 			replicaRegionKey:      replicaRegionSchema(),
+			dbConnectionKey:       dbConnectionSchema(),
 		},
 	}
+}
+
+func getDBConnection(data *schema.ResourceData) *config.DBConnection {
+	dbConnRaw := data.Get(dbConnectionKey)
+	if dbConnRaw == nil {
+		return nil
+	}
+
+	dbConnList, ok := dbConnRaw.([]any)
+	if !ok || len(dbConnList) == 0 || dbConnList[0] == nil {
+		return nil
+	}
+
+	dbConnData, ok := dbConnList[0].(map[string]any)
+	if !ok {
+		return nil
+	}
+
+	// Extract values with safe type assertions
+	url, _ := dbConnData[dbURLKey].(string)
+	username, _ := dbConnData[dbUsernameKey].(string)
+	password, _ := dbConnData[dbPasswordKey].(string)
+	name, _ := dbConnData[dbNameKey].(string)
+
+	// Only return a DBConnection if at least URL is provided
+	if url == "" {
+		return nil
+	}
+
+	return &config.DBConnection{
+		Url:      url,
+		Username: username,
+		Password: password,
+		Name:     name,
+	}
+}
+
+func setDBConnectionData(d *diag.Diagnostics, data *schema.ResourceData, dbConn *config.DBConnection) {
+	if dbConn == nil {
+		setData(d, data, dbConnectionKey, []map[string]any{})
+		return
+	}
+
+	dbConnData := []map[string]any{
+		{
+			dbURLKey:      dbConn.GetUrl(),
+			dbUsernameKey: dbConn.GetUsername(),
+			dbPasswordKey: dbConn.GetPassword(),
+			dbNameKey:     dbConn.GetName(),
+		},
+	}
+	setData(d, data, dbConnectionKey, dbConnData)
 }
 
 func resAppSpaceCreateContext(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
@@ -68,6 +121,7 @@ func resAppSpaceCreateContext(ctx context.Context, data *schema.ResourceData, me
 		Region:        data.Get(regionKey).(string),
 		IkgSize:       data.Get(ikgSizeKey).(string),
 		ReplicaRegion: data.Get(replicaRegionKey).(string),
+		DbConnection:  getDBConnection(data),
 	})
 	if HasFailed(&d, err) {
 		return d
@@ -106,6 +160,7 @@ func getStatus(ctx context.Context, clientCtx *ClientContext, data *schema.Resou
 	setData(&d, data, regionKey, resp.GetAppSpace().GetRegion())
 	setData(&d, data, ikgSizeKey, resp.GetAppSpace().GetIkgSize())
 	setData(&d, data, replicaRegionKey, resp.GetAppSpace().GetReplicaRegion())
+	setDBConnectionData(&d, data, resp.GetAppSpace().GetDbConnection())
 
 	s := resp.GetAppSpace().GetIkgStatus().String()
 	return s, d
@@ -192,6 +247,7 @@ func resAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta
 	setData(&d, data, regionKey, resp.GetAppSpace().GetRegion())
 	setData(&d, data, ikgSizeKey, resp.GetAppSpace().GetIkgSize())
 	setData(&d, data, replicaRegionKey, resp.GetAppSpace().GetReplicaRegion())
+	setDBConnectionData(&d, data, resp.GetAppSpace().GetDbConnection())
 
 	return d
 }
@@ -211,6 +267,13 @@ func resAppSpaceReadAfterCreateContext(ctx context.Context, data *schema.Resourc
 	return d
 }
 
+func updateDBConnection(data *schema.ResourceData) *config.DBConnection {
+	if !data.HasChange(dbConnectionKey) {
+		return nil
+	}
+	return getDBConnection(data)
+}
+
 func resAppSpaceUpdateContext(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
 	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
@@ -226,9 +289,10 @@ func resAppSpaceUpdateContext(ctx context.Context, data *schema.ResourceData, me
 	}
 
 	req := &config.UpdateApplicationSpaceRequest{
-		Id:          data.Id(),
-		DisplayName: updateOptionalString(data, displayNameKey),
-		Description: updateOptionalString(data, descriptionKey),
+		Id:           data.Id(),
+		DisplayName:  updateOptionalString(data, displayNameKey),
+		Description:  updateOptionalString(data, descriptionKey),
+		DbConnection: updateDBConnection(data),
 	}
 
 	_, err := clientCtx.GetClient().UpdateApplicationSpace(ctx, req)
