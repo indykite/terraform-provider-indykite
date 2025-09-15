@@ -1,0 +1,7 @@
+---
+# terraform-docs/*.md overrides via terraform/aws/.markdownlint.yaml
+default: true
+MD007: # ul-indent
+  indent: 4
+MD013: # line-length
+  line_length: 300

@@ -3,10 +3,11 @@ name: "🚀 Feature request"
 labels: feature-request
 
 ---
-# Description
+
+## Description
 
 <!-- description -->
 
-# Example
+## Example
 
 <!-- description -->

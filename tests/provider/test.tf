@@ -228,7 +228,7 @@ resource "indykite_event_sink" "create-event" {
       brokers               = ["kafka-01:9092", "kafka-02:9092"]
       topic                 = "events"
       username              = "my-username"
-      password              = "some-super-secret-password"
+      password              = "some-super-secret-password" # checkov:skip=CKV_SECRET_6:acceptance test
       provider_display_name = "provider-display-name"
     }
   }
@@ -238,7 +238,7 @@ resource "indykite_event_sink" "create-event" {
       brokers  = ["kafka-02-01:9092", "kafka-02-02:9092"]
       topic    = "events"
       username = "other-username"
-      password = "some-other-secret-password"
+      password = "some-other-secret-password" # checkov:skip=CKV_SECRET_6:acceptance test
     }
   }
   providers {

@@ -10,13 +10,14 @@ This provider is maintained internally by the IndyKite Provider team.
 
 Please note: We take Terraform's security and our users' trust very seriously.
 If you believe you have found a security issue in the IndyKite Terraform Provider,
-please responsibly disclose by contacting us at security@indykite.com.
+please responsibly disclose by contacting us at <security@indykite.com>.
 
 ## Quick Starts
 
 - [Provider documentation](https://registry.terraform.io/providers/indykite/indykite/latest/docs)
 
 The provider need to be set:
+
 ```hcl
 terraform {
   required_providers {
@@ -33,9 +34,10 @@ provider "indykite" {
 ```
 
 And configured with one of the following environment variables:
-- INDYKITE_SERVICE_ACCOUNT_CREDENTIALS_FILE with path to service account credentials file generated from our console.
 
-- INDYKITE_SERVICE_ACCOUNT_CREDENTIALS with content of service account credentials file generated from our console.
+- `INDYKITE_SERVICE_ACCOUNT_CREDENTIALS_FILE` with path to service account credentials file generated from our console.
+
+- `INDYKITE_SERVICE_ACCOUNT_CREDENTIALS` with content of service account credentials file generated from our console.
 
 ## Install
 
@@ -43,7 +45,7 @@ And configured with one of the following environment variables:
 
 Be sure you have the correct Terraform version (0.12.0+), you can choose the binary here
 
-- https://releases.hashicorp.com/terraform/
+- <https://releases.hashicorp.com/terraform/>
 
 ## Example
 
@@ -56,6 +58,7 @@ A complete script example is available [test.tf](tests/provider/test.tf).
 
 `tfplugindocs` GitHub workflow automatically re-generates the provider documentation once commit is pushed to `master`.
 It requires a PAT with the following permissions:
+
 - Read access to metadata.
 - Read and Write access to administration.
 - Read and Write access to code.

@@ -44,7 +44,7 @@ var _ = Describe("Resource IngestPipeline", func() {
 	//nolint:gosec,lll // there are no secrets
 	const (
 		resourceName  = "indykite_ingest_pipeline.development"
-		appAgentToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaWQ6QUFBQUJXbHVaSGxyYVVSbGdBQUZEd0FBQUFBIiwic3ViIjoiZ2lkOkFBQUFCV2x1WkhscmFVUmxnQUFGRHdBQUFBQSIsImV4cCI6MjUzNDAyMjYxMTk5LCJpYXQiOjE1MTYyMzkwMjJ9.39Kc7pL8Vjf1S4qA6NHBGMP06TahR5Y9JOGSWKOo5Rw"
+		appAgentToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaWQ6QUFBQUJXbHVaSGxyYVVSbGdBQUZEd0FBQUFBIiwic3ViIjoiZ2lkOkFBQUFCV2x1WkhscmFVUmxnQUFGRHdBQUFBQSIsImV4cCI6MjUzNDAyMjYxMTk5LCJpYXQiOjE1MTYyMzkwMjJ9.39Kc7pL8Vjf1S4qA6NHBGMP06TahR5Y9JOGSWKOo5Rw" // checkov:skip=CKV_SECRET_9:acceptance test // gitleaks:allow
 	)
 	var (
 		mockCtrl         *gomock.Controller
@@ -121,7 +121,7 @@ var _ = Describe("Resource IngestPipeline", func() {
 					"IngestPipelineConfig": test.EqualProto(
 						&configpb.IngestPipelineConfig{
 							Sources:       []string{"source1", "source2"},
-							AppAgentToken: appAgentToken,
+							AppAgentToken: appAgentToken, // checkov:skip=CKV_SECRET_6:acceptance test
 						},
 					),
 				})),
@@ -144,7 +144,7 @@ var _ = Describe("Resource IngestPipeline", func() {
 					"IngestPipelineConfig": test.EqualProto(
 						&configpb.IngestPipelineConfig{
 							Sources:       []string{"source1", "source2", "source3"},
-							AppAgentToken: appAgentToken,
+							AppAgentToken: appAgentToken, // checkov:skip=CKV_SECRET_6:acceptance test
 						},
 					),
 				})),
@@ -228,7 +228,7 @@ var _ = Describe("Resource IngestPipeline", func() {
 		invalidSettings1 := `
 		sources = ["source1", "source2"]
 		app_agent_token = "invalid-token"
-		`
+		` // checkov:skip=CKV_SECRET_6:acceptance test
 
 		// Missing required argument
 		invalidSettings2 := `
