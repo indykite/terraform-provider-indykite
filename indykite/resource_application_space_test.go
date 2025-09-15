@@ -247,7 +247,15 @@ var _ = Describe("Resource Application Space", func() {
 					ikg_size = "4GB"
 					replica_region = "us-west1"
 					%s
+					%s
 				}`
+
+		dbConnConfig := `db_connection {
+			url = "postgresql://localhost:5432/test"
+			username = "testuser"
+			password = "testpass"
+			name = "testdb"
+		}`
 
 		initialAppSpaceResp := &configpb.ApplicationSpace{
 			CustomerId:    customerID,
@@ -260,7 +268,13 @@ var _ = Describe("Resource Application Space", func() {
 			Region:        "us-east1",
 			IkgSize:       "4GB",
 			ReplicaRegion: "us-west1",
-			IkgStatus:     configpb.AppSpaceIKGStatus_APP_SPACE_IKG_STATUS_STATUS_ACTIVE,
+			DbConnection: &configpb.DBConnection{
+				Url:      "postgresql://localhost:5432/test",
+				Username: "testuser",
+				Password: "testpass",
+				Name:     "testdb",
+			},
+			IkgStatus: configpb.AppSpaceIKGStatus_APP_SPACE_IKG_STATUS_STATUS_ACTIVE,
 		}
 
 		readAfter1stUpdateResp := &configpb.ApplicationSpace{
@@ -274,6 +288,12 @@ var _ = Describe("Resource Application Space", func() {
 			Region:        "us-east1",
 			IkgSize:       "4GB",
 			ReplicaRegion: "us-west1",
+			DbConnection: &configpb.DBConnection{
+				Url:      "postgresql://localhost:5432/test",
+				Username: "testuser",
+				Password: "testpass",
+				Name:     "testdb",
+			},
 		}
 		readAfter2ndUpdateResp := &configpb.ApplicationSpace{
 			CustomerId:    customerID,
@@ -286,6 +306,12 @@ var _ = Describe("Resource Application Space", func() {
 			Region:        "us-east1",
 			IkgSize:       "4GB",
 			ReplicaRegion: "us-west1",
+			DbConnection: &configpb.DBConnection{
+				Url:      "postgresql://localhost:5432/test",
+				Username: "testuser",
+				Password: "testpass",
+				Name:     "testdb",
+			},
 		}
 
 		// Create2
@@ -298,6 +324,12 @@ var _ = Describe("Resource Application Space", func() {
 					"Value": Equal(initialAppSpaceResp.GetDescription().GetValue()),
 				})),
 				"Region": Equal(initialAppSpaceResp.GetRegion()),
+				"DbConnection": PointTo(MatchFields(IgnoreExtras, Fields{
+					"Url":      Equal("postgresql://localhost:5432/test"),
+					"Username": Equal("testuser"),
+					"Password": Equal("testpass"),
+					"Name":     Equal("testdb"),
+				})),
 			})))).
 			Return(&configpb.CreateApplicationSpaceResponse{Id: initialAppSpaceResp.GetId()}, nil)
 
@@ -309,6 +341,7 @@ var _ = Describe("Resource Application Space", func() {
 				"Description": PointTo(MatchFields(IgnoreExtras, Fields{
 					"Value": Equal(readAfter1stUpdateResp.GetDescription().GetValue()),
 				})),
+				"DbConnection": BeNil(), // No change to DbConnection in first update
 			})))).
 			Return(&configpb.UpdateApplicationSpaceResponse{Id: initialAppSpaceResp.GetId()}, nil)
 
@@ -318,7 +351,8 @@ var _ = Describe("Resource Application Space", func() {
 				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{
 					"Value": Equal(readAfter2ndUpdateResp.GetDisplayName()),
 				})),
-				"Description": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal("")})),
+				"Description":  PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal("")})),
+				"DbConnection": BeNil(), // No change to DbConnection in second update
 			})))).
 			Return(&configpb.UpdateApplicationSpaceResponse{Id: initialAppSpaceResp.GetId()}, nil)
 
@@ -361,7 +395,8 @@ var _ = Describe("Resource Application Space", func() {
 				// Errors cases must be always first
 				{
 					// Checking Create and Read (initialAppSpaceResp)
-					Config: fmt.Sprintf(tfConfigDef, "", initialAppSpaceResp.GetDescription().GetValue(), ""),
+					Config: fmt.Sprintf(tfConfigDef, "", initialAppSpaceResp.GetDescription().GetValue(),
+						"", dbConnConfig),
 					Check: resource.ComposeTestCheckFunc(
 						testAppSpaceResourceDataExists(resourceName, initialAppSpaceResp),
 					),
@@ -374,28 +409,31 @@ var _ = Describe("Resource Application Space", func() {
 				},
 				{
 					// Checking Read (initialAppSpaceResp), Update and Read(readAfter1stUpdateResp)
-					Config: fmt.Sprintf(tfConfigDef, "", readAfter1stUpdateResp.GetDescription().GetValue(), ""),
+					Config: fmt.Sprintf(tfConfigDef, "", readAfter1stUpdateResp.GetDescription().GetValue(),
+						"", dbConnConfig),
 					Check: resource.ComposeTestCheckFunc(
 						testAppSpaceResourceDataExists(resourceName, readAfter1stUpdateResp),
 					),
 				},
 				{
 					// Checking Read(readAfter1stUpdateResp), Update and Read(readAfter2ndUpdateResp)
-					Config: fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.GetDisplayName(), "", ""),
+					Config: fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.GetDisplayName(), "", "", dbConnConfig),
 					Check: resource.ComposeTestCheckFunc(
 						testAppSpaceResourceDataExists(resourceName, readAfter2ndUpdateResp),
 					),
 				},
 				{
 					// Checking Read(readAfter2ndUpdateResp) -> no changes but tries to destroy with error
-					Config:      fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.GetDisplayName(), "", ""),
+					Config: fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.GetDisplayName(), "",
+						"", dbConnConfig),
 					Destroy:     true,
 					ExpectError: regexp.MustCompile("Cannot destroy instance"),
 				},
 				{
 					// Checking Read(readAfter2ndUpdateResp), Update (del protection, no API call)
 					// and final Read (readAfter2ndUpdateResp)
-					Config: fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.GetDisplayName(), "", turnOffDelProtection),
+					Config: fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.GetDisplayName(), "",
+						turnOffDelProtection, dbConnConfig),
 				},
 			},
 		})
@@ -426,6 +464,18 @@ func testAppSpaceResourceDataExists(n string, data *configpb.ApplicationSpace) r
 			"region":              Equal(data.GetRegion()),
 			"ikg_size":            Equal(data.GetIkgSize()),
 			"replica_region":      Equal(data.GetReplicaRegion()),
+		}
+
+		// Add db_connection checks based on whether it exists in the response
+		if data.GetDbConnection() != nil {
+			keys["db_connection.#"] = Equal("1")
+			keys["db_connection.0.%"] = Equal("4")
+			keys["db_connection.0.url"] = Equal(data.GetDbConnection().GetUrl())
+			keys["db_connection.0.username"] = Equal(data.GetDbConnection().GetUsername())
+			keys["db_connection.0.password"] = Equal(data.GetDbConnection().GetPassword())
+			keys["db_connection.0.name"] = Equal(data.GetDbConnection().GetName())
+		} else {
+			keys["db_connection.#"] = Equal("0")
 		}
 
 		return convertOmegaMatcherToError(MatchAllKeys(keys), rs.Primary.Attributes)

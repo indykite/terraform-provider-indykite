@@ -36,6 +36,11 @@ const (
 	apiPermissionsKey     = "api_permissions"
 	ikgSizeKey            = "ikg_size"
 	replicaRegionKey      = "replica_region"
+	dbConnectionKey       = "db_connection"
+	dbURLKey              = "url"
+	dbUsernameKey         = "username"
+	dbPasswordKey         = "password"
+	dbNameKey             = "name"
 )
 
 const (
@@ -73,6 +78,16 @@ func ikgSizeSchema() *schema.Schema {
 		ValidateFunc: validation.StringInSlice([]string{
 			"2GB", "4GB", "8GB", "16GB", "32GB", "64GB", "128GB", "192GB", "256GB", "384GB", "512GB",
 		}, false),
+	}
+}
+
+func ikgSizeComputedSchema() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeString,
+		Computed: true,
+		Description: `IKG size that will be allocated, which corresponds also to number of CPU nodes.
+		Valid values are: 2GB (1 CPU), 4GB (1 CPU), 8GB (2 CPUs), 16GB (3 CPUs), 32GB (6 CPUs), 64GB (12 CPUs),
+		128GB (24 CPUs), 192GB (36 CPUs), 256GB (48 CPUs), 384GB (82 CPUs), and 512GB (96 CPUs).`,
 	}
 }
 
@@ -205,6 +220,76 @@ func apiPermissionsSchema() *schema.Schema {
 			}, false),
 		},
 		Description: `List of API permissions for the agent: Authorization, Capture, ContXIQ, EntityMatching, IKGRead and TrustedDataAccess.`,
+	}
+}
+
+func dbConnectionSchema() *schema.Schema {
+	return &schema.Schema{
+		Type:        schema.TypeList,
+		MaxItems:    1,
+		Optional:    true,
+		Description: "DBConnection",
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				dbURLKey: {
+					Type:         schema.TypeString,
+					Required:     true,
+					Description:  "Connection URL for the database",
+					ValidateFunc: validation.StringIsNotEmpty,
+				},
+				dbUsernameKey: {
+					Type:         schema.TypeString,
+					Required:     true,
+					Description:  "Username for database authentication",
+					ValidateFunc: validation.StringIsNotEmpty,
+				},
+				dbPasswordKey: {
+					Type:         schema.TypeString,
+					Required:     true,
+					Sensitive:    true,
+					Description:  "Password for database authentication",
+					ValidateFunc: validation.StringIsNotEmpty,
+				},
+				dbNameKey: {
+					Type:        schema.TypeString,
+					Optional:    true,
+					Description: "Optional database name",
+				},
+			},
+		},
+	}
+}
+
+func dbConnectionComputedSchema() *schema.Schema {
+	return &schema.Schema{
+		Type:        schema.TypeList,
+		Computed:    true,
+		Description: "DBConnection",
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				dbURLKey: {
+					Type:        schema.TypeString,
+					Computed:    true,
+					Description: "Connection URL for the database",
+				},
+				dbUsernameKey: {
+					Type:        schema.TypeString,
+					Computed:    true,
+					Description: "Username for database authentication",
+				},
+				dbPasswordKey: {
+					Type:        schema.TypeString,
+					Computed:    true,
+					Sensitive:   true,
+					Description: "Password for database authentication",
+				},
+				dbNameKey: {
+					Type:        schema.TypeString,
+					Computed:    true,
+					Description: "Optional database name",
+				},
+			},
+		},
 	}
 }
 

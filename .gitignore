@@ -25,6 +25,7 @@ vendor/
 dist
 
 .idea
+.claude
 /local/
 
 # Mac OS

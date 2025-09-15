@@ -98,7 +98,7 @@ resource "indykite_authorization_policy" "policy_for_ciq" {
 - `description` (String) Your own description of the resource. Must be less than or equal to 256 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
 - `tags` (List of String) Tags of the Authorization Policy.
-- `timeouts` (Block, Optional) (see [below for nested schema](#nested-schema-for-timeouts))
+- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
 
@@ -108,6 +108,7 @@ resource "indykite_authorization_policy" "policy_for_ciq" {
 - `id` (String) The ID of this resource.
 - `update_time` (String) Timestamp when the Resource was last updated. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
 
+<a id="nestedblock--timeouts"></a>
 ### Nested Schema for `timeouts`
 
 Optional:
