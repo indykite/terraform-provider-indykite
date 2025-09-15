@@ -148,7 +148,7 @@ repos:
         language: system
         entry: actionlint
         args: ["-config-file=.actionlint.yaml"]
-        types: ["yaml"]
+        types: [yaml]
         files: ^\.github/workflows/
   # - repo: https://github.com/google/yamlfmt <- "language: g.olang" slower & takes larger CI cache comparing to "system"
   #   rev: v0.17.2
@@ -167,7 +167,7 @@ repos:
         name: yamllint
         language: system
         entry: yamllint
-        types: [file, yaml]
+        types: [yaml]
         args: ["--strict"]
 
   - repo: https://github.com/hadolint/hadolint # language: system

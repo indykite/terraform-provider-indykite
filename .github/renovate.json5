@@ -29,7 +29,7 @@
     "dependencies",
     "renovate"
   ],
-  "dependencyDashboardFooter": "@indykite/ops, here's your overview of Renovate-managed dependencies",
+  "dependencyDashboardFooter": "@indykite/be-team, @indykite/ops, here's your overview of Renovate-managed dependencies",
   "dependencyDashboardOSVVulnerabilitySummary": "all",
   "major": {
     "minimumReleaseAge": "14 days"

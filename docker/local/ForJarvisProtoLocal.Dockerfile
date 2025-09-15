@@ -21,8 +21,8 @@ RUN apk add --update --no-cache \
     && ./install-opentofu.sh --install-method apk \
     && rm -f install-opentofu.sh \
     # Add new user and not using root to run the tests for security reasons
-    && addgroup -S "$APPGROUP" --gid 65532 \
-    && adduser -S "$APPUSER" --uid 65532 \
+    && addgroup -S "$APPGROUP" --gid 10001 \
+    && adduser -S "$APPUSER" --uid 10001 \
         -G "$APPGROUP" \
         --disabled-password \
         --gecos "" \
