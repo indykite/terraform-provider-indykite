@@ -70,9 +70,9 @@ resource "indykite_external_data_resolver" "post-resolver" {
 
 - `description` (String) Your own description of the resource. Must be less than or equal to 256 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
-- `headers` (Block Set) Headers to be sent with the request, including authorization if needed (see [below for nested schema](#nested-schema-for-headers))
+- `headers` (Block Set) Headers to be sent with the request, including authorization if needed (see [below for nested schema](#nestedblock--headers))
 - `request_payload` (String) Request payload to be sent to the endpoint. It should be in proper format based on request type
-- `timeouts` (Block, Optional) (see [below for nested schema](#nested-schema-for-timeouts))
+- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
 
@@ -82,6 +82,7 @@ resource "indykite_external_data_resolver" "post-resolver" {
 - `id` (String) The ID of this resource.
 - `update_time` (String) Timestamp when the Resource was last updated. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
 
+<a id="nestedblock--headers"></a>
 ### Nested Schema for `headers`
 
 Required:
@@ -89,6 +90,8 @@ Required:
 - `name` (String) The name of the header
 - `values` (List of String) List of values for the header
 
+
+<a id="nestedblock--timeouts"></a>
 ### Nested Schema for `timeouts`
 
 Optional:

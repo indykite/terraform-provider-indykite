@@ -69,13 +69,22 @@ var _ = Describe("DataSource Application Space", func() {
 
 	It("Test load by ID and name", func() {
 		appSpaceResp := &configpb.ApplicationSpace{
-			CustomerId:  customerID,
-			Id:          appSpaceID,
-			Name:        "acme",
-			DisplayName: "Some Cool Display name",
-			Description: wrapperspb.String("Just some AppSpace description"),
-			CreateTime:  timestamppb.Now(),
-			UpdateTime:  timestamppb.Now(),
+			CustomerId:    customerID,
+			Id:            appSpaceID,
+			Name:          "acme",
+			DisplayName:   "Some Cool Display name",
+			Description:   wrapperspb.String("Just some AppSpace description"),
+			CreateTime:    timestamppb.Now(),
+			UpdateTime:    timestamppb.Now(),
+			Region:        "us-east1",
+			IkgSize:       "4GB",
+			ReplicaRegion: "us-west1",
+			DbConnection: &configpb.DBConnection{
+				Url:      "postgresql://localhost:5432/testdb",
+				Username: "testuser",
+				Password: "testpass",
+				Name:     "testdb",
+			},
 		}
 
 		// Read in given order
@@ -165,20 +174,26 @@ var _ = Describe("DataSource Application Space", func() {
 
 	It("Test list by multple names", func() {
 		appSpaceResp := &configpb.ApplicationSpace{
-			CustomerId:  customerID,
-			Id:          appSpaceID,
-			Name:        "acme",
-			DisplayName: "Some Cool Display name",
-			Description: wrapperspb.String("Just some AppSpace description"),
-			CreateTime:  timestamppb.Now(),
-			UpdateTime:  timestamppb.Now(),
+			CustomerId:    customerID,
+			Id:            appSpaceID,
+			Name:          "acme",
+			DisplayName:   "Some Cool Display name",
+			Description:   wrapperspb.String("Just some AppSpace description"),
+			CreateTime:    timestamppb.Now(),
+			UpdateTime:    timestamppb.Now(),
+			Region:        "us-east1",
+			IkgSize:       "4GB",
+			ReplicaRegion: "us-west1",
 		}
 		appSpaceResp2 := &configpb.ApplicationSpace{
-			CustomerId: customerID,
-			Id:         sampleID,
-			Name:       "wonka",
-			CreateTime: timestamppb.Now(),
-			UpdateTime: timestamppb.Now(),
+			CustomerId:    customerID,
+			Id:            sampleID,
+			Name:          "wonka",
+			CreateTime:    timestamppb.Now(),
+			UpdateTime:    timestamppb.Now(),
+			Region:        "europe-west1",
+			IkgSize:       "8GB",
+			ReplicaRegion: "europe-west2",
 		}
 
 		mockConfigClient.EXPECT().
@@ -281,12 +296,27 @@ func testAppSpaceDataExists(n string, data *configpb.ApplicationSpace, appSpaceI
 			"id": Equal(data.GetId()),
 			"%":  Not(BeEmpty()), // This is Terraform helper
 
-			"customer_id":  Equal(data.GetCustomerId()),
-			"name":         Equal(data.GetName()),
-			"display_name": Equal(data.GetDisplayName()),
-			"description":  Equal(data.GetDescription().GetValue()),
-			"create_time":  Not(BeEmpty()),
-			"update_time":  Not(BeEmpty()),
+			"customer_id":    Equal(data.GetCustomerId()),
+			"name":           Equal(data.GetName()),
+			"display_name":   Equal(data.GetDisplayName()),
+			"description":    Equal(data.GetDescription().GetValue()),
+			"create_time":    Not(BeEmpty()),
+			"update_time":    Not(BeEmpty()),
+			"region":         Equal(data.GetRegion()),
+			"ikg_size":       Equal(data.GetIkgSize()),
+			"replica_region": Equal(data.GetReplicaRegion()),
+		}
+
+		// Add db_connection checks based on whether it exists in the response
+		if data.GetDbConnection() != nil {
+			keys["db_connection.#"] = Equal("1")
+			keys["db_connection.0.%"] = Equal("4")
+			keys["db_connection.0.url"] = Equal(data.GetDbConnection().GetUrl())
+			keys["db_connection.0.username"] = Equal(data.GetDbConnection().GetUsername())
+			keys["db_connection.0.password"] = Equal(data.GetDbConnection().GetPassword())
+			keys["db_connection.0.name"] = Equal(data.GetDbConnection().GetName())
+		} else {
+			keys["db_connection.#"] = Equal("0")
 		}
 		if appSpaceID != "" {
 			keys["app_space_id"] = Equal(data.GetId())
@@ -330,6 +360,10 @@ func testAppSpaceListDataExists(n string, data ...*configpb.ApplicationSpace) re
 			keys[k+"name"] = Equal(d.GetName())
 			keys[k+"display_name"] = Equal(d.GetDisplayName())
 			keys[k+"description"] = Equal(d.GetDescription().GetValue())
+			keys[k+"region"] = Equal(d.GetRegion())
+			keys[k+"ikg_size"] = Equal(d.GetIkgSize())
+			keys[k+"replica_region"] = Equal(d.GetReplicaRegion())
+			// Note: db_connection is intentionally omitted from list view for security
 		}
 
 		return convertOmegaMatcherToError(MatchAllKeys(keys), rs.Primary.Attributes)

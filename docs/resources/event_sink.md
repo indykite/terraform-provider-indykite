@@ -49,13 +49,14 @@ description: |-
 
 Event Sink configuration is used to configure outbound events.
 
-  There can be only one configuration per AppSpace (Project).
+		There can be only one configuration per AppSpace (Project).
 
-  Outbound events are designed to notify external systems about important changes within
-  the IndyKite Knowledge Graph (IKG).
+		Outbound events are designed to notify external systems about important changes within
+		the IndyKite Knowledge Graph (IKG).
 
-  These external systems may require real-time synchronization or need to react to
-  changes occurring in the platform.
+		These external systems may require real-time synchronization or need to react to
+		changes occurring in the platform.
+
 
 ## Supported filters
 
@@ -91,7 +92,7 @@ Event Sink configuration is used to configure outbound events.
 
 ## Example Usage
 
-```hcl
+```terraform
 resource "indykite_event_sink" "create-event" {
   name         = "terraform-event-sink-${time_static.example.unix}"
   display_name = "Terraform event sink  ${time_static.example.unix}"
@@ -181,14 +182,14 @@ resource "indykite_event_sink" "create-event" {
 
 - `location` (String) Identifier of Location, where to create resource
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
-- `providers` (Block List, Min: 1) (see [below for nested schema](#nested-schema-for-providers))
-- `routes` (Block List, Min: 1) (see [below for nested schema](#nested-schema-for-routes))
+- `providers` (Block List, Min: 1) (see [below for nested schema](#nestedblock--providers))
+- `routes` (Block List, Min: 1) (see [below for nested schema](#nestedblock--routes))
 
 ### Optional
 
 - `description` (String) Your own description of the resource. Must be less than or equal to 256 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
-- `timeouts` (Block, Optional) (see [below for nested schema](#nested-schema-for-timeouts))
+- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
 
@@ -198,6 +199,7 @@ resource "indykite_event_sink" "create-event" {
 - `id` (String) The ID of this resource.
 - `update_time` (String) Timestamp when the Resource was last updated. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
 
+<a id="nestedblock--providers"></a>
 ### Nested Schema for `providers`
 
 Required:
@@ -206,10 +208,11 @@ Required:
 
 Optional:
 
-- `azure_event_grid` (Block List, Max: 1) AzureEventGridSinkConfig (see [below for nested schema](#nested-schema-for-providersazure_event_grid))
-- `azure_service_bus` (Block List, Max: 1) AzureServiceBusSinkConfig (see [below for nested schema](#nested-schema-for-providersazure_service_bus))
-- `kafka` (Block List, Max: 1) KafkaSinkConfig (see [below for nested schema](#nested-schema-for-providerskafka))
+- `azure_event_grid` (Block List, Max: 1) AzureEventGridSinkConfig (see [below for nested schema](#nestedblock--providers--azure_event_grid))
+- `azure_service_bus` (Block List, Max: 1) AzureServiceBusSinkConfig (see [below for nested schema](#nestedblock--providers--azure_service_bus))
+- `kafka` (Block List, Max: 1) KafkaSinkConfig (see [below for nested schema](#nestedblock--providers--kafka))
 
+<a id="nestedblock--providers--azure_event_grid"></a>
 ### Nested Schema for `providers.azure_event_grid`
 
 Required:
@@ -221,6 +224,8 @@ Optional:
 
 - `provider_display_name` (String)
 
+
+<a id="nestedblock--providers--azure_service_bus"></a>
 ### Nested Schema for `providers.azure_service_bus`
 
 Required:
@@ -232,6 +237,8 @@ Optional:
 
 - `provider_display_name` (String)
 
+
+<a id="nestedblock--providers--kafka"></a>
 ### Nested Schema for `providers.kafka`
 
 Required:
@@ -247,6 +254,9 @@ Optional:
 - `provider_display_name` (String)
 - `tls_skip_verify` (Boolean) Skip TLS certificate verification. NOT RECOMMENDED.
 
+
+
+<a id="nestedblock--routes"></a>
 ### Nested Schema for `routes`
 
 Required:
@@ -255,11 +265,12 @@ Required:
 
 Optional:
 
-- `keys_values_filter` (Block List, Max: 1) (see [below for nested schema](#nested-schema-for-routeskeys_values_filter)
+- `keys_values_filter` (Block List, Max: 1) (see [below for nested schema](#nestedblock--routes--keys_values_filter))
 - `route_display_name` (String)
 - `route_id` (String)
 - `stop_processing` (Boolean)
 
+<a id="nestedblock--routes--keys_values_filter"></a>
 ### Nested Schema for `routes.keys_values_filter`
 
 Required:
@@ -268,8 +279,9 @@ Required:
 
 Optional:
 
-- `key_value_pairs` (Block List) List of key/value pairs for the ingest event types. (see [below for nested schema](#nested-schema-for-routeskeys_values_filterkey_value_pairs)
+- `key_value_pairs` (Block List) List of key/value pairs for the ingest event types. (see [below for nested schema](#nestedblock--routes--keys_values_filter--key_value_pairs))
 
+<a id="nestedblock--routes--keys_values_filter--key_value_pairs"></a>
 ### Nested Schema for `routes.keys_values_filter.key_value_pairs`
 
 Required:
@@ -277,6 +289,10 @@ Required:
 - `key` (String) Key for the ingest eventType
 - `value` (String) Value for the ingest eventType
 
+
+
+
+<a id="nestedblock--timeouts"></a>
 ### Nested Schema for `timeouts`
 
 Optional:

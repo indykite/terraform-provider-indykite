@@ -1,0 +1,11 @@
+---
+# override rules from repo's defaults
+MD007: false # ul-indent - disable unordered list indentation checking
+MD010: false # no-hard-tabs - disable hard tabs checking
+MD012: false # no-multiple-blanks - disable multiple consecutive blank lines checking
+MD013: false # line-length - disable line length checking
+MD022: false # blanks-around-headings - disable blank lines around headings checking
+MD031: false # blanks-around-fences - disable blank lines around fenced code blocks checking
+MD033: false # no-inline-html - disable inline HTML checking
+MD034: false # no-bare-urls - disable bare URL checking
+MD046: false # code-block-style - disable code block style checking
