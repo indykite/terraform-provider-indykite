@@ -1,17 +1,21 @@
 ---
-name: Lint
+name: Tests
 on: # yamllint disable-line rule:truthy
   pull_request:
     types: [opened, synchronize, reopened]
-
   # Run on master too to save cache, which can be shared into PR too
   push:
     branches:
       - master
-
+#
+# https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions
+# "all of those that are not specified are set to none."
+permissions:
+  contents: read # work with the contents of the repository
+#
 jobs:
   golangci:
-    name: lint
+    name: golangci-lint
     runs-on: ubuntu-latest
     steps:
       - name: actions/checkout

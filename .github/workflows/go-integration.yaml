@@ -1,18 +1,24 @@
 ---
-name: Integration Tests
+name: Tests
 on: # yamllint disable-line rule:truthy
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - master
   workflow_dispatch: # yamllint disable rule:empty-values
+#
 concurrency:
   group: integration-${{ github.ref }}
   cancel-in-progress: true
-
+#
+# https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions
+# "all of those that are not specified are set to none."
+permissions:
+  contents: read # work with the contents of the repository
+#
 jobs:
   test-integration:
-    name: Integration Tests
+    name: Integration
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
     env:

@@ -1,17 +1,19 @@
 ---
-name: Docker Build terraform-tests-for-local-jarvis
+name: Docker Build
 on: # yamllint disable-line rule:truthy
   pull_request:
     branches:
       - master
     paths:
       - docker/**
+#
 permissions:
   contents: read
   id-token: write
+#
 jobs:
   build:
-    name: Build and publish Test image
+    name: terraform-tests-for-local-jarvis
     env:
       ARTIFACT_REGISTRY_URL: europe-west1-docker.pkg.dev
       GCP_PROJECT_ID_MGMT: ${{ secrets.GCP_PROJECT_ID_MGMT }}
