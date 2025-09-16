@@ -2,10 +2,12 @@
 name: Terraform Plugin Docs
 
 on: # yamllint disable-line rule:truthy
-  pull_request:
-    branches: ["dev", "develop", "main", "master"]
   push:
-    branches: ["dev", "develop", "main", "master"] # TODO: not able to use ${{ github.event.repository.default_branch }} directly?
+    branches: ["dev", "develop", "main", "master"]
+    paths:
+      - "indykite/**"
+      - "templates/**"
+      - "CHANGELOG.md"
 
 concurrency:
   group: tfdocs-${{ github.ref }}
