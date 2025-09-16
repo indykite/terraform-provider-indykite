@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.25.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.24.4...v0.25.0) (2025-09-16)
+
+
+### Features
+
+* add dbconnection ([b1b3dbf](https://github.com/indykite/terraform-provider-indykite/commit/b1b3dbf06edc91aa525e461900c35535ee4e87cc))
+* add dbconnection ([d8aa35a](https://github.com/indykite/terraform-provider-indykite/commit/d8aa35a911b77a2da0a9ab3c451eedb803f094b5))
+* pre-commit SAST checks & fixes ([#200](https://github.com/indykite/terraform-provider-indykite/issues/200)) ([aa46ad5](https://github.com/indykite/terraform-provider-indykite/commit/aa46ad5d99ce552d6614a5aeff11954f62b11b71))
+
+
+### Bug Fixes
+
+* add make ([87a1fb8](https://github.com/indykite/terraform-provider-indykite/commit/87a1fb8895864cfe6fac0a974d4c495bee76ae3f))
+* docker build for golang:1.24 ([812193c](https://github.com/indykite/terraform-provider-indykite/commit/812193c44c490969dc4bcd9a0aa95c9f40c2f66c))
+
+
+### Miscellaneous Chores
+
+* **deps:** update actions/setup-go action to v6 ([#204](https://github.com/indykite/terraform-provider-indykite/issues/204)) ([f55ddb9](https://github.com/indykite/terraform-provider-indykite/commit/f55ddb9279454cc6e96e05e5b054f414db498a2b))
+* **deps:** update everything ([#191](https://github.com/indykite/terraform-provider-indykite/issues/191)) ([1f5b641](https://github.com/indykite/terraform-provider-indykite/commit/1f5b641603e863e124cfda44b0700ad5fb9cc10a))
+* **deps:** update google-github-actions/auth action to v3 ([#205](https://github.com/indykite/terraform-provider-indykite/issues/205)) ([7e07868](https://github.com/indykite/terraform-provider-indykite/commit/7e07868efbde470ff9695b8fa3e11eabb358727d))
+
 ## [0.24.4](https://github.com/indykite/terraform-provider-indykite/compare/v0.24.3...v0.24.4) (2025-08-19)
 
 
