@@ -47,4 +47,7 @@ Read-Only:
 - `description` (String)
 - `display_name` (String)
 - `id` (String)
+- `ikg_size` (String)
 - `name` (String)
+- `region` (String)
+- `replica_region` (String)

@@ -1,7 +1,12 @@
 ---
-# terraform-docs/*.md overrides via terraform/aws/.markdownlint.yaml
+# https://github.com/DavidAnson/markdownlint-cli2/blob/main/test/markdownlint-cli2-yaml-example/.markdownlint-cli2.yaml
+#
 default: true
+gitignore: true
 MD007: # ul-indent
   indent: 4
 MD013: # line-length
   line_length: 300
+
+ignores:
+  - "docs/**.md"

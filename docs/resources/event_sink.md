@@ -56,7 +56,7 @@ Event Sink configuration is used to configure outbound events.
 
 		These external systems may require real-time synchronization or need to react to
 		changes occurring in the platform.
-
+    
 		
 ## Supported filters
 

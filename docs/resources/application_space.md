@@ -36,6 +36,7 @@ resource "indykite_application_space" "appspace" {
 
 ### Optional
 
+- `db_connection` (Block List, Max: 1) DBConnection (see [below for nested schema](#nestedblock--db_connection))
 - `deletion_protection` (Boolean) Whether or not to allow Terraform to destroy the instance. Unless this field is set to false in Terraform state, a terraform destroy or terraform apply that would delete the instance will fail.
 - `description` (String) Your own description of the resource. Must be less than or equal to 256 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
@@ -52,6 +53,21 @@ resource "indykite_application_space" "appspace" {
 - `create_time` (String) Timestamp when the Resource was created. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
 - `id` (String) The ID of this resource.
 - `update_time` (String) Timestamp when the Resource was last updated. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
+
+
+<a id="nestedblock--db_connection"></a>
+### Nested Schema for `db_connection`
+
+Required:
+
+- `password` (String, Sensitive) Password for database authentication
+- `url` (String) Connection URL for the database
+- `username` (String) Username for database authentication
+
+Optional:
+
+- `name` (String) Optional database name
+
 
 <a id="nestedblock--timeouts"></a>
 ### Nested Schema for `timeouts`

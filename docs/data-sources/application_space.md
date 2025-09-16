@@ -35,7 +35,16 @@ data "indykite_application_space" "application_space" {
 ### Read-Only
 
 - `create_time` (String) Timestamp when the Resource was created. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
+- `db_connection` (List of Object) DBConnection (see [below for nested schema](#nestedatt--db_connection))
 - `id` (String) The ID of this resource.
+- `ikg_size` (String) IKG size that will be allocated, which corresponds also to number of CPU nodes.
+		Valid values are: 2GB (1 CPU), 4GB (1 CPU), 8GB (2 CPUs), 16GB (3 CPUs), 32GB (6 CPUs), 64GB (12 CPUs),
+		128GB (24 CPUs), 192GB (36 CPUs), 256GB (48 CPUs), 384GB (82 CPUs), and 512GB (96 CPUs).
+- `region` (String) Region where the application space is located.
+		Valid values are: europe-west1, us-east1.
+- `replica_region` (String) Replica region specifies where the replica IKG is created.
+		Replica must be a different region than the master, but also on the same geographical continent.
+		Valid values are: europe-west1, us-east1, us-west1.
 - `update_time` (String) Timestamp when the Resource was last updated. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
 
 <a id="nestedblock--timeouts"></a>
@@ -45,3 +54,14 @@ Optional:
 
 - `default` (String)
 - `read` (String)
+
+
+<a id="nestedatt--db_connection"></a>
+### Nested Schema for `db_connection`
+
+Read-Only:
+
+- `name` (String)
+- `password` (String)
+- `url` (String)
+- `username` (String)

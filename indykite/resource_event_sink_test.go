@@ -100,7 +100,7 @@ var _ = Describe("Resource EventSink", func() {
 							"kafka2": {
 								Provider: &configpb.EventSinkConfig_Provider_Kafka{
 									Kafka: &configpb.KafkaSinkConfig{
-										Brokers:     []string{"my.kafka.server.example.com"},
+										Brokers:     []string{"my.kafka.server.example.com:9092"},
 										Topic:       "my-kafka-topic",
 										Username:    "my-username",
 										DisplayName: wrapperspb.String("provider-display-name"),
@@ -142,7 +142,7 @@ var _ = Describe("Resource EventSink", func() {
 							"kafka2": {
 								Provider: &configpb.EventSinkConfig_Provider_Kafka{
 									Kafka: &configpb.KafkaSinkConfig{
-										Brokers:  []string{"my.kafka.server.example.com"},
+										Brokers:  []string{"my.kafka.server.example.com:9092"},
 										Topic:    "event-topic",
 										Username: "my-username",
 										// This doesn't make sense, but still valid testing scenario
@@ -264,7 +264,7 @@ var _ = Describe("Resource EventSink", func() {
 							"kafka2": {
 								Provider: &configpb.EventSinkConfig_Provider_Kafka{
 									Kafka: &configpb.KafkaSinkConfig{
-										Brokers:  []string{"my.kafka.server.example.com"},
+										Brokers:  []string{"my.kafka.server.example.com:9092"},
 										Topic:    "my-kafka-topic",
 										Username: "my-username",
 										// checkov:skip=CKV_SECRET_6:acceptance test
@@ -310,7 +310,7 @@ var _ = Describe("Resource EventSink", func() {
 							"kafka2": {
 								Provider: &configpb.EventSinkConfig_Provider_Kafka{
 									Kafka: &configpb.KafkaSinkConfig{
-										Brokers:  []string{"my.kafka.server.example.com"},
+										Brokers:  []string{"my.kafka.server.example.com:9092"},
 										Topic:    "event-topic",
 										Username: "my-username",
 										Password: "changed-password", // checkov:skip=CKV_SECRET_6:acceptance test
@@ -597,7 +597,7 @@ var _ = Describe("Resource EventSink", func() {
 		providers  {
 			provider_name = "kafka2"
 			kafka {
-				brokers = ["my.kafka.server.example.com"]
+				brokers = ["my.kafka.server.example.com:9092"]
 				topic = "my-kafka-topic"
 				username = "my-username"
 				password = "some-super-secret-password"
@@ -632,7 +632,7 @@ var _ = Describe("Resource EventSink", func() {
 					providers  {
 						provider_name = "kafka2"
 						kafka {
-							brokers = ["my.kafka.server.example.com"]
+							brokers = ["my.kafka.server.example.com:9092"]
 							topic = "my-kafka-topic"
 							username = "my-username"
 							password = "some-super-secret-password"
@@ -656,7 +656,7 @@ var _ = Describe("Resource EventSink", func() {
 						providers  {
 							provider_name = "kafka2"
 							kafka {
-								brokers = ["my.kafka.server.example.com"]
+								brokers = ["my.kafka.server.example.com:9092"]
 								topic = "my-kafka-topic"
 								username = "my-username"
 								password = "some-super-secret-password"
@@ -691,7 +691,7 @@ var _ = Describe("Resource EventSink", func() {
 						providers  {
 							provider_name = "kafka2"
 							kafka {
-								brokers = ["my.kafka.server.example.com"]
+								brokers = ["my.kafka.server.example.com:9092"]
 								topic = "event-topic"
 								username = "my-username"
 								password = "changed-password"

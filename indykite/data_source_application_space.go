@@ -31,13 +31,22 @@ func dataSourceAppSpace() *schema.Resource {
 		Description: "It is workspace or environment for your applications.  ",
 		ReadContext: dataAppSpaceReadContext,
 		Schema: map[string]*schema.Schema{
-			appSpaceIDKey:  setExactlyOneOf(appSpaceIDSchema(), appSpaceIDKey, appSpaceIdentifier),
-			nameKey:        setRequiredWith(setExactlyOneOf(nameSchema(), nameKey, appSpaceIdentifier), customerIDKey),
-			customerIDKey:  setRequiredWith(customerIDSchema(), nameKey),
-			displayNameKey: displayNameSchema(),
-			descriptionKey: descriptionSchema(),
-			createTimeKey:  createTimeSchema(),
-			updateTimeKey:  updateTimeSchema(),
+			appSpaceIDKey: setExactlyOneOf(appSpaceIDSchema(), appSpaceIDKey, appSpaceIdentifier),
+			nameKey: setRequiredWith(
+				setExactlyOneOf(
+					nameSchema(),
+					nameKey,
+					appSpaceIdentifier),
+				customerIDKey),
+			customerIDKey:    setRequiredWith(customerIDSchema(), nameKey),
+			displayNameKey:   displayNameSchema(),
+			descriptionKey:   descriptionSchema(),
+			createTimeKey:    createTimeSchema(),
+			updateTimeKey:    updateTimeSchema(),
+			regionKey:        setComputed(regionSchema()),
+			ikgSizeKey:       ikgSizeComputedSchema(),
+			replicaRegionKey: setComputed(replicaRegionSchema()),
+			dbConnectionKey:  dbConnectionComputedSchema(),
 		},
 		Timeouts: defaultDataTimeouts(),
 	}
@@ -54,11 +63,16 @@ func dataSourceAppSpaceList() *schema.Resource {
 				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						customerIDKey:  setComputed(customerIDSchema()),
-						"id":           setComputed(appSpaceIDSchema()),
-						nameKey:        nameSchema(),
-						displayNameKey: displayNameSchema(),
-						descriptionKey: descriptionSchema(),
+						customerIDKey:    setComputed(customerIDSchema()),
+						"id":             setComputed(appSpaceIDSchema()),
+						nameKey:          nameSchema(),
+						displayNameKey:   displayNameSchema(),
+						descriptionKey:   descriptionSchema(),
+						regionKey:        setComputed(regionSchema()),
+						ikgSizeKey:       ikgSizeComputedSchema(),
+						replicaRegionKey: setComputed(replicaRegionSchema()),
+						// Note: db_connection is intentionally omitted from list view for security
+						// Users should query individual app spaces to get db connection details
 					},
 				},
 			},
@@ -110,6 +124,10 @@ func dataAppSpaceFlatten(data *schema.ResourceData, resp *configpb.ApplicationSp
 	setData(&d, data, descriptionKey, resp.GetDescription())
 	setData(&d, data, createTimeKey, resp.GetCreateTime())
 	setData(&d, data, updateTimeKey, resp.GetUpdateTime())
+	setData(&d, data, regionKey, resp.GetRegion())
+	setData(&d, data, ikgSizeKey, resp.GetIkgSize())
+	setData(&d, data, replicaRegionKey, resp.GetReplicaRegion())
+	setDBConnectionData(&d, data, resp.GetDbConnection())
 	return d
 }
 
@@ -146,11 +164,15 @@ func dataAppSpaceListContext(ctx context.Context, data *schema.ResourceData, met
 			return d
 		}
 		allAppSpaces = append(allAppSpaces, map[string]any{
-			customerIDKey:  appSpace.GetAppSpace().GetCustomerId(),
-			"id":           appSpace.GetAppSpace().GetId(),
-			nameKey:        appSpace.GetAppSpace().GetName(),
-			displayNameKey: appSpace.GetAppSpace().GetDisplayName(),
-			descriptionKey: flattenOptionalString(appSpace.GetAppSpace().GetDescription()),
+			customerIDKey:    appSpace.GetAppSpace().GetCustomerId(),
+			"id":             appSpace.GetAppSpace().GetId(),
+			nameKey:          appSpace.GetAppSpace().GetName(),
+			displayNameKey:   appSpace.GetAppSpace().GetDisplayName(),
+			descriptionKey:   flattenOptionalString(appSpace.GetAppSpace().GetDescription()),
+			regionKey:        appSpace.GetAppSpace().GetRegion(),
+			ikgSizeKey:       appSpace.GetAppSpace().GetIkgSize(),
+			replicaRegionKey: appSpace.GetAppSpace().GetReplicaRegion(),
+			// db_connection intentionally omitted from list view for security
 		})
 	}
 	setData(&d, data, "app_spaces", allAppSpaces)
