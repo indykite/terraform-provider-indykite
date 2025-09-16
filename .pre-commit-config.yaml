@@ -32,7 +32,7 @@
 
 default_stages: [pre-commit, pre-push]
 default_install_hook_types: [pre-commit]
-fail_fast: true # false
+fail_fast: false
 minimum_pre_commit_version: 4.0.0
 
 #
@@ -233,7 +233,7 @@ repos:
         language: system
         entry: markdownlint-cli2
         types: [markdown]
-        exclude: ^(CHANGELOG|.github\/ISSUE_TEMPLATE\/(bug|feature_request)).md$
+        exclude: ^(CHANGELOG|.github\/ISSUE_TEMPLATE\/(bug|feature_request)|docs\/.*).md$
 
   - repo: local
     hooks:

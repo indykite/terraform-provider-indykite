@@ -17,6 +17,11 @@ tests/provider/.terraform.lock.hcl
 tests/provider/terraform.tfstate
 tests/provider/terraform.tfstate.backup
 
+# https://github.com/github/gitignore/blob/main/Terraform.gitignore
+# Local .terraform directories
+.terraform/
+.terraform.lock*
+
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 

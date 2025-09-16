@@ -1,27 +1,30 @@
 ---
-name: Terraform plugin docs
+name: Terraform Plugin Docs
 
 on: # yamllint disable-line rule:truthy
+  pull_request:
+    branches: ["dev", "develop", "main", "master"]
   push:
-    branches:
-      - master
+    branches: ["dev", "develop", "main", "master"] # TODO: not able to use ${{ github.event.repository.default_branch }} directly?
 
 concurrency:
   group: tfdocs-${{ github.ref }}
   cancel-in-progress: true
 
+#
+# https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions
+# "all of those that are not specified are set to none."
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   tfplugindocs:
-    name: Generate Terraform plugin docs
+    name: tfplugindocs
     runs-on: ubuntu-latest
     steps:
       - name: actions/checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0 - https://github.com/actions/checkout/releases
-        with:
-          token: ${{ secrets.INDYKITEONE_PAT }}
 
       - name: setup/golang
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0 - https://github.com/actions/setup-go/releases
@@ -33,31 +36,25 @@ jobs:
           make install-tools tfdocs_generate
 
       - name: Fix trailing whitespace & EOF in generated docs
-        uses: pre-commit/action@v3.0.1
+        uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1 - https://github.com/pre-commit/action/releases
         # ignoring errors, as pre-commit will fail if files were modified
         continue-on-error: true
         with:
-          extra_args: --hook-stage=manual --all-files
+          extra_args: --all-files
 
-      - name: Temporarily disable "include administrators" branch protection
-        uses: benjefferies/branch-protection-bot@v1.1.2
-        if: always()
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8 - https://github.com/peter-evans/create-pull-request/releases
         with:
-          access_token: ${{ secrets.INDYKITEONE_PAT }}
-          enforce_admins: false
-
-      - name: Commit generated docs
-        uses: stefanzweifel/git-auto-commit-action@v6
-        with:
-          # [skip ci] is NOT added to ensure that new workflow runs (release-please needs to update its PR)
-          # This should not add an infinite loop because the next time docs are generated they will be the same
-          # https://docs.github.com/en/actions/managing-workflow-runs/skipping-workflow-runs
-          commit_message: 'ci: update Terraform plugin docs'
-          commit_options: --no-verify --signoff
-
-      - name: Enable "include administrators" branch protection
-        uses: benjefferies/branch-protection-bot@v1.1.2
-        if: always() # Force to always run this step to ensure "include administrators" is always turned back on
-        with:
-          access_token: ${{ secrets.INDYKITEONE_PAT }}
-          enforce_admins: true
+          branch: ci/tfplugindocs
+          branch-suffix: short-commit-hash
+          author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>" # https://github.com/orgs/community/discussions/26560
+          committer: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          commit-message: "ci(sync): update tf plugin docs"
+          title: "ci(sync): update Terraform Plugin Docs"
+          body: |
+            Automatically generated PR to update Terraform Plugin documentation.
+          labels: ci, automation
+          delete-branch: true
+          signoff: true
+          # sign-commits: true # TODO:
+          team-reviewers: indykite/be-team
