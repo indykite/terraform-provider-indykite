@@ -35,12 +35,14 @@ jobs:
         run: |
           make install-tools tfdocs_generate
 
-      - name: Fix trailing whitespace & EOF in generated docs
-        uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1 - https://github.com/pre-commit/action/releases
-        # ignoring errors, as pre-commit will fail if files were modified
-        continue-on-error: true
+      - name: pre-commit/formatting
+        uses: indykite/.github/.github/actions/pre-commit@master
         with:
-          extra_args: --all-files
+          github_token: ${{ secrets.INDYKITEONE_PAT }}
+          pre_commit_skip: >-
+            commitlint,trivy,trivy-conf,trivy-filesystem
+            ${{ vars.PRE_COMMIT_SKIP != null && ',' || '' }}${{ vars.PRE_COMMIT_SKIP }}
+            ${{ format('{0}', github.event_name != 'pull_request' && ',pre-commit-autoupdate,no-commit-to-branch' || '' ) }}
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8 - https://github.com/peter-evans/create-pull-request/releases
@@ -56,6 +58,6 @@ jobs:
             Automatically generated PR to update Terraform Plugin documentation.
           labels: ci, automation
           delete-branch: true
-          signoff: true
+          # team-reviewers: <- via CODEOWNERS
           # sign-commits: true # TODO:
-          team-reviewers: indykite/be-team
+          signoff: true
