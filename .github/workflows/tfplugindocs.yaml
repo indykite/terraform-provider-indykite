@@ -43,7 +43,7 @@ jobs:
       - name: pre-commit CI config
         shell: bash
         run: |
-          cat >.pre-commit-config-ci.yaml <<EOL
+          cat >"$HOME/.cache/.pre-commit-config-ci.yaml" <<EOL
           repos:
           - repo: https://github.com/pre-commit/pre-commit-hooks
             rev: v6.0.0
@@ -60,7 +60,7 @@ jobs:
         # ignoring errors, as pre-commit will fail if files were modified
         continue-on-error: true
         with:
-          extra_args: --all-files --config .pre-commit-config-ci.yaml
+          extra_args: --all-files --config "$HOME/.cache/.pre-commit-config-ci.yaml"
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8 - https://github.com/peter-evans/create-pull-request/releases
