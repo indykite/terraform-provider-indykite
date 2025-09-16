@@ -28,6 +28,26 @@ resource "indykite_application_space" "appspace" {
   deletion_protection = false
 }
 
+resource "indykite_application_space" "appspaceb" {
+  customer_id    = data.indykite_customer.customer.id
+  name           = "terraform-pipeline-appspaceb-${time_static.example.unix}"
+  display_name   = "Terraform appspace ${time_static.example.unix}"
+  description    = "Application space for terraform pipeline"
+  region         = "us-east1"
+  ikg_size       = "4GB"
+  replica_region = "us-west1"
+  db_connection {
+    url      = "postgresql://localhost:5432/test"
+    username = "testuser"
+    password = "testpass"
+    name     = "testdb"
+  }
+  lifecycle {
+    create_before_destroy = true
+  }
+  deletion_protection = false
+}
+
 resource "indykite_application" "application" {
   app_space_id = indykite_application_space.appspace.id
   name         = "terraform-pipeline-application-${time_static.example.unix}"
