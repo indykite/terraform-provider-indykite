@@ -45,6 +45,7 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8 - https://github.com/peter-evans/create-pull-request/releases
         with:
+          base: master
           branch: ci/tfplugindocs
           branch-suffix: short-commit-hash
           author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>" # https://github.com/orgs/community/discussions/26560
