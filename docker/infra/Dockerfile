@@ -16,6 +16,7 @@ RUN apk add --update --no-cache \
         curl \
         jq \
         git \
+        make \
         python3 \
         openssh-client \
     # Install OpenTofu (open source Terraform clone)
