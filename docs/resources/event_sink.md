@@ -4,15 +4,15 @@ page_title: "indykite_event_sink Resource - IndyKite"
 subcategory: ""
 description: |-
   Event Sink configuration is used to configure outbound events.
-
+  
   	There can be only one configuration per AppSpace (Project).
-
+  
   	Outbound events are designed to notify external systems about important changes within
   	the IndyKite Knowledge Graph (IKG).
-
+  
   	These external systems may require real-time synchronization or need to react to
   	changes occurring in the platform.
-
+  
   Supported filters
   | **Method** | **Event Type** | **Key** | **Value (example)** |
   | --- | --- | --- | --- |
@@ -57,7 +57,7 @@ Event Sink configuration is used to configure outbound events.
 		These external systems may require real-time synchronization or need to react to
 		changes occurring in the platform.
 
-
+		
 ## Supported filters
 
 | **Method** | **Event Type** | **Key** | **Value (example)** |
@@ -302,3 +302,5 @@ Optional:
 - `delete` (String)
 - `read` (String)
 - `update` (String)
+
+
