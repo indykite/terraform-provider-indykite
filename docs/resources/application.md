@@ -34,7 +34,7 @@ resource "indykite_application" "application" {
 - `deletion_protection` (Boolean) Whether or not to allow Terraform to destroy the instance. Unless this field is set to false in Terraform state, a terraform destroy or terraform apply that would delete the instance will fail.
 - `description` (String) Your own description of the resource. Must be less than or equal to 256 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
-- `timeouts` (Block, Optional) (see [below for nested schema](#nested-schema-for-timeouts))
+- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
 
@@ -43,6 +43,7 @@ resource "indykite_application" "application" {
 - `id` (String) The ID of this resource.
 - `update_time` (String) Timestamp when the Resource was last updated. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
 
+<a id="nestedblock--timeouts"></a>
 ### Nested Schema for `timeouts`
 
 Optional:
@@ -52,3 +53,5 @@ Optional:
 - `delete` (String)
 - `read` (String)
 - `update` (String)
+
+

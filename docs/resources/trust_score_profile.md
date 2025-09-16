@@ -8,8 +8,7 @@ description: |-
 
 # indykite_trust_score_profile (Resource)
 
-The Trust Score Profile helps assess how trustworthy data is. It allows applications, authorization policies, and AI systems to define and check  whether data meets specific reliability requirements.
-By validating key factors — such as how recent, complete, and accurate the data is —  the Trust Score ensures that only high-quality and reliable data is used in decision-making. This reduces risk and improves the overall quality of downstream processes.
+The Trust Score Profile helps assess how trustworthy data is. It allows applications, authorization policies, and AI systems to define and check  whether data meets specific reliability requirements. By validating key factors — such as how recent, complete, and accurate the data is —  the Trust Score ensures that only high-quality and reliable data is used in decision-making. This reduces risk and improves the overall quality of downstream processes.
 
 ## Example Usage
 
@@ -54,7 +53,7 @@ resource "indykite_trust_score_profile" "trust-score2" {
 
 ### Required
 
-- `dimension` (Block List, Min: 1) List of dimensions that will be used to calculate the trust score. (see [below for nested schema](#nested-schema-for-dimension))
+- `dimension` (Block List, Min: 1) List of dimensions that will be used to calculate the trust score. (see [below for nested schema](#nestedblock--dimension))
 - `location` (String) Identifier of Location, where to create resource
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 - `node_classification` (String) NodeClassification is a node label in PascalCase, cannot be modified once set.
@@ -64,7 +63,7 @@ resource "indykite_trust_score_profile" "trust-score2" {
 
 - `description` (String) Your own description of the resource. Must be less than or equal to 256 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
-- `timeouts` (Block, Optional) (see [below for nested schema](#nested-schema-for-timeouts))
+- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
 
@@ -74,18 +73,16 @@ resource "indykite_trust_score_profile" "trust-score2" {
 - `id` (String) The ID of this resource.
 - `update_time` (String) Timestamp when the Resource was last updated. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
 
+<a id="nestedblock--dimension"></a>
 ### Nested Schema for `dimension`
 
 Required:
 
-- `name` (String) Name of the trust score dimensions. Possible values are: `NAME_COMPLETENESS`, `NAME_FRESHNESS`, `NAME_INVALID`, `NAME_ORIGIN`, `NAME_VALIDITY`, `NAME_VERIFICATION`.
-    - `Origin`: Identifies where the data comes from, ensuring its source is transparent and trustworthy.
-    - `Validity`: Checks whether the data is in the correct format and follows expected rules.
-    - `Completeness`: Confirms that no critical information is missing from the data.
-    - `Freshness`: Measures how up-to-date the data is to ensure it’s still relevant.
-    - `Verification`: Ensures the data has been reviewed and confirmed as accurate by a trusted source.
+- `name` (String) Name of the trust score dimensions. Possible values are: `NAME_COMPLETENESS`, `NAME_FRESHNESS`, `NAME_INVALID`, `NAME_ORIGIN`, `NAME_VALIDITY`, `NAME_VERIFICATION`.  `Origin`: Identifies where the data comes from, ensuring its source is transparent and trustworthy.  `Validity`: Checks whether the data is in the correct format and follows expected rules.  `Completeness`: Confirms that no critical information is missing from the data.  `Freshness`: Measures how up-to-date the data is to ensure it’s still relevant.  `Verification`: Ensures the data has been reviewed and confirmed as accurate by a trusted source.
 - `weight` (Number) Weight represents how relevant the dimension is in the trust score calculation.
 
+
+<a id="nestedblock--timeouts"></a>
 ### Nested Schema for `timeouts`
 
 Optional:
@@ -95,3 +92,5 @@ Optional:
 - `delete` (String)
 - `read` (String)
 - `update` (String)
+
+
