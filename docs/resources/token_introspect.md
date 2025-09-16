@@ -12,9 +12,9 @@ description: |-
 # indykite_token_introspect (Resource)
 
 Token introspect configuration adds support for 3rd party tokens to identify the user within IndyKite APIs.
-  Token introspect enables the IndyKite platform to identify end users by third party tokens,
-  validate these tokens, and use their content in the IndyKite platform.
-  To verify these tokens, you need to create a configuration that describes how to do the token introspection.
+		Token introspect enables the IndyKite platform to identify end users by third party tokens,
+		validate these tokens, and use their content in the IndyKite platform.
+		To verify these tokens, you need to create a configuration that describes how to do the token introspection.
 
 ## Example Usage
 
@@ -90,14 +90,14 @@ resource "indykite_token_introspect" "token2" {
     Value specifies which claim to map and how.
 - `description` (String) Your own description of the resource. Must be less than or equal to 256 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
-- `jwt_matcher` (Block List, Max: 1) Specifies all attributes required to match a JWT token. (see [below for nested schema](#nested-schema-for-jwt_matcher))
-- `offline_validation` (Block List, Max: 1) Offline validation works only with JWT and checks token locally. (see [below for nested schema](#nested-schema-for-offline_validation))
-- `online_validation` (Block List, Max: 1) Online validation works with both JWT and Opaque tokens. It will call userinfo endpoint to validate token and fetch user claims. (see [below for nested schema](#nested-schema-for-online_validation))
-- `opaque_matcher` (Block List, Max: 1) Specify opaque token matcher. Currently we support only 1 opaque matcher per application space. (see [below for nested schema](#nested-schema-for-opaque_matcher))
+- `jwt_matcher` (Block List, Max: 1) Specifies all attributes required to match a JWT token. (see [below for nested schema](#nestedblock--jwt_matcher))
+- `offline_validation` (Block List, Max: 1) Offline validation works only with JWT and checks token locally. (see [below for nested schema](#nestedblock--offline_validation))
+- `online_validation` (Block List, Max: 1) Online validation works with both JWT and Opaque tokens. It will call userinfo endpoint to validate token and fetch user claims. (see [below for nested schema](#nestedblock--online_validation))
+- `opaque_matcher` (Block List, Max: 1) Specify opaque token matcher. Currently we support only 1 opaque matcher per application space. (see [below for nested schema](#nestedblock--opaque_matcher))
 - `perform_upsert` (Boolean) Perform Upsert specify, if we should create and/or update DigitalTwin in IKG if it doesn't exist with.
- In future this will perform upsert also on properties that are derived from token.
+	In future this will perform upsert also on properties that are derived from token.
 - `sub_claim` (String) Sub claim is used to match DigitalTwin with external_id. If not specified, standard 'sub' claim will be used. Either 'sub' or specified claim will then also be mapped to 'external_id' claim.
-- `timeouts` (Block, Optional) (see [below for nested schema](#nested-schema-for-timeouts))
+- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
 
@@ -107,6 +107,7 @@ resource "indykite_token_introspect" "token2" {
 - `id` (String) The ID of this resource.
 - `update_time` (String) Timestamp when the Resource was last updated. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
 
+<a id="nestedblock--jwt_matcher"></a>
 ### Nested Schema for `jwt_matcher`
 
 Required:
@@ -114,12 +115,16 @@ Required:
 - `audience` (String) Audience is used to exact match based on `aud` claim in JWT.
 - `issuer` (String) Issuer is used to exact match based on `iss` claim in JWT.
 
+
+<a id="nestedblock--offline_validation"></a>
 ### Nested Schema for `offline_validation`
 
 Optional:
 
-- `public_jwks` (List of String) Public JWKs to validate signature of JWT. If there are no public keys specified, they will be fetched and cached from jwks_uri at <https://jwt-issuer.tld/.well-known/openid-configuration>
+- `public_jwks` (List of String) Public JWKs to validate signature of JWT. If there are no public keys specified, they will be fetched and cached from jwks_uri at https://jwt-issuer.tld/.well-known/openid-configuration
 
+
+<a id="nestedblock--online_validation"></a>
 ### Nested Schema for `online_validation`
 
 Optional:
@@ -136,12 +141,16 @@ Optional:
     It can remain empty, if JWT token matcher is used.
     Then the URI under "userinfo_endpoint" in .well-known/openid-configuration endpoint is used.
 
+
+<a id="nestedblock--opaque_matcher"></a>
 ### Nested Schema for `opaque_matcher`
 
 Required:
 
 - `hint` (String) To differentiate between multiple opaque tokens configurations, hint must be provided. Hint is case sensitive plain text, that is expected to be provided in token introspect request, if there are multiple opaque tokens configurations.
 
+
+<a id="nestedblock--timeouts"></a>
 ### Nested Schema for `timeouts`
 
 Optional:
@@ -151,3 +160,5 @@ Optional:
 - `delete` (String)
 - `read` (String)
 - `update` (String)
+
+

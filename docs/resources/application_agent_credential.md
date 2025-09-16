@@ -33,7 +33,7 @@ resource "indykite_application_agent_credential" "with_public" {
 - `expire_time` (String) Optional date-time when credentials are going to expire
 - `public_key_jwk` (String, Deprecated) Provide your onw Public key in JWK format, otherwise new pair is generated
 - `public_key_pem` (String, Deprecated) Provide your onw Public key in PEM format, otherwise new pair is generated
-- `timeouts` (Block, Optional) (see [below for nested schema](#nested-schema-for-timeouts))
+- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
 
@@ -45,6 +45,7 @@ resource "indykite_application_agent_credential" "with_public" {
 - `id` (String) The ID of this resource.
 - `kid` (String)
 
+<a id="nestedblock--timeouts"></a>
 ### Nested Schema for `timeouts`
 
 Optional:
@@ -57,7 +58,10 @@ Optional:
 ## Import
 
 Import is supported using the following syntax:
+```shell
+#!/bin/bash
+# pipefail - BASH only, not supported in POSIX Shell
+set -o errexit -o nounset -o pipefail
 
-```sh
 terraform import indykite_application_agent_credential.id gid:AAABBBCCC_000111222333
 ```

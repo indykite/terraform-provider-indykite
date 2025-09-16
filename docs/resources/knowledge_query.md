@@ -8,17 +8,7 @@ description: |-
 
 # indykite_knowledge_query (Resource)
 
-**Creating Policy:**
-
-An authorization admin starts by creating a new subgraph or selecting an existing one as the container for the policy they wish to create.
-Next, the admin specifies a set of nodes and relationships within the subgraph and  specifies the static filters and partial filters on the selected nodes and relationship.
-There must be exactly one node that is specified as the Subject node.  However, two separate policies may contain two different Subject nodes.
-Note that not every node and relationship needs a filter or partial filter.  The nodes and relationships, along with the filters and partial filters,  form the necessary requirements for the queries that will be defined in the context of this policy.
-
-**Creating Query:**
-
-Every query is created in the context of a policy.  While the policy describes the requirements, the query focuses on retrieving data.  The policy admin starts by selecting a subgraph and a policy for the context of the query.
-The admin then specifies the read, upsert, and delete components for the query.  When the admin is done specifying the query, the query combined with the policy are translated to Cypher.
+**Creating Policy:**  <br>An authorization admin starts by creating a new subgraph or selecting an existing one as the container for the policy they wish to create. Next, the admin specifies a set of nodes and relationships within the subgraph and  specifies the static filters and partial filters on the selected nodes and relationship.  There must be exactly one node that is specified as the Subject node.  However, two separate policies may contain two different Subject nodes.  Note that not every node and relationship needs a filter or partial filter.  The nodes and relationships, along with the filters and partial filters,  form the necessary requirements for the queries that will be defined in the context of this policy.  <br>**Creating Query:**  <br>Every query is created in the context of a policy.  While the policy describes the requirements, the query focuses on retrieving data.  The policy admin starts by selecting a subgraph and a policy for the context of the query.  The admin then specifies the read, upsert, and delete components for the query.  When the admin is done specifying the query, the query combined with the policy are translated to Cypher.
 
 ## Example Usage
 
@@ -75,7 +65,7 @@ resource "indykite_knowledge_query" "create-query" {
 
 - `description` (String) Your own description of the resource. Must be less than or equal to 256 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
-- `timeouts` (Block, Optional) (see [below for nested schema](#nested-schema-for-timeouts))
+- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
 
@@ -85,6 +75,7 @@ resource "indykite_knowledge_query" "create-query" {
 - `id` (String) The ID of this resource.
 - `update_time` (String) Timestamp when the Resource was last updated. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
 
+<a id="nestedblock--timeouts"></a>
 ### Nested Schema for `timeouts`
 
 Optional:
@@ -94,3 +85,5 @@ Optional:
 - `delete` (String)
 - `read` (String)
 - `update` (String)
+
+

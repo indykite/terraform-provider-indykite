@@ -3,10 +3,12 @@
 page_title: "indykite_consent Resource - IndyKite"
 subcategory: ""
 description: |-
-
+  
 ---
 
 # indykite_consent (Resource)
+
+
 
 ## Example Usage
 
@@ -61,7 +63,7 @@ resource "indykite_consent" "basic-user-data" {
 - `description` (String) Your own description of the resource. Must be less than or equal to 256 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
 - `revoke_after_use` (Boolean) If set to true, the consent will be revoked after it is used once
-- `timeouts` (Block, Optional) (see [below for nested schema](#nested-schema-for-timeouts))
+- `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
 
@@ -71,6 +73,7 @@ resource "indykite_consent" "basic-user-data" {
 - `id` (String) The ID of this resource.
 - `update_time` (String) Timestamp when the Resource was last updated. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
 
+<a id="nestedblock--timeouts"></a>
 ### Nested Schema for `timeouts`
 
 Optional:
@@ -80,3 +83,5 @@ Optional:
 - `delete` (String)
 - `read` (String)
 - `update` (String)
+
+
