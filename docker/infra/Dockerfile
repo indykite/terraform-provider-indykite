@@ -24,6 +24,7 @@ RUN apk add --update --no-cache \
     && chmod +x install-opentofu.sh \
     && ./install-opentofu.sh --install-method apk \
     && rm -f install-opentofu.sh \
+    && ln -s /usr/bin/tofu /usr/bin/terraform \
     # Add new user and not using root to run the tests for security reasons
     && addgroup -S "$APPGROUP" --gid 10001 \
     && adduser -S "$APPUSER" --uid 10001 \
@@ -32,7 +33,9 @@ RUN apk add --update --no-cache \
         --gecos "" \
         --home "$APPUSER_HOME" \
     # Install gscloud for posting the results in the bucket
-    && curl -sSL https://sdk.cloud.google.com | bash
+    && curl -sSL https://sdk.cloud.google.com | bash \
+    && apk info -v \
+    && terraform -version
 
 
 COPY startscript.sh "${APPUSER_HOME}/startscript.sh"

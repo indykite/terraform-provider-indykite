@@ -20,13 +20,16 @@ RUN apk add --update --no-cache \
     && chmod +x install-opentofu.sh \
     && ./install-opentofu.sh --install-method apk \
     && rm -f install-opentofu.sh \
+    && ln -s /usr/bin/tofu /usr/bin/terraform \
     # Add new user and not using root to run the tests for security reasons
     && addgroup -S "$APPGROUP" --gid 10001 \
     && adduser -S "$APPUSER" --uid 10001 \
         -G "$APPGROUP" \
         --disabled-password \
         --gecos "" \
-        --home "$APPUSER_HOME"
+        --home "$APPUSER_HOME" \
+    && apk info -v \
+    && terraform -version
 
 COPY run_tests_on_local_be.sh "${APPUSER_HOME}/run_test.sh"
 RUN chmod +x "${APPUSER_HOME}/run_test.sh" \
