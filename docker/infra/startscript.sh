@@ -11,6 +11,9 @@ set -o errexit -o nounset # -o pipefail
 : "${GITHUB_USER:?GitHub User is required}"
 : "${GITHUB_TOKEN:?GitHub Token is required}"
 : "${GITHUB:?GitHub FQDN is required}"
+: "${SLACK_WEBHOOK_URL:=""}"
+: "${BUCKET_NAME:?Bucket name is required}"
+BUCKET_PATH="gs://${BUCKET_NAME}"
 
 i=0
 while [[ ${i} -le 5 ]]; do
@@ -120,7 +123,6 @@ if [[ -n "${SLACK_WEBHOOK_URL}" ]]; then
 fi
 
 echo "Send results to GCP bucket"
-BUCKET_PATH="gs://${BUCKET_NAME}"
 mv output.txt "${results_file_name}"
 
 echo "Copying the results to google cloud"
