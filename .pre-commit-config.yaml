@@ -19,8 +19,7 @@
 #
 # Prerequisites:
 #   - if using 'make install-tools', then '~/go/bin' must be added to $PATH in ~/.bash_profile
-# yamllint disable-line rule:line-length
-#   brew install pre-commit yamlfmt yamllint actionlint markdownlint-cli2 shellcheck shfmt checkov trivy go gci golangci-lint hadolint terraform-docs tflint terragrunt
+#   brew install pre-commit yamlfmt yamllint actionlint markdownlint-cli2 shellcheck shfmt checkov trivy go gci golangci-lint hadolint tfplugindocs tflint
 #
 # Update hooks and their dependencies regularly via:
 #   (remote) pre-commit autoupdate --jobs $(getconf _NPROCESSORS_ONLN)
@@ -85,6 +84,62 @@ repos:
           - "@commitlint/config-conventional"
           - commitlint-plugin-function-rules
 
+  #
+  # Go tests & TF Plugin Docs
+  - repo: local
+    hooks:
+      - id: golang-fmt
+        name: golang-fmt
+        entry: make fmt # gofmt -s -w $(go list -f "{{.Dir}}" ./... | grep -vE /proto-gen)
+        types_or: [go, go-mod, go-sum, gotmpl]
+        description: "Runs 'gofmt', requires golang"
+        language: system
+        pass_filenames: false
+
+      - id: golang-gci
+        name: golang-gci
+        entry: gci write -s standard -s default -s "prefix(github.com/indykite/terraform-provider-indykite)" -s blank -s dot .
+        types_or: [go, go-mod, go-sum, gotmpl]
+        description: "Requires and runs 'gci', control package import order and make it always deterministic"
+        language: system
+        pass_filenames: false
+
+      - id: golangci-lint-validate-config
+        name: golangci-lint/validate-config
+        entry: golangci-lint config verify
+        files: '\.golangci\.(y?ml|toml|json)$'
+        language: system
+        pass_filenames: false
+
+      - id: golangci-lint
+        name: golangci-lint
+        entry: golangci-lint run
+        args: [--new-from-rev, HEAD]
+        types_or: [go, go-mod, go-sum, gotmpl]
+        description: "Requires and runs 'golangci-lint', fast linters runner for golang; strict mode against new changes only"
+        language: system
+        pass_filenames: false # golangci-lint detects those automatically
+
+      - id: go-tests
+        name: go-tests
+        entry: make test
+        language: system
+        pass_filenames: false
+        types_or: [go, go-mod, go-sum, gotmpl]
+        always_run: false
+        # FIXME:
+        stages: [manual]
+
+      - id: tfplugindocs
+        name: tfplugindocs
+        entry: make tfdocs_generate # tfplugindocs generate --rendered-provider-name "IndyKite"
+        types_or: [go, go-mod, go-sum, gotmpl]
+        language: system
+        pass_filenames: false
+        # FIXME: buggy, fails locally with OpenTofu installed in parallel
+        stages: [manual]
+
+  #
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
@@ -197,17 +252,8 @@ repos:
           - --tf-init-args=-upgrade
           - --tf-init-args=-backend=false
           - --hook-config=--parallelism-limit=1
-      - id: terragrunt_validate_inputs
-        name: terragrunt-validate-inputs
-        # FIXME: super slow with '-a'
+        # TODO: should verify locally built provider, not from TF Registry
         stages: [manual]
-
-  - repo: https://github.com/terraform-docs/terraform-docs
-    rev: "v0.20.0"
-    hooks:
-      - id: terraform-docs-system
-        args:
-          - --config=.tfdocs-config.yml
 
   #
   # IaC in general
@@ -223,7 +269,6 @@ repos:
 
   #
   # Markdown
-  # keep it after 'tf-docs' update, so newly generated/updated files can be verified
   # - repo: https://github.com/DavidAnson/markdownlint-cli2 <- "language: node" slower & takes larger CI cache comparing to "system"
   #   rev: v0.18.1
   - repo: local
@@ -234,47 +279,3 @@ repos:
         entry: markdownlint-cli2
         types: [markdown]
         exclude: ^(CHANGELOG|.github\/ISSUE_TEMPLATE\/(bug|feature_request)|docs\/.*).md$
-
-  - repo: local
-    hooks:
-      - id: golang-fmt
-        name: golang-fmt
-        entry: make fmt # gofmt -s -w $(go list -f "{{.Dir}}" ./... | grep -vE /proto-gen)
-        types_or: [go, go-mod, go-sum, gotmpl]
-        description: "Runs 'gofmt', requires golang"
-        language: system
-        pass_filenames: false
-
-      - id: golang-gci
-        name: golang-gci
-        entry: gci write -s standard -s default -s "prefix(github.com/indykite/terraform-provider-indykite)" -s blank -s dot .
-        types_or: [go, go-mod, go-sum, gotmpl]
-        description: "Requires and runs 'gci', control package import order and make it always deterministic"
-        language: system
-        pass_filenames: false
-
-      - id: golangci-lint-validate-config
-        name: golangci-lint/validate-config
-        entry: golangci-lint config verify
-        files: '\.golangci\.(y?ml|toml|json)$'
-        language: system
-        pass_filenames: false
-
-      - id: golangci-lint
-        name: golangci-lint
-        entry: golangci-lint run
-        args: [--new-from-rev, HEAD]
-        types_or: [go, go-mod, go-sum, gotmpl]
-        description: "Requires and runs 'golangci-lint', fast linters runner for golang; strict mode against new changes only"
-        language: system
-        pass_filenames: false # golangci-lint detects those automatically
-
-      - id: go-tests
-        name: go-tests
-        entry: make test
-        language: system
-        pass_filenames: false
-        types_or: [go, go-mod, go-sum, gotmpl]
-        always_run: false
-        # FIXME:
-        stages: [manual]
