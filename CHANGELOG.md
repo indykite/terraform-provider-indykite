@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.25.0...v0.26.0) (2025-09-22)
+
+
+### Features
+
+* remove tda ([bb12a97](https://github.com/indykite/terraform-provider-indykite/commit/bb12a978fc99c8db83974834f79724c2b55cad3f))
+
 ## [0.25.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.24.4...v0.25.0) (2025-09-16)
 
 
