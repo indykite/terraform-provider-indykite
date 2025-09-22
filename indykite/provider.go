@@ -67,7 +67,6 @@ func Provider() *schema.Provider {
 			"indykite_token_introspect":             resourceTokenIntrospect(),
 			"indykite_ingest_pipeline":              resourceIngestPipeline(),
 			"indykite_external_data_resolver":       resourceExternalDataResolver(),
-			"indykite_consent":                      resourceConsent(),
 			"indykite_entity_matching_pipeline":     resourceEntityMatchingPipeline(),
 			"indykite_knowledge_query":              resourceKnowledgeQuery(),
 			"indykite_trust_score_profile":          resourceTrustScoreProfile(),

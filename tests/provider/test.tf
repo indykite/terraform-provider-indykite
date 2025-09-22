@@ -37,7 +37,7 @@ resource "indykite_application_space" "appspaceb" {
   ikg_size       = "4GB"
   replica_region = "us-west1"
   db_connection {
-    url      = "postgresql://localhost:5432/test"
+    url      = "neo4j+s://xxxxxxxx.databases.neo4j.io"
     username = "testuser"
     password = "testpass"
     name     = "testdb"
@@ -104,50 +104,6 @@ resource "indykite_authorization_policy" "policy_drive_car" {
   lifecycle {
     create_before_destroy = true
   }
-}
-
-resource "indykite_consent" "basic-user-data" {
-  location    = indykite_application_space.appspace.id
-  name        = "location-name-sharing"
-  description = "This consent will allow third parties to access the location and name of the user"
-
-  purpose          = "To send you your order you need to share your location and name with the delivery service"
-  application_id   = indykite_application.application.id
-  validity_period  = 96400
-  revoke_after_use = false
-  data_points = [
-    "{\"returns\": [{\"properties\": [\"name\", \"location\"]}]}"
-  ]
-}
-
-resource "indykite_consent" "advance-user-data" {
-  location    = indykite_application_space.appspace.id
-  name        = "advance-sharing"
-  description = "Allow servicing company to access car model and manufacturer name"
-
-  purpose          = "Share you car model and manufacturer name with the car service"
-  application_id   = indykite_application.application.id
-  validity_period  = 96400
-  revoke_after_use = false
-  data_points = [jsonencode(
-    {
-      "query" : "->[:BELONGS]-(c:CAR)-[:MADEBY]->(o:MANUFACTURER)",
-      "returns" : [
-        {
-          "variable" : "c",
-          "properties" : [
-            "Model"
-          ]
-        },
-        {
-          "variable" : "o",
-          "properties" : [
-            "Name"
-          ]
-        }
-      ]
-    }
-  )]
 }
 
 resource "indykite_external_data_resolver" "get-resolver" {
