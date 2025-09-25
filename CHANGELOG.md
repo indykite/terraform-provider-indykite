@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.26.0...v0.26.1) (2025-09-25)
+
+
+### Miscellaneous Chores
+
+* **deps:** Pin dependencies ([#219](https://github.com/indykite/terraform-provider-indykite/issues/219)) ([e63423a](https://github.com/indykite/terraform-provider-indykite/commit/e63423a320b06e34cf1a71aab27bda780c9f3401))
+
 ## [0.26.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.25.0...v0.26.0) (2025-09-22)
 
 
