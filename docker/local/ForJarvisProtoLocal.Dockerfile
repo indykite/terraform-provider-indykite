@@ -15,6 +15,7 @@ RUN apk add --update --no-cache \
         jq \
         git \
         openssh-client \
+    && apk upgrade \
     # Install OpenTofu (open source Terraform clone)
     && curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh -o install-opentofu.sh \
     && chmod +x install-opentofu.sh \
