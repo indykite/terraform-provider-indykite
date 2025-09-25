@@ -6,8 +6,7 @@ SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 ENV APPUSER="appuser"
 ENV APPGROUP="appgroup"
 ENV APPUSER_HOME="/home/$APPUSER"
-ENV APPUSER_HOME=/home/appuser
-ENV CLOUDSDK_INSTALL_DIR=${APPUSER_HOME}
+ENV CLOUDSDK_INSTALL_DIR="${APPUSER_HOME}"
 ENV PATH="$PATH:${APPUSER_HOME}/google-cloud-sdk/bin"
 
 # hadolint ignore=DL3018
