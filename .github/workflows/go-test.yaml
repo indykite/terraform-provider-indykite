@@ -34,8 +34,8 @@ jobs:
         run: |
           make test
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # v5
+      - name: codecov/upload-coverage
+        uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # v5.5.1 - https://github.com/codecov/codecov-action/releases
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.out

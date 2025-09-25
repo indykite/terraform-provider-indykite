@@ -43,7 +43,7 @@ repos:
         name: pre-commit/check-useless-excludes
 
   - repo: ssh://git@github.com/indykite/ops-common
-    rev: "93f7e5f4c05a1b86d36993cd0b2a47fd5cfba54b" # using a branch name (or HEAD) is not supported
+    rev: "df2a5d2660eb6f24d7d6c5edffab3c7931ae31c3" # using a branch name (or HEAD) is not supported
     hooks:
       # POST-CHECKOUT
       # install explicitly with: pre-commit install -t post-checkout
@@ -66,7 +66,7 @@ repos:
   #
   # Renovate
   - repo: https://github.com/renovatebot/pre-commit-hooks # ci:ignore:OK to validate locally only, otherwise it adds 850MB+ to unpacked cache
-    rev: "41.111.0"
+    rev: "41.130.0"
     hooks:
       - id: renovate-config-validator
         args: [--strict]
@@ -193,7 +193,7 @@ repos:
 
   #
   # YAML
-  # - repo: https://github.com/rhysd/actionlint <- "language: g.olang" slower & takes larger CI cache comparing to "system"
+  # - repo: https://github.com/rhysd/actionlint <- "language: golang" slower & takes larger CI cache comparing to "system"
   #   rev: v1.7.7
   - repo: local
     hooks:
@@ -205,7 +205,7 @@ repos:
         args: ["-config-file=.actionlint.yaml"]
         types: [yaml]
         files: ^\.github/workflows/
-  # - repo: https://github.com/google/yamlfmt <- "language: g.olang" slower & takes larger CI cache comparing to "system"
+  # - repo: https://github.com/google/yamlfmt <- "language: golang" slower & takes larger CI cache comparing to "system"
   #   rev: v0.17.2
   - repo: local
     hooks:
@@ -226,7 +226,7 @@ repos:
         args: ["--strict"]
 
   - repo: https://github.com/hadolint/hadolint # language: system
-    rev: v2.13.1
+    rev: v2.14.0
     hooks:
       - id: hadolint
         name: hadolint/dockerfile
