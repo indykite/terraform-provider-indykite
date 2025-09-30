@@ -28,6 +28,7 @@ import (
 	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 	configm "github.com/indykite/indykite-sdk-go/test/config/v1beta1"
 	"go.uber.org/mock/gomock"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
@@ -356,6 +357,11 @@ var _ = Describe("Resource Application Space", func() {
 			})))).
 			Return(&configpb.UpdateApplicationSpaceResponse{Id: initialAppSpaceResp.GetId()}, nil)
 
+		removeDBConnPassword := func(appSpace *configpb.ApplicationSpace) *configpb.ApplicationSpace {
+			appSpace = proto.Clone(appSpace).(*configpb.ApplicationSpace)
+			appSpace.DbConnection.Password = ""
+			return appSpace
+		}
 		// Read in given order
 		gomock.InOrder(
 			mockConfigClient.EXPECT().
@@ -363,21 +369,27 @@ var _ = Describe("Resource Application Space", func() {
 					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Id": Equal(initialAppSpaceResp.GetId())})),
 				})))).
 				Times(4).
-				Return(&configpb.ReadApplicationSpaceResponse{AppSpace: initialAppSpaceResp}, nil),
+				Return(&configpb.ReadApplicationSpaceResponse{
+					AppSpace: removeDBConnPassword(initialAppSpaceResp),
+				}, nil),
 
 			mockConfigClient.EXPECT().
 				ReadApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Id": Equal(initialAppSpaceResp.GetId())})),
 				})))).
 				Times(3).
-				Return(&configpb.ReadApplicationSpaceResponse{AppSpace: readAfter1stUpdateResp}, nil),
+				Return(&configpb.ReadApplicationSpaceResponse{
+					AppSpace: removeDBConnPassword(readAfter1stUpdateResp),
+				}, nil),
 
 			mockConfigClient.EXPECT().
 				ReadApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
 					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Id": Equal(initialAppSpaceResp.GetId())})),
 				})))).
 				Times(5).
-				Return(&configpb.ReadApplicationSpaceResponse{AppSpace: readAfter2ndUpdateResp}, nil),
+				Return(&configpb.ReadApplicationSpaceResponse{
+					AppSpace: removeDBConnPassword(readAfter2ndUpdateResp),
+				}, nil),
 		)
 
 		// Delete

@@ -82,7 +82,7 @@ var _ = Describe("DataSource Application Space", func() {
 			DbConnection: &configpb.DBConnection{
 				Url:      "postgresql://localhost:5432/testdb",
 				Username: "testuser",
-				Password: "testpass",
+				Password: "",
 				Name:     "testdb",
 			},
 		}
