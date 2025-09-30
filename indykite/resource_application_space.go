@@ -91,11 +91,16 @@ func setDBConnectionData(d *diag.Diagnostics, data *schema.ResourceData, dbConn 
 		return
 	}
 
+	oldDBConn := getDBConnection(data)
+	oldPassword := ""
+	if oldDBConn != nil {
+		oldPassword = oldDBConn.GetPassword()
+	}
 	dbConnData := []map[string]any{
 		{
 			dbURLKey:      dbConn.GetUrl(),
 			dbUsernameKey: dbConn.GetUsername(),
-			dbPasswordKey: dbConn.GetPassword(),
+			dbPasswordKey: oldPassword,
 			dbNameKey:     dbConn.GetName(),
 		},
 	}
