@@ -267,9 +267,7 @@ func resAppSpaceReadAfterCreateContext(ctx context.Context, data *schema.Resourc
 	ctx, cancel := context.WithTimeout(ctx, maxWait)
 	defer cancel()
 
-	waitForActive(ctx, clientCtx, data)
-
-	return d
+	return waitForActive(ctx, clientCtx, data)
 }
 
 func updateDBConnection(data *schema.ResourceData) *config.DBConnection {
