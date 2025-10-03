@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.26.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.26.0...v0.26.1) (2025-10-03)
+
+
+### Bug Fixes
+
+* fix the time out response ([8271a2d](https://github.com/indykite/terraform-provider-indykite/commit/8271a2dd61d301c3f2b7efc9767af52b5457592e))
+* password in DB Connection is never returned in read ([f41c39e](https://github.com/indykite/terraform-provider-indykite/commit/f41c39e17f5108aaf2f418d4bb0a36135cda36d2))
+
+
+### Miscellaneous Chores
+
+* **deps:** Pin dependencies ([#219](https://github.com/indykite/terraform-provider-indykite/issues/219)) ([e63423a](https://github.com/indykite/terraform-provider-indykite/commit/e63423a320b06e34cf1a71aab27bda780c9f3401))
+* **master:** release 0.26.1 ([#224](https://github.com/indykite/terraform-provider-indykite/issues/224)) ([e17e96a](https://github.com/indykite/terraform-provider-indykite/commit/e17e96a41e7975a9b457ac8dea7eeed91054e776))
+
 ## [0.26.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.25.0...v0.26.0) (2025-09-22)
 
 
