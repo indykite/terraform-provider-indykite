@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.26.2](https://github.com/indykite/terraform-provider-indykite/compare/v0.26.1...v0.26.2) (2025-10-04)
+
+
+### Bug Fixes
+
+* ci actions; workflow manual re-run support ([#232](https://github.com/indykite/terraform-provider-indykite/issues/232)) ([57ce844](https://github.com/indykite/terraform-provider-indykite/commit/57ce844dee2cf254aed49cd069ed5733b7465c0f))
+* fix the time out response ([8271a2d](https://github.com/indykite/terraform-provider-indykite/commit/8271a2dd61d301c3f2b7efc9767af52b5457592e))
+
+
+### Miscellaneous Chores
+
+* **master:** release 0.26.1 ([#230](https://github.com/indykite/terraform-provider-indykite/issues/230)) ([390a6e0](https://github.com/indykite/terraform-provider-indykite/commit/390a6e0fba320498cad4b777ad7196558aa2c037))
+
 ## [0.26.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.26.0...v0.26.1) (2025-10-03)
 
 
