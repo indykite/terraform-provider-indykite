@@ -33,7 +33,9 @@ func resourceApplicationSpace() *schema.Resource {
 		Importer: &schema.ResourceImporter{
 			StateContext: basicStateImporter,
 		},
-		Timeouts: defaultTimeouts(),
+		Timeouts: &schema.ResourceTimeout{
+			Default: schema.DefaultTimeout(20 * time.Minute),
+		},
 		Schema: map[string]*schema.Schema{
 			customerIDKey:         customerIDSchema(),
 			nameKey:               nameSchema(),
@@ -109,12 +111,11 @@ func setDBConnectionData(d *diag.Diagnostics, data *schema.ResourceData, dbConn 
 
 func resAppSpaceCreateContext(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
 	var d diag.Diagnostics
-	const maxWait = 20 * time.Minute
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
 	}
-	ctx, cancel := context.WithTimeout(ctx, maxWait)
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
 	defer cancel()
 
 	name := data.Get(nameKey).(string)
@@ -173,8 +174,7 @@ func getStatus(ctx context.Context, clientCtx *ClientContext, data *schema.Resou
 
 func waitForActive(ctx context.Context, clientCtx *ClientContext, data *schema.ResourceData) diag.Diagnostics {
 	const (
-		maxWait = 20 * time.Minute
-		target  = config.AppSpaceIKGStatus_APP_SPACE_IKG_STATUS_STATUS_ACTIVE
+		target = config.AppSpaceIKGStatus_APP_SPACE_IKG_STATUS_STATUS_ACTIVE
 	)
 	intervals := []time.Duration{
 		0, // immediate
@@ -182,10 +182,6 @@ func waitForActive(ctx context.Context, clientCtx *ClientContext, data *schema.R
 		1 * time.Minute,
 		2 * time.Minute,
 	}
-	ctx, cancel := context.WithTimeout(ctx, maxWait)
-	defer cancel()
-
-	deadline := time.Now().Add(maxWait)
 
 	for i := 0; ; i++ {
 		// compute next wait
@@ -194,11 +190,6 @@ func waitForActive(ctx context.Context, clientCtx *ClientContext, data *schema.R
 			wait = intervals[i]
 		} else {
 			wait = 10 * time.Second
-		}
-
-		// if we already passed the deadline, stop
-		if time.Now().Add(wait).After(deadline) {
-			return diag.Diagnostics{buildPluginError("timed out waiting for IKG status to become active")}
 		}
 
 		// sleep before the check unless it's the immediate one
@@ -212,8 +203,8 @@ func waitForActive(ctx context.Context, clientCtx *ClientContext, data *schema.R
 
 		// do the check
 		status, d := getStatus(ctx, clientCtx, data)
-		if d != nil {
-			continue
+		if len(d) > 0 {
+			return d
 		}
 		if status == target.String() {
 			return d
@@ -259,12 +250,11 @@ func resAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta
 
 func resAppSpaceReadAfterCreateContext(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
 	var d diag.Diagnostics
-	const maxWait = 20 * time.Minute
 	clientCtx := getClientContext(&d, meta)
 	if clientCtx == nil {
 		return d
 	}
-	ctx, cancel := context.WithTimeout(ctx, maxWait)
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
 	defer cancel()
 
 	return waitForActive(ctx, clientCtx, data)
