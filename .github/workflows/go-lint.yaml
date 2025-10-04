@@ -7,6 +7,8 @@ on: # yamllint disable-line rule:truthy
   push:
     branches:
       - master
+  # to have an ability to run thee workflow manually
+  workflow_dispatch: # yamllint disable-line rule:empty-values
 #
 # https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions
 # "all of those that are not specified are set to none."
