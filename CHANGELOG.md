@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.26.3](https://github.com/indykite/terraform-provider-indykite/compare/v0.26.2...v0.26.3) (2025-10-06)
+
+
+### Bug Fixes
+
+* fix the time out numbers ([61638f9](https://github.com/indykite/terraform-provider-indykite/commit/61638f925479110b7637ae27a6e040229bf089cc))
+* fix the time out numbers ([28a87f6](https://github.com/indykite/terraform-provider-indykite/commit/28a87f6d7b1a43661dde5743066d065c61b44e4e))
+
 ## [0.26.2](https://github.com/indykite/terraform-provider-indykite/compare/v0.26.1...v0.26.2) (2025-10-04)
 
 
