@@ -35,6 +35,10 @@ func resourceApplicationSpace() *schema.Resource {
 		},
 		Timeouts: &schema.ResourceTimeout{
 			Default: schema.DefaultTimeout(20 * time.Minute),
+			Create:  schema.DefaultTimeout(20 * time.Minute),
+			Read:    schema.DefaultTimeout(4 * time.Minute),
+			Update:  schema.DefaultTimeout(4 * time.Minute),
+			Delete:  schema.DefaultTimeout(4 * time.Minute),
 		},
 		Schema: map[string]*schema.Schema{
 			customerIDKey:         customerIDSchema(),
