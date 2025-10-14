@@ -303,24 +303,28 @@ func resourceTokenIntrospectBuild(
 	}
 
 	if val, ok := data.GetOk(tokenIntrospectOfflineKey); ok {
-		mapVal := val.([]any)[0].(map[string]any)
-		cfg.Validation = &configpb.TokenIntrospectConfig_Offline_{
-			Offline: &configpb.TokenIntrospectConfig_Offline{
-				PublicJwks: rawArrayToTypedArray[[]byte](mapVal[tokenIntrospectPublicJWKsKey]),
-			},
+		if listVal := val.([]any); len(listVal) > 0 && listVal[0] != nil {
+			mapVal := listVal[0].(map[string]any)
+			cfg.Validation = &configpb.TokenIntrospectConfig_Offline_{
+				Offline: &configpb.TokenIntrospectConfig_Offline{
+					PublicJwks: rawArrayToTypedArray[[]byte](mapVal[tokenIntrospectPublicJWKsKey]),
+				},
+			}
 		}
 	}
 	if val, ok := data.GetOk(tokenIntrospectOnlineKey); ok {
-		mapVal := val.([]any)[0].(map[string]any)
-		var cacheTTL *durationpb.Duration
-		if val := mapVal[tokenIntrospectCacheTTLKey].(int); val > 0 {
-			cacheTTL = durationpb.New(time.Duration(val) * time.Second)
-		}
-		cfg.Validation = &configpb.TokenIntrospectConfig_Online_{
-			Online: &configpb.TokenIntrospectConfig_Online{
-				UserinfoEndpoint: mapVal[tokenIntrospectUserInfoEPKey].(string),
-				CacheTtl:         cacheTTL,
-			},
+		if listVal := val.([]any); len(listVal) > 0 && listVal[0] != nil {
+			mapVal := listVal[0].(map[string]any)
+			var cacheTTL *durationpb.Duration
+			if val := mapVal[tokenIntrospectCacheTTLKey].(int); val > 0 {
+				cacheTTL = durationpb.New(time.Duration(val) * time.Second)
+			}
+			cfg.Validation = &configpb.TokenIntrospectConfig_Online_{
+				Online: &configpb.TokenIntrospectConfig_Online{
+					UserinfoEndpoint: mapVal[tokenIntrospectUserInfoEPKey].(string),
+					CacheTtl:         cacheTTL,
+				},
+			}
 		}
 	}
 
