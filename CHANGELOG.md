@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.4](https://github.com/indykite/terraform-provider-indykite/compare/v0.26.3...v0.26.4) (2025-10-14)
+
+
+### Bug Fixes
+
+* null value in validation offline and online ([28fddc3](https://github.com/indykite/terraform-provider-indykite/commit/28fddc3e48ca77d39e45b97e1f0640bf3b8d6e53))
+
 ## [0.26.3](https://github.com/indykite/terraform-provider-indykite/compare/v0.26.2...v0.26.3) (2025-10-06)
 
 
