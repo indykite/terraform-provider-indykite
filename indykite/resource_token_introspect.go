@@ -303,11 +303,16 @@ func resourceTokenIntrospectBuild(
 	}
 
 	if val, ok := data.GetOk(tokenIntrospectOfflineKey); ok {
-		if listVal := val.([]any); len(listVal) > 0 && listVal[0] != nil {
-			mapVal := listVal[0].(map[string]any)
+		listVal := val.([]any)
+		if len(listVal) > 0 {
+			var publicJwks [][]byte
+			if listVal[0] != nil {
+				mapVal := listVal[0].(map[string]any)
+				publicJwks = rawArrayToTypedArray[[]byte](mapVal[tokenIntrospectPublicJWKsKey])
+			}
 			cfg.Validation = &configpb.TokenIntrospectConfig_Offline_{
 				Offline: &configpb.TokenIntrospectConfig_Offline{
-					PublicJwks: rawArrayToTypedArray[[]byte](mapVal[tokenIntrospectPublicJWKsKey]),
+					PublicJwks: publicJwks,
 				},
 			}
 		}
