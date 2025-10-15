@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.5](https://github.com/indykite/terraform-provider-indykite/compare/v0.26.4...v0.26.5) (2025-10-15)
+
+
+### Bug Fixes
+
+* fix empty validation ([8694f6d](https://github.com/indykite/terraform-provider-indykite/commit/8694f6d8d8eed8c840d3e47f9dfe7dd6a0c6912a))
+
 ## [0.26.4](https://github.com/indykite/terraform-provider-indykite/compare/v0.26.3...v0.26.4) (2025-10-14)
 
 
