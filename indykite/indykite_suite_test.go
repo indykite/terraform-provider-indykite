@@ -26,15 +26,15 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	. "github.com/onsi/gomega/gstruct"
 )
 
 const (
-	customerID     = "gid:AAAAAWluZHlraURlgAAAAAAAAA8"
-	appSpaceID     = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
-	applicationID  = "gid:AAAABGluZHlraURlgAACDwAAAAA"
-	appAgentID     = "gid:AAAABWluZHlraURlgAAFDwAAAAA"
-	appAgentCredID = "gid:AAAABt7z4hZzpkbAtZXbIEYsT9Q" // #nosec G101
+	customerID      = "gid:AAAAAWluZHlraURlgAAAAAAAAA8"
+	appSpaceID      = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
+	applicationID   = "gid:AAAABGluZHlraURlgAACDwAAAAA"
+	appAgentID      = "gid:AAAABWluZHlraURlgAAFDwAAAAA"
+	appAgentCredID  = "gid:AAAABt7z4hZzpkbAtZXbIEYsT9Q" // #nosec G101
+	appAgentCredID2 = "gid:AAAABkMsC87ROQ8mlK-Q6PSoTuw" // #nosec G101
 	// sampleID is plain empty ID just for responses.
 	sampleID  = "gid:AAAAAAAAAAAAAAAAAAAAAAAAAAA"
 	sampleID2 = "gid:AAAAAAAAAAAAAAAAAAAAAAAAAAB"
@@ -51,7 +51,7 @@ type GomockTestCleanuper interface {
 
 func TestIndykite(t *testing.T) {
 	RegisterFailHandler(Fail)
-	_ = os.Setenv("TF_ACC", "ok")
+	t.Setenv("TF_ACC", "ok")
 	RunSpecs(t, "Indykite Suite")
 }
 
@@ -84,18 +84,6 @@ func (t terraformGomockTestReporter) Cleanup(callback func()) {
 	t.ginkgoT.Cleanup(callback)
 }
 
-func addStringArrayToKeys[T string | []byte](keys Keys, key string, value []T) Keys {
-	if len(value) == 0 {
-		return keys
-	}
-	keys[key+".#"] = Equal(strconv.Itoa(len(value)))
-	for i, v := range value {
-		keys[key+"."+strconv.Itoa(i)] = Equal(string(v))
-	}
-
-	return keys
-}
-
 func JSONEquals(oldValue, newValue string) bool {
 	match, err := MatchJSON(newValue).Match(oldValue)
 	if err != nil {
@@ -114,30 +102,6 @@ func convertOmegaMatcherToError(matcher OmegaMatcher, actual any) error {
 	}
 
 	return nil
-}
-
-func addStringMapMatcherToKeys(keys Keys, key string, data map[string]string, includeEmpty bool) {
-	if len(data) == 0 && !includeEmpty {
-		return
-	}
-
-	keys[key+".%"] = Equal(strconv.Itoa(len(data)))
-
-	for k, v := range data {
-		keys[key+"."+k] = Equal(v)
-	}
-}
-
-func addSliceMapMatcherToKeys(keys Keys, key string, data []map[string]OmegaMatcher, includeEmpty bool) {
-	if len(data) == 0 && !includeEmpty {
-		return
-	}
-
-	for i, item := range data {
-		for k, v := range item {
-			keys[key+"."+strconv.Itoa(i)+"."+k] = v
-		}
-	}
 }
 
 type NumericalTerraformMatcher struct {

@@ -12,6 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build ignore
+// +build ignore
+
+// DEPRECATED: This file contains the old SDK-based config node implementation.
+// All resources have been migrated to use REST API directly.
+// This file is kept for reference only and is excluded from builds.
+
 package indykite
 
 import (

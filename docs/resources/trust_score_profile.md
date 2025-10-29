@@ -69,7 +69,7 @@ resource "indykite_trust_score_profile" "trust-score2" {
 
 - `app_space_id` (String) Identifier of Application Space
 - `create_time` (String) Timestamp when the Resource was created. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
-- `customer_id` (String) Identifier of Customer
+- `customer_id` (String) Identifier of Customer (deprecated, use organization_id instead)
 - `id` (String) The ID of this resource.
 - `update_time` (String) Timestamp when the Resource was last updated. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
 
@@ -78,7 +78,7 @@ resource "indykite_trust_score_profile" "trust-score2" {
 
 Required:
 
-- `name` (String) Name of the trust score dimensions. Possible values are: `NAME_COMPLETENESS`, `NAME_FRESHNESS`, `NAME_INVALID`, `NAME_ORIGIN`, `NAME_VALIDITY`, `NAME_VERIFICATION`.  `Origin`: Identifies where the data comes from, ensuring its source is transparent and trustworthy.  `Validity`: Checks whether the data is in the correct format and follows expected rules.  `Completeness`: Confirms that no critical information is missing from the data.  `Freshness`: Measures how up-to-date the data is to ensure it’s still relevant.  `Verification`: Ensures the data has been reviewed and confirmed as accurate by a trusted source.
+- `name` (String) Name of the trust score dimensions. Possible values are: `NAME_COMPLETENESS`, `NAME_FRESHNESS`, `NAME_ORIGIN`, `NAME_VALIDITY`, `NAME_VERIFICATION`.  `Origin`: Identifies where the data comes from, ensuring its source is transparent and trustworthy.  `Validity`: Checks whether the data is in the correct format and follows expected rules.  `Completeness`: Confirms that no critical information is missing from the data.  `Freshness`: Measures how up-to-date the data is to ensure it's still relevant.  `Verification`: Ensures the data has been reviewed and confirmed as accurate by a trusted source.
 - `weight` (Number) Weight represents how relevant the dimension is in the trust score calculation.
 
 

@@ -103,7 +103,7 @@ resource "indykite_token_introspect" "token2" {
 
 - `app_space_id` (String) Identifier of Application Space
 - `create_time` (String) Timestamp when the Resource was created. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
-- `customer_id` (String) Identifier of Customer
+- `customer_id` (String) Identifier of Customer (deprecated, use organization_id instead)
 - `id` (String) The ID of this resource.
 - `update_time` (String) Timestamp when the Resource was last updated. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
 

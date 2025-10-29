@@ -16,12 +16,11 @@ package indykite_test
 
 import (
 	"errors"
+	"net/http"
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	sdkerrors "github.com/indykite/indykite-sdk-go/errors"
-	"google.golang.org/grpc/codes"
 
 	"github.com/indykite/terraform-provider-indykite/indykite"
 
@@ -82,7 +81,10 @@ var _ = Describe("HasFailed", func() {
 
 	Context("when the error is a service error", func() {
 		It("should log a service error and return true", func() {
-			err := sdkerrors.New(codes.Internal, "internal")
+			err := &indykite.RestError{
+				StatusCode: http.StatusInternalServerError,
+				Message:    "internal server error",
+			}
 			Expect(indykite.HasFailed(diagnostics, err)).To(BeTrue())
 			Expect(*diagnostics).To(HaveLen(1))
 			Expect((*diagnostics)[0].Severity).To(Equal(diag.Error))
@@ -92,7 +94,10 @@ var _ = Describe("HasFailed", func() {
 
 	Context("when the error is a not-found error", func() {
 		It("should log a not-found warning and return true", func() {
-			err := sdkerrors.New(codes.NotFound, "not found")
+			err := &indykite.RestError{
+				StatusCode: http.StatusNotFound,
+				Message:    "not found",
+			}
 			Expect(indykite.HasFailed(diagnostics, err)).To(BeTrue())
 			Expect(*diagnostics).To(HaveLen(1))
 			Expect((*diagnostics)[0].Severity).To(Equal(diag.Warning))

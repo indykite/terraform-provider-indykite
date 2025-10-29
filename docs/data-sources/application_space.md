@@ -26,7 +26,7 @@ data "indykite_application_space" "application_space" {
 ### Optional
 
 - `app_space_id` (String) Identifier of Application Space
-- `customer_id` (String) Identifier of Customer
+- `customer_id` (String) Identifier of Customer (deprecated, use organization_id instead)
 - `description` (String) Your own description of the resource. Must be less than or equal to 256 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
