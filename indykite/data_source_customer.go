@@ -16,23 +16,34 @@ package indykite
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 )
 
 func dataSourceCustomer() *schema.Resource {
-	oneOfIdentifiers := []string{nameKey, customerIDKey}
+	// Both name and customer_id are optional for backward compatibility
+	// The data source always calls /organizations/current and validates against provided values
+	customerIDSchemaOptional := customerIDSchema()
+	customerIDSchemaOptional.Required = false
+	customerIDSchemaOptional.Optional = true
+	customerIDSchemaOptional.Computed = true
+
+	nameSchemaOptional := nameSchema()
+	nameSchemaOptional.Required = false
+	nameSchemaOptional.Optional = true
+	nameSchemaOptional.Computed = true
+
 	return &schema.Resource{
 		Description: "It is your entire workspace in the IndyKite platform, " +
 			"and will represent your specific company or organization.",
 		ReadContext: dataSourceCustomerRead,
 		Schema: map[string]*schema.Schema{
-			customerIDKey:  setExactlyOneOf(customerIDSchema(), customerIDKey, oneOfIdentifiers),
-			nameKey:        setExactlyOneOf(nameSchema(), nameKey, oneOfIdentifiers),
-			displayNameKey: displayNameSchema(),
-			descriptionKey: descriptionSchema(),
+			customerIDKey:  customerIDSchemaOptional,
+			nameKey:        nameSchemaOptional,
+			displayNameKey: setComputed(displayNameSchema()),
+			descriptionKey: setComputed(descriptionSchema()),
 			createTimeKey:  createTimeSchema(),
 			updateTimeKey:  updateTimeSchema(),
 		},
@@ -47,40 +58,50 @@ func dataSourceCustomerRead(ctx context.Context, data *schema.ResourceData, meta
 		return d
 	}
 
-	req := &configpb.ReadCustomerRequest{}
-	if name, exists := data.GetOk(nameKey); exists {
-		req.Identifier = &configpb.ReadCustomerRequest_Name{
-			Name: name.(string),
-		}
-	} else if id, exists := data.GetOk(customerIDKey); exists {
-		req.Identifier = &configpb.ReadCustomerRequest_Id{
-			Id: id.(string),
-		}
-	}
-
-	if err := betterValidationErrorWithPath(req.Validate()); err != nil {
-		return append(d, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  err.Error(),
-		})
-	}
-
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := clientCtx.GetClient().ReadCustomer(ctx, req)
+
+	var resp CustomerResponse
+
+	// The only endpoint available is /organizations/current
+	// We always call this endpoint regardless of whether customer_id or name is provided
+	err := clientCtx.GetClient().Get(ctx, "/organizations/current", &resp)
+
 	if HasFailed(&d, err) {
 		return d
 	}
 
-	if resp.GetCustomer() == nil {
-		return append(d, buildPluginError("empty response from server"))
+	// If customer_id was provided, verify it matches the current organization
+	if id, exists := data.GetOk(customerIDKey); exists {
+		if resp.ID != id.(string) {
+			return append(d, diag.Diagnostic{
+				Severity: diag.Error,
+				Summary: fmt.Sprintf(
+					"customer with ID '%s' not found (current organization ID is '%s')",
+					id.(string), resp.ID),
+			})
+		}
 	}
-	data.SetId(resp.GetCustomer().GetId())
-	setData(&d, data, nameKey, resp.GetCustomer().GetName())
-	setData(&d, data, displayNameKey, resp.GetCustomer().GetDisplayName())
-	setData(&d, data, descriptionKey, resp.GetCustomer().GetDescription())
-	setData(&d, data, createTimeKey, resp.GetCustomer().GetCreateTime())
-	setData(&d, data, updateTimeKey, resp.GetCustomer().GetUpdateTime())
+
+	// If name was provided, verify it matches the current organization
+	if name, exists := data.GetOk(nameKey); exists {
+		if resp.Name != name.(string) {
+			return append(d, diag.Diagnostic{
+				Severity: diag.Error,
+				Summary: fmt.Sprintf(
+					"customer with name '%s' not found (current organization is '%s')",
+					name.(string), resp.Name),
+			})
+		}
+	}
+
+	data.SetId(resp.ID)
+	setData(&d, data, customerIDKey, resp.ID)
+	setData(&d, data, nameKey, resp.Name)
+	setData(&d, data, displayNameKey, resp.DisplayName)
+	setData(&d, data, descriptionKey, resp.Description)
+	setData(&d, data, createTimeKey, resp.CreateTime)
+	setData(&d, data, updateTimeKey, resp.UpdateTime)
 
 	return d
 }

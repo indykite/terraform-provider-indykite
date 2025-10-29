@@ -21,18 +21,14 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/indykite/indykite-sdk-go/config"
-	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
-	"github.com/indykite/indykite-sdk-go/grpc"
-	apicfg "github.com/indykite/indykite-sdk-go/grpc/config"
+	"github.com/indykite/terraform-provider-indykite/indykite"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	. "github.com/onsi/gomega/gstruct"
 )
 
 var (
-	client   *config.Client
+	client   *indykite.RestClient
 	myResult = make(map[string]string)
 )
 
@@ -59,10 +55,7 @@ type Attribute struct {
 var _ = Describe("Terraform", func() {
 	BeforeEach(func() {
 		var err error
-		client, err = config.NewClient(context.Background(),
-			grpc.WithCredentialsLoader(apicfg.DefaultEnvironmentLoader),
-			grpc.WithServiceAccount(),
-		)
+		client, err = indykite.NewRestClient(context.Background())
 		Expect(err).To(Succeed())
 
 		jsonData, err := os.ReadFile("../provider/terraform.tfstate")
@@ -80,81 +73,37 @@ var _ = Describe("Terraform", func() {
 	})
 
 	It("ReadAppSpace", func() {
-		resp, err := client.ReadApplicationSpace(context.Background(),
-			&configpb.ReadApplicationSpaceRequest{
-				Identifier: &configpb.ReadApplicationSpaceRequest_Id{Id: myResult["appspace"]},
-			},
-		)
+		var resp indykite.ApplicationSpaceResponse
+		err := client.Get(context.Background(), "/projects/"+myResult["appspace"], &resp)
 		Expect(err).To(Succeed())
-		Expect(resp).NotTo(BeNil())
-
-		Expect(resp).To(PointTo(MatchFields(IgnoreExtras, Fields{
-			"AppSpace": PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(myResult["appspace"]),
-			})),
-		})))
+		Expect(resp.ID).To(Equal(myResult["appspace"]))
 	})
 
 	It("ReadApplication", func() {
-		resp, err := client.ReadApplication(context.Background(),
-			&configpb.ReadApplicationRequest{
-				Identifier: &configpb.ReadApplicationRequest_Id{Id: myResult["application"]},
-			},
-		)
+		var resp indykite.ApplicationResponse
+		err := client.Get(context.Background(), "/applications/"+myResult["application"], &resp)
 		Expect(err).To(Succeed())
-		Expect(resp).NotTo(BeNil())
-
-		Expect(resp).To(PointTo(MatchFields(IgnoreExtras, Fields{
-			"Application": PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(myResult["application"]),
-			})),
-		})))
+		Expect(resp.ID).To(Equal(myResult["application"]))
 	})
 
 	It("ReadAgent", func() {
-		resp, err := client.ReadApplicationAgent(context.Background(),
-			&configpb.ReadApplicationAgentRequest{
-				Identifier: &configpb.ReadApplicationAgentRequest_Id{Id: myResult["agent"]},
-			},
-		)
+		var resp indykite.ApplicationAgentResponse
+		err := client.Get(context.Background(), "/application-agents/"+myResult["agent"], &resp)
 		Expect(err).To(Succeed())
-		Expect(resp).NotTo(BeNil())
-
-		Expect(resp).To(PointTo(MatchFields(IgnoreExtras, Fields{
-			"ApplicationAgent": PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(myResult["agent"]),
-			})),
-		})))
+		Expect(resp.ID).To(Equal(myResult["agent"]))
 	})
 
 	It("ReadCredential", func() {
-		resp, err := client.ReadApplicationAgentCredential(context.Background(),
-			&configpb.ReadApplicationAgentCredentialRequest{
-				Id: myResult["with_public"],
-			},
-		)
+		var resp indykite.ApplicationAgentCredentialResponse
+		err := client.Get(context.Background(), "/application-agent-credentials/"+myResult["with_public"], &resp)
 		Expect(err).To(Succeed())
-		Expect(resp).NotTo(BeNil())
-
-		Expect(resp).To(PointTo(MatchFields(IgnoreExtras, Fields{
-			"ApplicationAgentCredential": PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(myResult["with_public"]),
-			})),
-		})))
+		Expect(resp.ID).To(Equal(myResult["with_public"]))
 	})
 
 	It("ReadPolicy", func() {
-		configNodeRequest, err := config.NewRead(myResult["policy_drive_car"])
+		var resp indykite.AuthorizationPolicyResponse
+		err := client.Get(context.Background(), "/authorization-policies/"+myResult["policy_drive_car"], &resp)
 		Expect(err).To(Succeed())
-		resp, err := client.ReadConfigNode(context.Background(), configNodeRequest)
-		Expect(err).To(Succeed())
-		Expect(resp).NotTo(BeNil())
-
-		Expect(resp).To(PointTo(MatchFields(IgnoreExtras, Fields{
-			"ConfigNode": PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id":     Equal(myResult["policy_drive_car"]),
-				"Config": Not(BeNil()),
-			})),
-		})))
+		Expect(resp.ID).To(Equal(myResult["policy_drive_car"]))
 	})
 })

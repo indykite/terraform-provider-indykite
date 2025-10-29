@@ -25,6 +25,7 @@ const (
 	descriptionKey        = "description"
 	locationKey           = "location"
 	customerIDKey         = "customer_id"
+	organizationIDKey     = "organization_id"
 	appSpaceIDKey         = "app_space_id"
 	applicationIDKey      = "application_id"
 	appAgentIDKey         = "app_agent_id"
@@ -44,11 +45,12 @@ const (
 )
 
 const (
-	locationDescription      = `Identifier of Location, where to create resource`
-	customerIDDescription    = `Identifier of Customer`
-	appSpaceIDDescription    = `Identifier of Application Space`
-	applicationIDDescription = `Identifier of Application`
-	appAgentIDDescription    = `Identifier of Application Agent`
+	locationDescription       = `Identifier of Location, where to create resource`
+	customerIDDescription     = `Identifier of Customer (deprecated, use organization_id instead)`
+	organizationIDDescription = `Identifier of Organization`
+	appSpaceIDDescription     = `Identifier of Application Space`
+	applicationIDDescription  = `Identifier of Application`
+	appAgentIDDescription     = `Identifier of Application Agent`
 
 	nameDescription = `Unique client assigned immutable identifier. Can not be updated without creating a new resource.`
 )
@@ -299,6 +301,10 @@ func locationSchema() *schema.Schema {
 
 func customerIDSchema() *schema.Schema {
 	return baseIDSchema(customerIDDescription)
+}
+
+func organizationIDSchema() *schema.Schema {
+	return baseIDSchema(organizationIDDescription)
 }
 
 func appSpaceIDSchema() *schema.Schema {

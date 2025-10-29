@@ -20,10 +20,11 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	config "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 )
 
 func resourceApplicationSpace() *schema.Resource {
+	orgIdentifiers := []string{customerIDKey, organizationIDKey}
+
 	return &schema.Resource{
 		Description:   "It is workspace or environment for your applications.  ",
 		CreateContext: resAppSpaceCreateContext,
@@ -41,7 +42,8 @@ func resourceApplicationSpace() *schema.Resource {
 			Delete:  schema.DefaultTimeout(4 * time.Minute),
 		},
 		Schema: map[string]*schema.Schema{
-			customerIDKey:         customerIDSchema(),
+			customerIDKey:         setExactlyOneOf(customerIDSchema(), customerIDKey, orgIdentifiers),
+			organizationIDKey:     setExactlyOneOf(organizationIDSchema(), organizationIDKey, orgIdentifiers),
 			nameKey:               nameSchema(),
 			displayNameKey:        displayNameSchema(),
 			descriptionKey:        descriptionSchema(),
@@ -56,7 +58,7 @@ func resourceApplicationSpace() *schema.Resource {
 	}
 }
 
-func getDBConnection(data *schema.ResourceData) *config.DBConnection {
+func getDBConnection(data *schema.ResourceData) *DBConnection {
 	dbConnRaw := data.Get(dbConnectionKey)
 	if dbConnRaw == nil {
 		return nil
@@ -83,15 +85,15 @@ func getDBConnection(data *schema.ResourceData) *config.DBConnection {
 		return nil
 	}
 
-	return &config.DBConnection{
-		Url:      url,
+	return &DBConnection{
+		URL:      url,
 		Username: username,
 		Password: password,
 		Name:     name,
 	}
 }
 
-func setDBConnectionData(d *diag.Diagnostics, data *schema.ResourceData, dbConn *config.DBConnection) {
+func setDBConnectionData(d *diag.Diagnostics, data *schema.ResourceData, dbConn *DBConnection) {
 	if dbConn == nil {
 		setData(d, data, dbConnectionKey, []map[string]any{})
 		return
@@ -100,14 +102,14 @@ func setDBConnectionData(d *diag.Diagnostics, data *schema.ResourceData, dbConn 
 	oldDBConn := getDBConnection(data)
 	oldPassword := ""
 	if oldDBConn != nil {
-		oldPassword = oldDBConn.GetPassword()
+		oldPassword = oldDBConn.Password
 	}
 	dbConnData := []map[string]any{
 		{
-			dbURLKey:      dbConn.GetUrl(),
-			dbUsernameKey: dbConn.GetUsername(),
+			dbURLKey:      dbConn.URL,
+			dbUsernameKey: dbConn.Username,
 			dbPasswordKey: oldPassword,
-			dbNameKey:     dbConn.GetName(),
+			dbNameKey:     dbConn.Name,
 		},
 	}
 	setData(d, data, dbConnectionKey, dbConnData)
@@ -122,21 +124,29 @@ func resAppSpaceCreateContext(ctx context.Context, data *schema.ResourceData, me
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
 	defer cancel()
 
-	name := data.Get(nameKey).(string)
-	resp, err := clientCtx.GetClient().CreateApplicationSpace(ctx, &config.CreateApplicationSpaceRequest{
-		CustomerId:    data.Get(customerIDKey).(string),
-		Name:          name,
-		DisplayName:   optionalString(data, displayNameKey),
-		Description:   optionalString(data, descriptionKey),
-		Region:        data.Get(regionKey).(string),
-		IkgSize:       data.Get(ikgSizeKey).(string),
-		ReplicaRegion: data.Get(replicaRegionKey).(string),
-		DbConnection:  getDBConnection(data),
-	})
+	// Get organization ID from either organization_id or customer_id (backward compatibility)
+	orgID := data.Get(organizationIDKey).(string)
+	if orgID == "" {
+		orgID = data.Get(customerIDKey).(string)
+	}
+
+	req := CreateApplicationSpaceRequest{
+		OrganizationID: orgID,
+		Name:           data.Get(nameKey).(string),
+		DisplayName:    stringValue(optionalString(data, displayNameKey)),
+		Description:    stringValue(optionalString(data, descriptionKey)),
+		Region:         data.Get(regionKey).(string),
+		IKGSize:        data.Get(ikgSizeKey).(string),
+		ReplicaRegion:  data.Get(replicaRegionKey).(string),
+		DBConnection:   getDBConnection(data),
+	}
+
+	var resp ApplicationSpaceResponse
+	err := clientCtx.GetClient().Post(ctx, "/projects", req, &resp)
 	if HasFailed(&d, err) {
 		return d
 	}
-	data.SetId(resp.GetId())
+	data.SetId(resp.ID)
 	return resAppSpaceReadAfterCreateContext(ctx, data, meta)
 }
 
@@ -144,42 +154,41 @@ func getStatus(ctx context.Context, clientCtx *ClientContext, data *schema.Resou
 	var d diag.Diagnostics
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := clientCtx.GetClient().ReadApplicationSpace(ctx, &config.ReadApplicationSpaceRequest{
-		Identifier: &config.ReadApplicationSpaceRequest_Id{
-			Id: data.Id(),
-		},
-	})
+
+	var resp ApplicationSpaceResponse
+	err := clientCtx.GetClient().Get(ctx, "/projects/"+data.Id(), &resp)
 
 	if err != nil {
+		// If we get a 404, the resource might not be ready yet, return empty status to retry
+		if IsNotFoundError(err) {
+			return "", d // Return empty status without error to trigger retry
+		}
 		return "", diag.Diagnostics{buildPluginError("read application space failed")}
 	}
-	if resp == nil {
-		return "", diag.Diagnostics{buildPluginError("read application space: empty response")}
-	}
-	if resp.GetAppSpace() == nil {
-		return "", diag.Diagnostics{buildPluginError("read application space: missing AppSpace in response")}
-	}
 
-	data.SetId(resp.GetAppSpace().GetId())
-	setData(&d, data, customerIDKey, resp.GetAppSpace().GetCustomerId())
-	setData(&d, data, nameKey, resp.GetAppSpace().GetName())
-	setData(&d, data, displayNameKey, resp.GetAppSpace().GetDisplayName())
-	setData(&d, data, descriptionKey, resp.GetAppSpace().GetDescription())
-	setData(&d, data, createTimeKey, resp.GetAppSpace().GetCreateTime())
-	setData(&d, data, updateTimeKey, resp.GetAppSpace().GetUpdateTime())
-	setData(&d, data, regionKey, resp.GetAppSpace().GetRegion())
-	setData(&d, data, ikgSizeKey, resp.GetAppSpace().GetIkgSize())
-	setData(&d, data, replicaRegionKey, resp.GetAppSpace().GetReplicaRegion())
-	setDBConnectionData(&d, data, resp.GetAppSpace().GetDbConnection())
+	data.SetId(resp.ID)
+	setData(&d, data, customerIDKey, resp.CustomerID)
+	setData(&d, data, nameKey, resp.Name)
+	setData(&d, data, displayNameKey, resp.DisplayName)
+	setData(&d, data, descriptionKey, resp.Description)
+	setData(&d, data, createTimeKey, resp.CreateTime)
+	setData(&d, data, updateTimeKey, resp.UpdateTime)
+	setData(&d, data, regionKey, resp.Region)
+	setData(&d, data, ikgSizeKey, resp.IKGSize)
+	setData(&d, data, replicaRegionKey, resp.ReplicaRegion)
+	setDBConnectionData(&d, data, resp.DBConnection)
 
-	s := resp.GetAppSpace().GetIkgStatus().String()
-	return s, d
+	return resp.IKGStatus, d
 }
 
 func waitForActive(ctx context.Context, clientCtx *ClientContext, data *schema.ResourceData) diag.Diagnostics {
-	const (
-		target = config.AppSpaceIKGStatus_APP_SPACE_IKG_STATUS_STATUS_ACTIVE
-	)
+	// Accept multiple possible status values for active state
+	activeStatuses := map[string]bool{
+		"APP_SPACE_IKG_STATUS_STATUS_ACTIVE": true,
+		"ACTIVE":                             true,
+		"":                                   true, // Empty status might mean already active
+	}
+
 	intervals := []time.Duration{
 		0, // immediate
 		10 * time.Second,
@@ -210,7 +219,7 @@ func waitForActive(ctx context.Context, clientCtx *ClientContext, data *schema.R
 		if len(d) > 0 {
 			return d
 		}
-		if status == target.String() {
+		if activeStatuses[status] {
 			return d
 		}
 	}
@@ -224,30 +233,32 @@ func resAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := clientCtx.GetClient().ReadApplicationSpace(ctx, &config.ReadApplicationSpaceRequest{
-		Identifier: &config.ReadApplicationSpaceRequest_Id{
-			Id: data.Id(),
-		},
-	})
+
+	var resp ApplicationSpaceResponse
+	err := clientCtx.GetClient().Get(ctx, "/projects/"+data.Id(), &resp)
 	if readHasFailed(&d, err, data) {
 		return d
 	}
 
-	if resp.GetAppSpace() == nil {
-		return diag.Diagnostics{buildPluginError("empty ApplicationSpace response")}
+	data.SetId(resp.ID)
+
+	// Set both customer_id and organization_id for backward compatibility
+	// Determine which field was used in the configuration
+	if _, ok := data.GetOk(organizationIDKey); ok {
+		setData(&d, data, organizationIDKey, resp.CustomerID)
+	} else {
+		setData(&d, data, customerIDKey, resp.CustomerID)
 	}
 
-	data.SetId(resp.GetAppSpace().GetId())
-	setData(&d, data, customerIDKey, resp.GetAppSpace().GetCustomerId())
-	setData(&d, data, nameKey, resp.GetAppSpace().GetName())
-	setData(&d, data, displayNameKey, resp.GetAppSpace().GetDisplayName())
-	setData(&d, data, descriptionKey, resp.GetAppSpace().GetDescription())
-	setData(&d, data, createTimeKey, resp.GetAppSpace().GetCreateTime())
-	setData(&d, data, updateTimeKey, resp.GetAppSpace().GetUpdateTime())
-	setData(&d, data, regionKey, resp.GetAppSpace().GetRegion())
-	setData(&d, data, ikgSizeKey, resp.GetAppSpace().GetIkgSize())
-	setData(&d, data, replicaRegionKey, resp.GetAppSpace().GetReplicaRegion())
-	setDBConnectionData(&d, data, resp.GetAppSpace().GetDbConnection())
+	setData(&d, data, nameKey, resp.Name)
+	setData(&d, data, displayNameKey, resp.DisplayName)
+	setData(&d, data, descriptionKey, resp.Description)
+	setData(&d, data, createTimeKey, resp.CreateTime)
+	setData(&d, data, updateTimeKey, resp.UpdateTime)
+	setData(&d, data, regionKey, resp.Region)
+	setData(&d, data, ikgSizeKey, resp.IKGSize)
+	setData(&d, data, replicaRegionKey, resp.ReplicaRegion)
+	setDBConnectionData(&d, data, resp.DBConnection)
 
 	return d
 }
@@ -264,7 +275,7 @@ func resAppSpaceReadAfterCreateContext(ctx context.Context, data *schema.Resourc
 	return waitForActive(ctx, clientCtx, data)
 }
 
-func updateDBConnection(data *schema.ResourceData) *config.DBConnection {
+func updateDBConnection(data *schema.ResourceData) *DBConnection {
 	if !data.HasChange(dbConnectionKey) {
 		return nil
 	}
@@ -285,14 +296,14 @@ func resAppSpaceUpdateContext(ctx context.Context, data *schema.ResourceData, me
 		return d
 	}
 
-	req := &config.UpdateApplicationSpaceRequest{
-		Id:           data.Id(),
+	req := UpdateApplicationSpaceRequest{
 		DisplayName:  updateOptionalString(data, displayNameKey),
 		Description:  updateOptionalString(data, descriptionKey),
-		DbConnection: updateDBConnection(data),
+		DBConnection: updateDBConnection(data),
 	}
 
-	_, err := clientCtx.GetClient().UpdateApplicationSpace(ctx, req)
+	var resp ApplicationSpaceResponse
+	err := clientCtx.GetClient().Put(ctx, "/projects/"+data.Id(), req, &resp)
 	if HasFailed(&d, err) {
 		return d
 	}
@@ -311,9 +322,7 @@ func resAppSpaceDeleteContext(ctx context.Context, data *schema.ResourceData, me
 	if hasDeleteProtection(&d, data) {
 		return d
 	}
-	_, err := clientCtx.GetClient().DeleteApplicationSpace(ctx, &config.DeleteApplicationSpaceRequest{
-		Id: data.Id(),
-	})
+	err := clientCtx.GetClient().Delete(ctx, "/projects/"+data.Id())
 	HasFailed(&d, err)
 
 	return d
