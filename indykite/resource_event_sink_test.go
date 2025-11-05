@@ -104,6 +104,7 @@ var _ = Describe("Resource EventSink", func() {
 										Topic:       "my-kafka-topic",
 										Username:    "my-username",
 										DisplayName: wrapperspb.String("provider-display-name"),
+										LastError:   "connection timeout",
 										// Password is never returned as it is sensitive value
 										// Password: "",
 									},
@@ -149,6 +150,7 @@ var _ = Describe("Resource EventSink", func() {
 										DisableTls:    true,
 										TlsSkipVerify: true,
 										DisplayName:   wrapperspb.String("provider-display-name"),
+										LastError:     "",
 									},
 								},
 							},
@@ -186,6 +188,7 @@ var _ = Describe("Resource EventSink", func() {
 								Provider: &configpb.EventSinkConfig_Provider_AzureEventGrid{
 									AzureEventGrid: &configpb.AzureEventGridSinkConfig{
 										TopicEndpoint: "https://ik-test.eventgrid.azure.net/api/events",
+										LastError:     "",
 										// AccessKey is never returned as it is sensitive value
 										// AccessKey: "",
 									},
@@ -226,6 +229,7 @@ var _ = Describe("Resource EventSink", func() {
 										// ConnectionString is never returned as it is sensitive value
 										// ConnectionString: "",
 										QueueOrTopicName: "your-queue",
+										LastError:        "",
 									},
 								},
 							},
@@ -523,7 +527,7 @@ var _ = Describe("Resource EventSink", func() {
 						keys[fmt.Sprintf("providers.%d.kafka.#", i)] = Equal("1")
 						keys[fmt.Sprintf("providers.%d.azure_service_bus.#", i)] = Equal("0")
 						keys[fmt.Sprintf("providers.%d.azure_event_grid.#", i)] = Equal("0")
-						keys[fmt.Sprintf("providers.%d.kafka.0.%%", i)] = Equal("7")
+						keys[fmt.Sprintf("providers.%d.kafka.0.%%", i)] = Equal("8")
 						keys[fmt.Sprintf("providers.%d.kafka.0.brokers.#", i)] = Equal("1")
 						keys[fmt.Sprintf("providers.%d.kafka.0.brokers.0", i)] = Equal(p.GetKafka().GetBrokers()[0])
 						keys[fmt.Sprintf("providers.%d.kafka.0.disable_tls", i)] = Equal(strconv.
@@ -535,6 +539,7 @@ var _ = Describe("Resource EventSink", func() {
 						keys[fmt.Sprintf("providers.%d.kafka.0.username", i)] = Equal(p.GetKafka().GetUsername())
 						keys[fmt.Sprintf("providers.%d.kafka.0.provider_display_name", i)] = Equal(
 							p.GetKafka().GetDisplayName().GetValue())
+						keys[fmt.Sprintf("providers.%d.kafka.0.last_error", i)] = Equal(p.GetKafka().GetLastError())
 					case *configpb.EventSinkConfig_Provider_AzureEventGrid:
 						keys["providers.#"] = Equal("1")
 						keys[fmt.Sprintf("providers.%d.%%", i)] = Equal("4")
@@ -542,11 +547,13 @@ var _ = Describe("Resource EventSink", func() {
 						keys[fmt.Sprintf("providers.%d.azure_event_grid.#", i)] = Equal("1")
 						keys[fmt.Sprintf("providers.%d.azure_service_bus.#", i)] = Equal("0")
 						keys[fmt.Sprintf("providers.%d.kafka.#", i)] = Equal("0")
-						keys[fmt.Sprintf("providers.%d.azure_event_grid.0.%%", i)] = Equal("3")
+						keys[fmt.Sprintf("providers.%d.azure_event_grid.0.%%", i)] = Equal("4")
 						keys[fmt.Sprintf("providers.%d.azure_event_grid.0.access_key", i)] = Equal(password)
 						keys[fmt.Sprintf("providers.%d.azure_event_grid.0.topic_endpoint", i)] = Equal(
 							p.GetAzureEventGrid().GetTopicEndpoint())
 						keys[fmt.Sprintf("providers.%d.azure_event_grid.0.provider_display_name", i)] = BeEmpty()
+						keys[fmt.Sprintf("providers.%d.azure_event_grid.0.last_error", i)] = Equal(
+							p.GetAzureEventGrid().GetLastError())
 					case *configpb.EventSinkConfig_Provider_AzureServiceBus:
 						keys["providers.#"] = Equal("1")
 						keys[fmt.Sprintf("providers.%d.%%", i)] = Equal("4")
@@ -554,11 +561,13 @@ var _ = Describe("Resource EventSink", func() {
 						keys[fmt.Sprintf("providers.%d.azure_service_bus.#", i)] = Equal("1")
 						keys[fmt.Sprintf("providers.%d.kafka.#", i)] = Equal("0")
 						keys[fmt.Sprintf("providers.%d.azure_event_grid.#", i)] = Equal("0")
-						keys[fmt.Sprintf("providers.%d.azure_service_bus.0.%%", i)] = Equal("3")
+						keys[fmt.Sprintf("providers.%d.azure_service_bus.0.%%", i)] = Equal("4")
 						keys[fmt.Sprintf("providers.%d.azure_service_bus.0.connection_string", i)] = Equal(password)
 						keys[fmt.Sprintf("providers.%d.azure_service_bus.0.queue_or_topic_name", i)] = Equal(
 							p.GetAzureServiceBus().GetQueueOrTopicName())
 						keys[fmt.Sprintf("providers.%d.azure_service_bus.0.provider_display_name", i)] = BeEmpty()
+						keys[fmt.Sprintf("providers.%d.azure_service_bus.0.last_error", i)] = Equal(
+							p.GetAzureServiceBus().GetLastError())
 					}
 				}
 				for j, p := range eventSink.GetRoutes() {
