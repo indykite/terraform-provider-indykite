@@ -55,6 +55,7 @@ const (
 	providerDisplayKey  = "provider_display_name"
 	routeDisplayKey     = "route_display_name"
 	routeIDKey          = "route_id"
+	lastErrorKey        = "last_error"
 	supportedFilters    = `
 ## Supported filters
 
@@ -201,6 +202,11 @@ func providerSchema() map[string]*schema.Schema {
 							validation.StringLenBetween(2, 254),
 						),
 					},
+					lastErrorKey: {
+						Type:        schema.TypeString,
+						Computed:    true,
+						Description: "Last error message from the Kafka sink",
+					},
 				},
 			},
 		},
@@ -233,6 +239,11 @@ func providerSchema() map[string]*schema.Schema {
 							validation.StringLenBetween(2, 254),
 						),
 					},
+					lastErrorKey: {
+						Type:        schema.TypeString,
+						Computed:    true,
+						Description: "Last error message from the Azure Event Grid sink",
+					},
 				},
 			},
 		},
@@ -264,6 +275,11 @@ func providerSchema() map[string]*schema.Schema {
 						ValidateFunc: validation.All(
 							validation.StringLenBetween(2, 254),
 						),
+					},
+					lastErrorKey: {
+						Type:        schema.TypeString,
+						Computed:    true,
+						Description: "Last error message from the Azure Service Bus sink",
 					},
 				},
 			},
@@ -370,6 +386,7 @@ func resourceEventSinkFlatten(
 				disableTLSKey:      p.GetKafka().GetDisableTls(),
 				tlsSkipVerifyKey:   p.GetKafka().GetTlsSkipVerify(),
 				providerDisplayKey: p.GetKafka().GetDisplayName().GetValue(),
+				lastErrorKey:       p.GetKafka().GetLastError(),
 			}
 			result := map[string]any{
 				providerNameKey: key,
@@ -390,6 +407,7 @@ func resourceEventSinkFlatten(
 				topicEndpointKey:   p.GetAzureEventGrid().GetTopicEndpoint(),
 				accessKey:          oldAccessKey,
 				providerDisplayKey: p.GetAzureEventGrid().GetDisplayName().GetValue(),
+				lastErrorKey:       p.GetAzureEventGrid().GetLastError(),
 			}
 			result := map[string]any{
 				providerNameKey:   key,
@@ -410,6 +428,7 @@ func resourceEventSinkFlatten(
 				connectionStringKey: oldConnection,
 				queueKey:            p.GetAzureServiceBus().GetQueueOrTopicName(),
 				providerDisplayKey:  p.GetAzureServiceBus().GetDisplayName().GetValue(),
+				lastErrorKey:        p.GetAzureServiceBus().GetLastError(),
 			}
 			result := map[string]any{
 				providerNameKey:    key,

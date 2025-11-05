@@ -224,6 +224,10 @@ Optional:
 
 - `provider_display_name` (String)
 
+Read-Only:
+
+- `last_error` (String) Last error message from the Azure Event Grid sink
+
 
 <a id="nestedblock--providers--azure_service_bus"></a>
 ### Nested Schema for `providers.azure_service_bus`
@@ -236,6 +240,10 @@ Required:
 Optional:
 
 - `provider_display_name` (String)
+
+Read-Only:
+
+- `last_error` (String) Last error message from the Azure Service Bus sink
 
 
 <a id="nestedblock--providers--kafka"></a>
@@ -253,6 +261,10 @@ Optional:
 - `disable_tls` (Boolean) Disable TLS for communication. Highly NOT RECOMMENDED.
 - `provider_display_name` (String)
 - `tls_skip_verify` (Boolean) Skip TLS certificate verification. NOT RECOMMENDED.
+
+Read-Only:
+
+- `last_error` (String) Last error message from the Kafka sink
 
 
 
