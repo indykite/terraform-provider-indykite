@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.26.5...v0.27.0) (2025-11-06)
+
+
+### Features
+
+* add last error n events sink ([078a910](https://github.com/indykite/terraform-provider-indykite/commit/078a9106cd17f5f7e7de8aca902b02d04aa6ea8d))
+
 ## [0.26.5](https://github.com/indykite/terraform-provider-indykite/compare/v0.26.4...v0.26.5) (2025-10-15)
 
 
