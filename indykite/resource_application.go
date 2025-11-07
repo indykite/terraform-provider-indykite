@@ -19,14 +19,13 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	config "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 )
 
 func resourceApplication() *schema.Resource {
 	return &schema.Resource{
 		Description: "An application represents the center of the solution, " +
 			"and is also the legal entity users legally interact with. " +
-			"Each application is created in an ApplicationSpace or project, and has a profile, " +
+			"Each application is created in an ApplicationSpace and has a profile, " +
 			"an application agent and application agent credentials. ",
 		CreateContext: resApplicationCreate,
 		ReadContext:   resApplicationRead,
@@ -58,17 +57,19 @@ func resApplicationCreate(ctx context.Context, data *schema.ResourceData, meta a
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
 	defer cancel()
 
-	name := data.Get(nameKey).(string)
-	resp, err := clientCtx.GetClient().CreateApplication(ctx, &config.CreateApplicationRequest{
-		AppSpaceId:  data.Get(appSpaceIDKey).(string),
-		Name:        name,
-		DisplayName: optionalString(data, displayNameKey),
-		Description: optionalString(data, descriptionKey),
-	})
+	req := CreateApplicationRequest{
+		ProjectID:   data.Get(appSpaceIDKey).(string),
+		Name:        data.Get(nameKey).(string),
+		DisplayName: stringValue(optionalString(data, displayNameKey)),
+		Description: stringValue(optionalString(data, descriptionKey)),
+	}
+
+	var resp ApplicationResponse
+	err := clientCtx.GetClient().Post(ctx, "/applications", req, &resp)
 	if HasFailed(&d, err) {
 		return d
 	}
-	data.SetId(resp.GetId())
+	data.SetId(resp.ID)
 
 	return resApplicationRead(ctx, data, meta)
 }
@@ -81,27 +82,23 @@ func resApplicationRead(ctx context.Context, data *schema.ResourceData, meta any
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := clientCtx.GetClient().ReadApplication(ctx, &config.ReadApplicationRequest{
-		Identifier: &config.ReadApplicationRequest_Id{
-			Id: data.Id(),
-		},
-	})
+
+	var resp ApplicationResponse
+	// Support both ID and name?location=parent_id formats
+	path := buildReadPath("/applications", data)
+	err := clientCtx.GetClient().Get(ctx, path, &resp)
 	if readHasFailed(&d, err, data) {
 		return d
 	}
 
-	if resp.GetApplication() == nil {
-		return diag.Diagnostics{buildPluginError("empty Application response")}
-	}
-
-	data.SetId(resp.GetApplication().GetId())
-	setData(&d, data, customerIDKey, resp.GetApplication().GetCustomerId())
-	setData(&d, data, appSpaceIDKey, resp.GetApplication().GetAppSpaceId())
-	setData(&d, data, nameKey, resp.GetApplication().GetName())
-	setData(&d, data, displayNameKey, resp.GetApplication().GetDisplayName())
-	setData(&d, data, descriptionKey, resp.GetApplication().GetDescription())
-	setData(&d, data, createTimeKey, resp.GetApplication().GetCreateTime())
-	setData(&d, data, updateTimeKey, resp.GetApplication().GetUpdateTime())
+	data.SetId(resp.ID)
+	setData(&d, data, customerIDKey, resp.CustomerID)
+	setData(&d, data, appSpaceIDKey, resp.AppSpaceID)
+	setData(&d, data, nameKey, resp.Name)
+	setData(&d, data, displayNameKey, resp.DisplayName)
+	setData(&d, data, descriptionKey, resp.Description)
+	setData(&d, data, createTimeKey, resp.CreateTime)
+	setData(&d, data, updateTimeKey, resp.UpdateTime)
 	return d
 }
 
@@ -119,13 +116,13 @@ func resApplicationUpdate(ctx context.Context, data *schema.ResourceData, meta a
 		return d
 	}
 
-	req := &config.UpdateApplicationRequest{
-		Id:          data.Id(),
+	req := UpdateApplicationRequest{
 		DisplayName: updateOptionalString(data, displayNameKey),
 		Description: updateOptionalString(data, descriptionKey),
 	}
 
-	_, err := clientCtx.GetClient().UpdateApplication(ctx, req)
+	var resp ApplicationResponse
+	err := clientCtx.GetClient().Put(ctx, "/applications/"+data.Id(), req, &resp)
 	if HasFailed(&d, err) {
 		return d
 	}
@@ -143,9 +140,15 @@ func resApplicationDelete(ctx context.Context, data *schema.ResourceData, meta a
 	if hasDeleteProtection(&d, data) {
 		return d
 	}
-	_, err := clientCtx.GetClient().DeleteApplication(ctx, &config.DeleteApplicationRequest{
-		Id: data.Id(),
-	})
+	err := clientCtx.GetClient().Delete(ctx, "/applications/"+data.Id())
 	HasFailed(&d, err)
 	return d
+}
+
+// stringValue converts a string pointer to a string value.
+func stringValue(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }

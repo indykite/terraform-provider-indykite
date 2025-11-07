@@ -16,7 +16,6 @@ package indykite
 
 import (
 	"context"
-	"encoding/json"
 	"regexp"
 	"strings"
 	"time"
@@ -25,8 +24,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/structure"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	config "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -41,7 +38,6 @@ func resourceApplicationAgentCredential() *schema.Resource {
 	return &schema.Resource{
 		Description:   "App agent credentials is a JSON configuration file that contains a secret key or token. ",
 		CreateContext: resAppAgentCredCreate,
-		UpdateContext: resAppAgentCredUpdate,
 		ReadContext:   resAppAgentCredRead,
 		DeleteContext: resAppAgentCredDelete,
 		Importer: &schema.ResourceImporter{
@@ -52,7 +48,13 @@ func resourceApplicationAgentCredential() *schema.Resource {
 			customerIDKey:    setComputed(customerIDSchema()),
 			appSpaceIDKey:    setComputed(appSpaceIDSchema()),
 			applicationIDKey: setComputed(applicationIDSchema()),
-			appAgentIDKey:    appAgentIDSchema(),
+			appAgentIDKey: {
+				Type:             schema.TypeString,
+				Required:         true,
+				ForceNew:         true,
+				ValidateDiagFunc: ValidateGID,
+				Description:      appAgentIDDescription,
+			},
 
 			displayNameKey: {
 				Type:             schema.TypeString,
@@ -109,8 +111,8 @@ func resAppAgentCredCreate(ctx context.Context, data *schema.ResourceData, meta 
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
 	defer cancel()
 
-	req := &config.RegisterApplicationAgentCredentialRequest{
-		ApplicationAgentId: data.Get(appAgentIDKey).(string),
+	req := CreateApplicationAgentCredentialRequest{
+		ApplicationAgentID: data.Get(appAgentIDKey).(string),
 		DisplayName:        data.Get(displayNameKey).(string),
 	}
 
@@ -119,53 +121,25 @@ func resAppAgentCredCreate(ctx context.Context, data *schema.ResourceData, meta 
 		if err != nil {
 			return append(d, buildPluginErrorWithAttrName(err.Error(), expireTimeKey))
 		}
-		req.ExpireTime = timestamppb.New(exp)
+		req.ExpireTime = exp.Format(time.RFC3339)
 	}
 
 	if key, ok := data.GetOk(publicKeyPEMKey); ok {
-		req.PublicKey = &config.RegisterApplicationAgentCredentialRequest_Pem{
-			Pem: []byte(strings.TrimSpace(key.(string))),
-		}
-	} else if key, ok = data.GetOk(publicKeyJWKKey); ok {
-		req.PublicKey = &config.RegisterApplicationAgentCredentialRequest_Jwk{
-			Jwk: []byte(strings.TrimSpace(key.(string))),
-		}
+		req.PublicKeyPEM = strings.TrimSpace(key.(string))
+	} else if key, ok := data.GetOk(publicKeyJWKKey); ok {
+		req.PublicKeyJWK = strings.TrimSpace(key.(string))
 	}
 
-	resp, err := clientCtx.GetClient().RegisterApplicationAgentCredential(ctx, req)
+	var resp ApplicationAgentCredentialResponse
+	err := clientCtx.GetClient().Post(ctx, "/application-agent-credentials", req, &resp)
 	if HasFailed(&d, err) {
 		return d
 	}
-	data.SetId(resp.GetId())
-	setData(&d, data, agentConfigKey, string(resp.GetAgentConfig()))
+	data.SetId(resp.ID)
+	setData(&d, data, appAgentIDKey, resp.ApplicationAgentID)
+	setData(&d, data, agentConfigKey, resp.AgentConfig)
 
 	return resAppAgentCredRead(ctx, data, meta)
-}
-
-func resAppAgentCredUpdate(_ context.Context, data *schema.ResourceData, _ any) diag.Diagnostics {
-	var d diag.Diagnostics
-
-	agentConfig, ok := data.Get(agentConfigKey).(string)
-	// AgentConfig is empty (nil) and cannot be casted to string
-	// It is fine, do not create any error here
-	if !ok {
-		return d
-	}
-
-	mapCfg := map[string]any{}
-	err := json.Unmarshal([]byte(agentConfig), &mapCfg)
-	if err != nil {
-		return append(d, buildPluginErrorWithAttrName(err.Error(), agentConfigKey))
-	}
-
-	var byteCfg []byte
-	byteCfg, err = json.Marshal(mapCfg)
-	if err != nil {
-		return append(d, buildPluginErrorWithAttrName(err.Error(), agentConfigKey))
-	}
-
-	setData(&d, data, agentConfigKey, string(byteCfg))
-	return d
 }
 
 func resAppAgentCredRead(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
@@ -176,27 +150,27 @@ func resAppAgentCredRead(ctx context.Context, data *schema.ResourceData, meta an
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := clientCtx.GetClient().
-		ReadApplicationAgentCredential(ctx, &config.ReadApplicationAgentCredentialRequest{
-			Id: data.Id(),
-		})
+
+	var resp ApplicationAgentCredentialResponse
+	// Credentials don't have names, only IDs
+	err := clientCtx.GetClient().Get(ctx, "/application-agent-credentials/"+data.Id(), &resp)
 	if readHasFailed(&d, err, data) {
 		return d
 	}
 
-	if resp.GetApplicationAgentCredential() == nil {
-		return diag.Diagnostics{buildPluginError("empty ApplicationAgentCredential response")}
+	data.SetId(resp.ID)
+	setData(&d, data, customerIDKey, resp.CustomerID)
+	setData(&d, data, appSpaceIDKey, resp.AppSpaceID)
+	setData(&d, data, applicationIDKey, resp.ApplicationID)
+	setData(&d, data, appAgentIDKey, resp.ApplicationAgentID)
+	setData(&d, data, displayNameKey, resp.DisplayName)
+	setData(&d, data, kidKey, resp.Kid)
+	setData(&d, data, agentConfigKey, resp.AgentConfig)
+	setData(&d, data, createTimeKey, resp.CreateTime)
+
+	if !resp.ExpireTime.IsZero() {
+		setData(&d, data, expireTimeKey, resp.ExpireTime)
 	}
-
-	data.SetId(resp.GetApplicationAgentCredential().GetId())
-	setData(&d, data, customerIDKey, resp.GetApplicationAgentCredential().GetCustomerId())
-	setData(&d, data, appSpaceIDKey, resp.GetApplicationAgentCredential().GetAppSpaceId())
-	setData(&d, data, applicationIDKey, resp.GetApplicationAgentCredential().GetApplicationId())
-	setData(&d, data, appAgentIDKey, resp.GetApplicationAgentCredential().GetApplicationAgentId())
-
-	setData(&d, data, displayNameKey, resp.GetApplicationAgentCredential().GetDisplayName())
-	setData(&d, data, kidKey, resp.GetApplicationAgentCredential().GetKid())
-	setData(&d, data, createTimeKey, resp.GetApplicationAgentCredential().GetCreateTime())
 
 	return d
 }
@@ -212,11 +186,7 @@ func resAppAgentCredDelete(ctx context.Context, data *schema.ResourceData, meta 
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutDelete))
 	defer cancel()
-	_, err := clientCtx.GetClient().DeleteApplicationAgentCredential(ctx,
-		&config.DeleteApplicationAgentCredentialRequest{
-			Id: data.Id(),
-		},
-	)
+	err := clientCtx.GetClient().Delete(ctx, "/application-agent-credentials/"+data.Id())
 	HasFailed(&d, err)
 	return d
 }

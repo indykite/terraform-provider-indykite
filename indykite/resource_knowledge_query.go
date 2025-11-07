@@ -15,14 +15,13 @@
 package indykite
 
 import (
+	"context"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/structure"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/indykite/indykite-sdk-go/config"
-	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 )
 
 const (
@@ -32,8 +31,6 @@ const (
 )
 
 func resourceKnowledgeQuery() *schema.Resource {
-	readContext := configReadContextFunc(resourceKnowledgeQueryFlatten)
-
 	return &schema.Resource{
 		Description: "**Creating Policy:**  <br>" +
 			"An authorization admin starts by creating a new subgraph or " +
@@ -53,10 +50,10 @@ func resourceKnowledgeQuery() *schema.Resource {
 			"The admin then specifies the read, upsert, and delete components for the query.  " +
 			"When the admin is done specifying the query, the query combined with the policy " +
 			"are translated to Cypher.  ",
-		CreateContext: configCreateContextFunc(resourceKnowledgeQueryBuild, readContext),
-		ReadContext:   readContext,
-		UpdateContext: configUpdateContextFunc(resourceKnowledgeQueryBuild, readContext),
-		DeleteContext: configDeleteContextFunc(),
+		CreateContext: resKnowledgeQueryCreate,
+		ReadContext:   resKnowledgeQueryRead,
+		UpdateContext: resKnowledgeQueryUpdate,
+		DeleteContext: resKnowledgeQueryDelete,
 		Importer: &schema.ResourceImporter{
 			StateContext: basicStateImporter,
 		},
@@ -99,47 +96,134 @@ func resourceKnowledgeQuery() *schema.Resource {
 	}
 }
 
-func resourceKnowledgeQueryFlatten(
-	data *schema.ResourceData,
-	resp *configpb.ReadConfigNodeResponse,
-) diag.Diagnostics {
+func resKnowledgeQueryCreate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
 	var d diag.Diagnostics
-	query := resp.GetConfigNode().GetKnowledgeQueryConfig().GetQuery()
-	if query == "" {
-		return append(d, buildPluginError("config in the response is not valid KnowledgeQueryConfig"))
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
 	}
-	setData(&d, data, knowledgeQueryJSONQueryConfigKey, query)
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
+	defer cancel()
 
-	status := resp.GetConfigNode().GetKnowledgeQueryConfig().GetStatus()
-	if status == configpb.KnowledgeQueryConfig_STATUS_INVALID {
-		return append(d, buildPluginError("status in the response is not valid"))
-	}
-	statusKey, exist := ReverseProtoEnumMap(KnowledgeQueryStatusTypes)[status]
-	if !exist {
-		d = append(d, buildPluginError("unsupported Policy Status Type: "+status.String()))
-	}
-	setData(&d, data, knowledgeQueryStatusKey, statusKey)
+	// Map status from Terraform format to API format
+	statusValue := data.Get(knowledgeQueryStatusKey).(string)
+	apiStatus := KnowledgeQueryStatusToAPI[statusValue]
 
-	setData(&d, data, knowledgeQueryPolicyID, resp.GetConfigNode().GetKnowledgeQueryConfig().GetPolicyId())
+	req := CreateKnowledgeQueryRequest{
+		ProjectID:   data.Get(locationKey).(string),
+		Name:        data.Get(nameKey).(string),
+		DisplayName: stringValue(optionalString(data, displayNameKey)),
+		Description: stringValue(optionalString(data, descriptionKey)),
+		Query:       data.Get(knowledgeQueryJSONQueryConfigKey).(string),
+		Status:      apiStatus,
+		PolicyID:    data.Get(knowledgeQueryPolicyID).(string),
+	}
+
+	var resp KnowledgeQueryResponse
+	err := clientCtx.GetClient().Post(ctx, "/knowledge-queries", req, &resp)
+	if HasFailed(&d, err) {
+		return d
+	}
+	data.SetId(resp.ID)
+
+	return resKnowledgeQueryRead(ctx, data, meta)
+}
+
+func resKnowledgeQueryRead(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
+	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
+	defer cancel()
+
+	var resp KnowledgeQueryResponse
+	// Support both ID and name?location=parent_id formats
+	path := buildReadPath("/knowledge-queries", data)
+	err := clientCtx.GetClient().Get(ctx, path, &resp)
+	if readHasFailed(&d, err, data) {
+		return d
+	}
+
+	data.SetId(resp.ID)
+	setData(&d, data, customerIDKey, resp.CustomerID)
+	setData(&d, data, appSpaceIDKey, resp.AppSpaceID)
+
+	// Set location based on which is present
+	if resp.AppSpaceID != "" {
+		setData(&d, data, locationKey, resp.AppSpaceID)
+	} else if resp.CustomerID != "" {
+		setData(&d, data, locationKey, resp.CustomerID)
+	}
+
+	setData(&d, data, nameKey, resp.Name)
+	setData(&d, data, displayNameKey, resp.DisplayName)
+	setData(&d, data, descriptionKey, resp.Description)
+	setData(&d, data, createTimeKey, resp.CreateTime)
+	setData(&d, data, updateTimeKey, resp.UpdateTime)
+	setData(&d, data, knowledgeQueryJSONQueryConfigKey, resp.Query)
+
+	// Map status from API format to Terraform format
+	terraformStatus := KnowledgeQueryStatusFromAPI[resp.Status]
+	if terraformStatus == "" {
+		terraformStatus = resp.Status // Fallback to original value if not found
+	}
+	setData(&d, data, knowledgeQueryStatusKey, terraformStatus)
+	setData(&d, data, knowledgeQueryPolicyID, resp.PolicyID)
 
 	return d
 }
 
-func knowledgeQueryConfigBuilder(data *schema.ResourceData) *configpb.KnowledgeQueryConfig {
-	cfg := &configpb.KnowledgeQueryConfig{
-		Query:    data.Get(knowledgeQueryJSONQueryConfigKey).(string),
-		Status:   KnowledgeQueryStatusTypes[data.Get(knowledgeQueryStatusKey).(string)],
-		PolicyId: data.Get(knowledgeQueryPolicyID).(string),
+func resKnowledgeQueryUpdate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
 	}
-	return cfg
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
+	defer cancel()
+
+	req := UpdateKnowledgeQueryRequest{
+		DisplayName: updateOptionalString(data, displayNameKey),
+		Description: updateOptionalString(data, descriptionKey),
+	}
+
+	if data.HasChange(knowledgeQueryJSONQueryConfigKey) {
+		query := data.Get(knowledgeQueryJSONQueryConfigKey).(string)
+		req.Query = &query
+	}
+
+	if data.HasChange(knowledgeQueryStatusKey) {
+		statusValue := data.Get(knowledgeQueryStatusKey).(string)
+		apiStatus := KnowledgeQueryStatusToAPI[statusValue]
+		req.Status = &apiStatus
+	}
+
+	if data.HasChange(knowledgeQueryPolicyID) {
+		policyID := data.Get(knowledgeQueryPolicyID).(string)
+		req.PolicyID = &policyID
+	}
+
+	var resp KnowledgeQueryResponse
+	err := clientCtx.GetClient().Put(ctx, "/knowledge-queries/"+data.Id(), req, &resp)
+	if HasFailed(&d, err) {
+		return d
+	}
+
+	return resKnowledgeQueryRead(ctx, data, meta)
 }
 
-func resourceKnowledgeQueryBuild(
-	_ *diag.Diagnostics,
-	data *schema.ResourceData,
-	_ *ClientContext,
-	builder *config.NodeRequest,
-) {
-	cfg := knowledgeQueryConfigBuilder(data)
-	builder.WithKnowledgeQueryConfig(cfg)
+func resKnowledgeQueryDelete(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
+	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutDelete))
+	defer cancel()
+
+	err := clientCtx.GetClient().Delete(ctx, "/knowledge-queries/"+data.Id())
+	HasFailed(&d, err)
+	return d
 }

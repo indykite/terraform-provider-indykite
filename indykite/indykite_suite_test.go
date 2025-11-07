@@ -16,84 +16,33 @@ package indykite_test
 
 import (
 	"errors"
-	"fmt"
-	"os"
 	"strconv"
 	"testing"
 
 	"github.com/onsi/gomega/matchers"
-	"go.uber.org/mock/gomock"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	. "github.com/onsi/gomega/gstruct"
 )
 
 const (
-	customerID     = "gid:AAAAAWluZHlraURlgAAAAAAAAA8"
-	appSpaceID     = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
-	applicationID  = "gid:AAAABGluZHlraURlgAACDwAAAAA"
-	appAgentID     = "gid:AAAABWluZHlraURlgAAFDwAAAAA"
-	appAgentCredID = "gid:AAAABt7z4hZzpkbAtZXbIEYsT9Q" // #nosec G101
+	customerID           = "gid:AAAAAWluZHlraURlgAAAAAAAAA8"
+	organizationID       = "gid:AAAAAWluZHlraURlgAAAAAAAAA8" // Same as customerID
+	appSpaceID           = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
+	applicationID        = "gid:AAAABGluZHlraURlgAACDwAAAAA"
+	appAgentID           = "gid:AAAABWluZHlraURlgAAFDwAAAAA"
+	appAgentCredID       = "gid:AAAABt7z4hZzpkbAtZXbIEYsT9Q" // #nosec G101
+	appAgentCredID2      = "gid:AAAABkMsC87ROQ8mlK-Q6PSoTuw" // #nosec G101
+	serviceAccountID     = "gid:AAAABnNlcnZpY2VBY2NvdW50AAAA"
+	serviceAccountCredID = "gid:AAAABnNlcnZpY2VBY2NvdW50Q3JlZA" // #nosec G101
 	// sampleID is plain empty ID just for responses.
-	sampleID  = "gid:AAAAAAAAAAAAAAAAAAAAAAAAAAA"
-	sampleID2 = "gid:AAAAAAAAAAAAAAAAAAAAAAAAAAB"
+	sampleID = "gid:AAAAAAAAAAAAAAAAAAAAAAAAAAA"
 )
-
-type terraformGomockTestReporter struct {
-	ginkgoT GinkgoTInterface
-}
-
-type GomockTestCleanuper interface {
-	gomock.TestHelper
-	Cleanup(fn func())
-}
 
 func TestIndykite(t *testing.T) {
 	RegisterFailHandler(Fail)
-	_ = os.Setenv("TF_ACC", "ok")
+	t.Setenv("TF_ACC", "ok")
 	RunSpecs(t, "Indykite Suite")
-}
-
-// TerraformGomockT should be used inside gomock.NewController instead of pure GinkgoT or testing.T.
-//
-// This is not the best solution, but Terraform execute provider as s separate program.
-// So os.Stderr and os.Stdout are only way how to easily communicate error out.
-// And as this is required currently only for Gomock, it is enough to support gomock.TestReporter.
-func TerraformGomockT(ginkgoT GinkgoTInterface) GomockTestCleanuper {
-	return terraformGomockTestReporter{
-		ginkgoT: ginkgoT,
-	}
-}
-
-func (terraformGomockTestReporter) Errorf(format string, args ...any) {
-	_, _ = fmt.Fprintf(os.Stderr, format, args...)
-	panic("Error, see stderr")
-}
-
-func (terraformGomockTestReporter) Fatalf(format string, args ...any) {
-	_, _ = fmt.Fprintf(os.Stderr, format, args...)
-	panic("Fatal, see stderr")
-}
-
-func (t terraformGomockTestReporter) Helper() {
-	t.ginkgoT.Helper()
-}
-
-func (t terraformGomockTestReporter) Cleanup(callback func()) {
-	t.ginkgoT.Cleanup(callback)
-}
-
-func addStringArrayToKeys[T string | []byte](keys Keys, key string, value []T) Keys {
-	if len(value) == 0 {
-		return keys
-	}
-	keys[key+".#"] = Equal(strconv.Itoa(len(value)))
-	for i, v := range value {
-		keys[key+"."+strconv.Itoa(i)] = Equal(string(v))
-	}
-
-	return keys
 }
 
 func JSONEquals(oldValue, newValue string) bool {
@@ -114,30 +63,6 @@ func convertOmegaMatcherToError(matcher OmegaMatcher, actual any) error {
 	}
 
 	return nil
-}
-
-func addStringMapMatcherToKeys(keys Keys, key string, data map[string]string, includeEmpty bool) {
-	if len(data) == 0 && !includeEmpty {
-		return
-	}
-
-	keys[key+".%"] = Equal(strconv.Itoa(len(data)))
-
-	for k, v := range data {
-		keys[key+"."+k] = Equal(v)
-	}
-}
-
-func addSliceMapMatcherToKeys(keys Keys, key string, data []map[string]OmegaMatcher, includeEmpty bool) {
-	if len(data) == 0 && !includeEmpty {
-		return
-	}
-
-	for i, item := range data {
-		for k, v := range item {
-			keys[key+"."+strconv.Itoa(i)+"."+k] = v
-		}
-	}
 }
 
 type NumericalTerraformMatcher struct {

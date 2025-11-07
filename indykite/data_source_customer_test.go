@@ -16,24 +16,19 @@ package indykite_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"regexp"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/indykite/indykite-sdk-go/config"
-	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
-	configm "github.com/indykite/indykite-sdk-go/test/config/v1beta1"
-	"go.uber.org/mock/gomock"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/indykite/terraform-provider-indykite/indykite"
-	"github.com/indykite/terraform-provider-indykite/indykite/test"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -42,58 +37,50 @@ import (
 
 var _ = Describe("Data Source customer", func() {
 	var (
-		mockCtrl         *gomock.Controller
-		mockConfigClient *configm.MockConfigManagementAPIClient
-		provider         *schema.Provider
+		mockServer *httptest.Server
+		provider   *schema.Provider
 	)
 
 	BeforeEach(func() {
-		mockCtrl = gomock.NewController(TerraformGomockT(GinkgoT()))
-		mockConfigClient = configm.NewMockConfigManagementAPIClient(mockCtrl)
-
 		provider = indykite.Provider()
-		cfgFunc := provider.ConfigureContextFunc
-		provider.ConfigureContextFunc =
-			func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
-				client, _ := config.NewTestClient(ctx, mockConfigClient)
-				ctx = indykite.WithClient(ctx, client)
-				return cfgFunc(ctx, data)
-			}
+	})
+
+	AfterEach(func() {
+		if mockServer != nil {
+			mockServer.Close()
+		}
 	})
 
 	It("Test Read Customer", func() {
-		wonka := &configpb.ReadCustomerResponse{
-			Customer: &configpb.Customer{
-				Id:          customerID,
-				Name:        "wonka",
-				DisplayName: "wonka",
-				Description: wrapperspb.String("Just some description"),
-				CreateTime:  timestamppb.Now(),
-				UpdateTime:  timestamppb.Now(),
-			},
+		createTime := time.Now()
+		updateTime := time.Now()
+		wonka := indykite.CustomerResponse{
+			ID:          customerID,
+			Name:        "wonka",
+			DisplayName: "wonka",
+			Description: "Just some description",
+			CreateTime:  createTime,
+			UpdateTime:  updateTime,
 		}
 
-		// Read in given order
-		gomock.InOrder(
-			mockConfigClient.EXPECT().
-				ReadCustomer(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Name": Equal("acme")})),
-				})))).
-				Return(nil, status.Error(codes.Unknown, "unknown name")),
-			mockConfigClient.EXPECT().
-				ReadCustomer(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Id": Equal(customerID)})),
-				})))).
-				Times(5).
-				Return(wonka, nil),
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			case r.Method == http.MethodGet && r.URL.Path == "/configs/v1/organizations/current":
+				// Get current organization - always return wonka
+				// The only endpoint available for customers is /organizations/current
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(wonka)
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
 
-			mockConfigClient.EXPECT().
-				ReadCustomer(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Name": Equal("wonka")})),
-				})))).
-				Times(5).
-				Return(wonka, nil),
-		)
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
 
 		resource.Test(GinkgoT(), resource.TestCase{
 			Providers: map[string]*schema.Provider{
@@ -101,17 +88,6 @@ var _ = Describe("Data Source customer", func() {
 			},
 			Steps: []resource.TestStep{
 				// Error cases must be always first
-				{
-					Config: `data "indykite_customer" "error" {
-						name = "wonka"
-						customer_id = "` + customerID + `"
-					}`,
-					ExpectError: regexp.MustCompile("only one of `customer_id,name` can be specified"),
-				},
-				{
-					Config:      `data "indykite_customer" "error" {}`,
-					ExpectError: regexp.MustCompile("one of `customer_id,name` must be specified"),
-				},
 				{
 					Config: `data "indykite_customer" "error" {
 						name = "wonka-"
@@ -125,19 +101,28 @@ var _ = Describe("Data Source customer", func() {
 					ExpectError: regexp.MustCompile("valid Raw URL Base64 string with 'gid:' prefix"),
 				},
 				{
-					Config:      `data "indykite_customer" "wonka" {name = "acme"}`,
-					ExpectError: regexp.MustCompile("unknown name"),
+					Config: `data "indykite_customer" "wonka" {name = "acme"}`,
+					ExpectError: regexp.MustCompile(
+						`customer with name 'acme' not found \(current organization is 'wonka'\)`),
 				},
 
 				// Success cases
+				// No parameters - should fetch current organization
 				{
-					Check: resource.ComposeTestCheckFunc(testDataSourceWonkaCustomer(wonka.GetCustomer(), customerID)),
+					Check: resource.ComposeTestCheckFunc(testDataSourceWonkaCustomer(&wonka, customerID)),
+					Config: `data "indykite_customer" "wonka" {
+					}`,
+				},
+				// With customer_id - should validate it matches
+				{
+					Check: resource.ComposeTestCheckFunc(testDataSourceWonkaCustomer(&wonka, customerID)),
 					Config: `data "indykite_customer" "wonka" {
 						customer_id = "` + customerID + `"
 					}`,
 				},
+				// With name - should validate it matches
 				{
-					Check: resource.ComposeTestCheckFunc(testDataSourceWonkaCustomer(wonka.GetCustomer(), "")),
+					Check: resource.ComposeTestCheckFunc(testDataSourceWonkaCustomer(&wonka, customerID)),
 					Config: `data "indykite_customer" "wonka" {
 						name = "wonka"
 					}`,
@@ -147,24 +132,24 @@ var _ = Describe("Data Source customer", func() {
 	})
 })
 
-func testDataSourceWonkaCustomer(data *configpb.Customer, customerID string) resource.TestCheckFunc {
+func testDataSourceWonkaCustomer(data *indykite.CustomerResponse, customerID string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources["data.indykite_customer.wonka"]
 		if !ok {
 			return errors.New("not found: `indykite_customer.wonka`")
 		}
 
-		if rs.Primary.ID != data.GetId() {
+		if rs.Primary.ID != data.ID {
 			return errors.New("ID does not match")
 		}
 
 		keys := Keys{
-			"id": Equal(data.GetId()),
+			"id": Equal(data.ID),
 			"%":  Not(BeEmpty()), // This is Terraform helper
 
-			"name":         Equal(data.GetName()),
-			"display_name": Equal(data.GetDisplayName()),
-			"description":  Equal(data.GetDescription().GetValue()),
+			"name":         Equal(data.Name),
+			"display_name": Equal(data.DisplayName),
+			"description":  Equal(data.Description),
 			"create_time":  Not(BeEmpty()),
 			"update_time":  Not(BeEmpty()),
 		}

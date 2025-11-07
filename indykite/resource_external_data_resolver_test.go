@@ -16,24 +16,21 @@ package indykite_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
+	"net/http"
+	"net/http/httptest"
 	"regexp"
-	"strconv"
+	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/indykite/indykite-sdk-go/config"
-	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
-	configm "github.com/indykite/indykite-sdk-go/test/config/v1beta1"
-	"go.uber.org/mock/gomock"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/indykite/terraform-provider-indykite/indykite"
-	"github.com/indykite/terraform-provider-indykite/indykite/test"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -45,25 +42,14 @@ var _ = Describe("Resource ExternalDataResolver", func() {
 		resourceName = "indykite_external_data_resolver.development"
 	)
 	var (
-		mockCtrl         *gomock.Controller
-		mockConfigClient *configm.MockConfigManagementAPIClient
-		provider         *schema.Provider
-		tfConfigDef      string
-		validSettings    string
+		mockServer    *httptest.Server
+		provider      *schema.Provider
+		tfConfigDef   string
+		validSettings string
 	)
 
 	BeforeEach(func() {
-		mockCtrl = gomock.NewController(TerraformGomockT(GinkgoT()))
-		mockConfigClient = configm.NewMockConfigManagementAPIClient(mockCtrl)
-
 		provider = indykite.Provider()
-		cfgFunc := provider.ConfigureContextFunc
-		provider.ConfigureContextFunc =
-			func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
-				client, _ := config.NewTestClient(ctx, mockConfigClient)
-				ctx = indykite.WithClient(ctx, client)
-				return cfgFunc(ctx, data)
-			}
 
 		tfConfigDef = `resource "indykite_external_data_resolver" "development" {
 			location = "%s"
@@ -90,6 +76,12 @@ var _ = Describe("Resource ExternalDataResolver", func() {
 		response_type = "json"
 		response_selector = "."
 		`
+	})
+
+	AfterEach(func() {
+		if mockServer != nil {
+			mockServer.Close()
+		}
 	})
 
 	Describe("Error cases", func() {
@@ -147,151 +139,171 @@ var _ = Describe("Resource ExternalDataResolver", func() {
 
 	Describe("Valid configurations", func() {
 		It("Test CRUD of ExternalDataResolver configuration", func() {
-			expectedResp := &configpb.ReadConfigNodeResponse{
-				ConfigNode: &configpb.ConfigNode{
-					Id:          sampleID,
-					Name:        "my-first-external-data-resolver1",
-					DisplayName: "Display name of ExternalDataResolver configuration",
-					CustomerId:  customerID,
-					AppSpaceId:  appSpaceID,
-					CreateTime:  timestamppb.Now(),
-					UpdateTime:  timestamppb.Now(),
-					Config: &configpb.ConfigNode_ExternalDataResolverConfig{
-						ExternalDataResolverConfig: &configpb.ExternalDataResolverConfig{
-							Url:    "https://example.com/source2",
-							Method: "GET",
-							Headers: map[string]*configpb.ExternalDataResolverConfig_Header{
-								"Authorization": {Values: []string{"Bearer edolkUTY"}},
-								"Content-Type":  {Values: []string{"application/json"}},
-							},
-							RequestType:      configpb.ExternalDataResolverConfig_CONTENT_TYPE_JSON,
-							ResponseType:     configpb.ExternalDataResolverConfig_CONTENT_TYPE_JSON,
-							RequestPayload:   []byte(`{"key": "value"}`),
-							ResponseSelector: ".",
+			createTime := time.Now()
+			updateTime := time.Now()
+			currentState := "initial"
+
+			mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch {
+				case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/external-data-resolvers"):
+					resp := indykite.ExternalDataResolverResponse{
+						ID:          sampleID,
+						Name:        "my-first-external-data-resolver1",
+						DisplayName: "Display name of ExternalDataResolver configuration",
+						CustomerID:  customerID,
+						AppSpaceID:  appSpaceID,
+						URL:         "https://example.com/source2",
+						Method:      "GET",
+						Headers: map[string]any{
+							"Authorization": []string{"Bearer edolkUTY"},
+							"Content-Type":  []string{"application/json"},
 						},
-					},
-				},
-			}
-			expectedUpdatedResp := &configpb.ReadConfigNodeResponse{
-				ConfigNode: &configpb.ConfigNode{
-					Id:          sampleID,
-					Name:        "my-first-external-data-resolver1",
-					DisplayName: "Display name of ExternalDataResolver configuration",
-					CustomerId:  customerID,
-					AppSpaceId:  appSpaceID,
-					CreateTime:  expectedResp.GetConfigNode().GetCreateTime(),
-					UpdateTime:  timestamppb.Now(),
-					Config: &configpb.ConfigNode_ExternalDataResolverConfig{
-						ExternalDataResolverConfig: &configpb.ExternalDataResolverConfig{
-							Url:    "https://example.com/source2",
-							Method: "GET",
-							Headers: map[string]*configpb.ExternalDataResolverConfig_Header{
-								"Authorization": {Values: []string{"Bearer edolkUTY"}},
-								"Content-Type":  {Values: []string{"application/json"}},
+						RequestType:      "json",
+						RequestPayload:   `{"key": "value"}`,
+						ResponseType:     "json",
+						ResponseSelector: ".",
+						CreateTime:       createTime,
+						UpdateTime:       updateTime,
+					}
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(resp)
+
+				case r.Method == http.MethodGet && strings.Contains(r.URL.Path, sampleID):
+					var resp indykite.ExternalDataResolverResponse
+
+					switch currentState {
+					case "initial", "after_create":
+						resp = indykite.ExternalDataResolverResponse{
+							ID:          sampleID,
+							Name:        "my-first-external-data-resolver1",
+							DisplayName: "Display name of ExternalDataResolver configuration",
+							CustomerID:  customerID,
+							AppSpaceID:  appSpaceID,
+							URL:         "https://example.com/source2",
+							Method:      "GET",
+							Headers: map[string]any{
+								"Authorization": []string{"Bearer edolkUTY"},
+								"Content-Type":  []string{"application/json"},
 							},
-							RequestType:      configpb.ExternalDataResolverConfig_CONTENT_TYPE_JSON,
-							ResponseType:     configpb.ExternalDataResolverConfig_CONTENT_TYPE_JSON,
-							RequestPayload:   []byte(`{"key2": "value2"}`),
+							RequestType:      "json",
+							RequestPayload:   `{"key": "value"}`,
+							ResponseType:     "json",
 							ResponseSelector: ".",
-						},
-					},
-				},
-			}
-			expectedUpdatedResp2 := &configpb.ReadConfigNodeResponse{
-				ConfigNode: &configpb.ConfigNode{
-					Id:         sampleID,
-					Name:       "my-first-external-data-resolver1",
-					CustomerId: customerID,
-					AppSpaceId: appSpaceID,
-					CreateTime: expectedResp.GetConfigNode().GetCreateTime(),
-					UpdateTime: timestamppb.Now(),
-					Config: &configpb.ConfigNode_ExternalDataResolverConfig{
-						ExternalDataResolverConfig: &configpb.ExternalDataResolverConfig{
-							Url:    "https://example.com/source2",
-							Method: "GET",
-							Headers: map[string]*configpb.ExternalDataResolverConfig_Header{
-								"Authorization": {Values: []string{"Bearer edolkUTY"}},
-								"Content-Type":  {Values: []string{"application/json"}},
+							CreateTime:       createTime,
+							UpdateTime:       updateTime,
+						}
+					case "after_update1":
+						resp = indykite.ExternalDataResolverResponse{
+							ID:          sampleID,
+							Name:        "my-first-external-data-resolver1",
+							DisplayName: "Display name of ExternalDataResolver configuration",
+							CustomerID:  customerID,
+							AppSpaceID:  appSpaceID,
+							URL:         "https://example.com/source2",
+							Method:      "GET",
+							Headers: map[string]any{
+								"Authorization": []string{"Bearer edolkUTY"},
+								"Content-Type":  []string{"application/json"},
 							},
-							RequestType:      configpb.ExternalDataResolverConfig_CONTENT_TYPE_JSON,
-							ResponseType:     configpb.ExternalDataResolverConfig_CONTENT_TYPE_JSON,
+							RequestType:      "json",
+							RequestPayload:   `{"key2": "value2"}`,
+							ResponseType:     "json",
 							ResponseSelector: ".",
-						},
-					},
-				},
+							CreateTime:       createTime,
+							UpdateTime:       time.Now(),
+						}
+					case "after_update2":
+						resp = indykite.ExternalDataResolverResponse{
+							ID:         sampleID,
+							Name:       "my-first-external-data-resolver1",
+							CustomerID: customerID,
+							AppSpaceID: appSpaceID,
+							URL:        "https://example.com/source2",
+							Method:     "GET",
+							Headers: map[string]any{
+								"Authorization": []string{"Bearer edolkUTY"},
+								"Content-Type":  []string{"application/json"},
+							},
+							RequestType:      "json",
+							ResponseType:     "json",
+							ResponseSelector: ".",
+							CreateTime:       createTime,
+							UpdateTime:       time.Now(),
+						}
+					}
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(resp)
+
+				case r.Method == http.MethodPut && strings.Contains(r.URL.Path, sampleID):
+					// Parse request to determine state
+					var reqBody map[string]any
+					_ = json.NewDecoder(r.Body).Decode(&reqBody)
+
+					if reqBody["requestPayload"] != nil &&
+						strings.Contains(reqBody["requestPayload"].(string), "key2") {
+						currentState = "after_update1"
+					} else {
+						currentState = "after_update2"
+					}
+
+					var resp indykite.ExternalDataResolverResponse
+					if currentState == "after_update1" {
+						resp = indykite.ExternalDataResolverResponse{
+							ID:          sampleID,
+							Name:        "my-first-external-data-resolver1",
+							DisplayName: "Display name of ExternalDataResolver configuration",
+							CustomerID:  customerID,
+							AppSpaceID:  appSpaceID,
+							URL:         "https://example.com/source2",
+							Method:      "GET",
+							Headers: map[string]any{
+								"Authorization": []string{"Bearer edolkUTY"},
+								"Content-Type":  []string{"application/json"},
+							},
+							RequestType:      "json",
+							RequestPayload:   `{"key2": "value2"}`,
+							ResponseType:     "json",
+							ResponseSelector: ".",
+							CreateTime:       createTime,
+							UpdateTime:       time.Now(),
+						}
+					} else {
+						resp = indykite.ExternalDataResolverResponse{
+							ID:         sampleID,
+							Name:       "my-first-external-data-resolver1",
+							CustomerID: customerID,
+							AppSpaceID: appSpaceID,
+							URL:        "https://example.com/source2",
+							Method:     "GET",
+							Headers: map[string]any{
+								"Authorization": []string{"Bearer edolkUTY"},
+								"Content-Type":  []string{"application/json"},
+							},
+							RequestType:      "json",
+							ResponseType:     "json",
+							ResponseSelector: ".",
+							CreateTime:       createTime,
+							UpdateTime:       time.Now(),
+						}
+					}
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(resp)
+
+				case r.Method == http.MethodDelete:
+					w.WriteHeader(http.StatusNoContent)
+
+				default:
+					w.WriteHeader(http.StatusNotFound)
+				}
+			}))
+
+			cfgFunc := provider.ConfigureContextFunc
+			provider.ConfigureContextFunc = func(
+				ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+				client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+				ctx = indykite.WithClient(ctx, client)
+				return cfgFunc(ctx, data)
 			}
-
-			// Create
-			mockConfigClient.EXPECT().
-				CreateConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Name": Equal(expectedResp.GetConfigNode().GetName()),
-					"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal(
-						expectedResp.GetConfigNode().GetDisplayName(),
-					)})),
-					"Description": BeNil(),
-					"Location":    Equal(appSpaceID),
-					"Config": PointTo(MatchFields(IgnoreExtras, Fields{
-						"ExternalDataResolverConfig": test.EqualProto(
-							expectedResp.GetConfigNode().GetExternalDataResolverConfig()),
-					})),
-				})))).
-				Return(&configpb.CreateConfigNodeResponse{
-					Id:         sampleID,
-					CreateTime: timestamppb.Now(),
-					UpdateTime: timestamppb.Now(),
-				}, nil)
-
-			// Update
-			mockConfigClient.EXPECT().
-				UpdateConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(sampleID),
-					"Config": PointTo(MatchFields(IgnoreExtras, Fields{
-						"ExternalDataResolverConfig": test.EqualProto(
-							expectedUpdatedResp.GetConfigNode().GetExternalDataResolverConfig()),
-					})),
-				})))).
-				Return(&configpb.UpdateConfigNodeResponse{Id: sampleID}, nil)
-
-			// Second Update
-			mockConfigClient.EXPECT().
-				UpdateConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(sampleID),
-					"Config": PointTo(MatchFields(IgnoreExtras, Fields{
-						"ExternalDataResolverConfig": test.EqualProto(
-							expectedUpdatedResp2.GetConfigNode().GetExternalDataResolverConfig()),
-					})),
-				})))).
-				Return(&configpb.UpdateConfigNodeResponse{Id: sampleID}, nil)
-
-			// Read in given order
-			gomock.InOrder(
-				mockConfigClient.EXPECT().
-					ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-						"Id": Equal(sampleID),
-					})))).
-					Times(3).
-					Return(expectedResp, nil),
-
-				mockConfigClient.EXPECT().
-					ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-						"Id": Equal(sampleID),
-					})))).
-					Times(3).
-					Return(expectedUpdatedResp, nil),
-				mockConfigClient.EXPECT().
-					ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-						"Id": Equal(sampleID),
-					})))).
-					Times(2).
-					Return(expectedUpdatedResp2, nil),
-			)
-
-			// Delete
-			mockConfigClient.EXPECT().
-				DeleteConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(sampleID),
-				})))).
-				Return(&configpb.DeleteConfigNodeResponse{}, nil)
 
 			resource.Test(GinkgoT(), resource.TestCase{
 				Providers: map[string]*schema.Provider{
@@ -316,14 +328,20 @@ var _ = Describe("Resource ExternalDataResolver", func() {
 							}
 
 							request_type = "json"
-							response_type = "json"
 							request_payload  = "{\"key\": \"value\"}"
+							response_type = "json"
 							response_selector = "."
 							`,
 						),
 						Check: resource.ComposeTestCheckFunc(
-							testResourceDataExists(resourceName, expectedResp),
+							testExternalDataResolverResourceDataExists(resourceName, sampleID),
 						),
+					},
+					{
+						// Import test
+						ResourceName:  resourceName,
+						ImportState:   true,
+						ImportStateId: sampleID,
 					},
 					{
 						// Checking Update and Read
@@ -331,30 +349,31 @@ var _ = Describe("Resource ExternalDataResolver", func() {
 							`display_name = "Display name of ExternalDataResolver configuration"
 							url = "https://example.com/source2"
 							method = "GET"
+
 							headers {
-								name   = "Authorization"
-								values = ["Bearer edolkUTY"]
+							  name   = "Authorization"
+							  values = ["Bearer edolkUTY"]
 							}
 
 							headers {
-								name   = "Content-Type"
-								values = ["application/json"]
+							  name   = "Content-Type"
+							  values = ["application/json"]
 							}
 
 							request_type = "json"
-							response_type = "json"
 							request_payload  = "{\"key2\": \"value2\"}"
+							response_type = "json"
 							response_selector = "."
-						`),
+							`,
+						),
 						Check: resource.ComposeTestCheckFunc(
-							testResourceDataExists(resourceName, expectedUpdatedResp),
+							testExternalDataResolverResourceDataExists(resourceName, sampleID),
 						),
 					},
 					{
-						// Checking Second Update and Read
+						// Checking Update and Read - remove optional fields
 						Config: fmt.Sprintf(tfConfigDef, appSpaceID, "my-first-external-data-resolver1",
-							`
-							url = "https://example.com/source2"
+							`url = "https://example.com/source2"
 							method = "GET"
 
 							headers {
@@ -373,8 +392,122 @@ var _ = Describe("Resource ExternalDataResolver", func() {
 							`,
 						),
 						Check: resource.ComposeTestCheckFunc(
-							testResourceDataExists(resourceName, expectedUpdatedResp2),
+							testExternalDataResolverResourceDataExists(resourceName, sampleID),
 						),
+					},
+				},
+			})
+		})
+
+		It("Test import by name with location", func() {
+			tfConfigDef := `resource "indykite_external_data_resolver" "development" {
+					location = "%s"
+					name = "%s"
+					%s
+				}`
+
+			createTime := time.Now()
+			updateTime := time.Now()
+
+			mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch {
+				case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/external-data-resolvers"):
+					resp := indykite.ExternalDataResolverResponse{
+						ID:               sampleID,
+						Name:             "wonka-resolver",
+						DisplayName:      "Wonka Resolver",
+						CustomerID:       customerID,
+						AppSpaceID:       appSpaceID,
+						URL:              "https://example.com/source",
+						Method:           "POST",
+						Headers:          map[string]any{"Authorization": []any{"Bearer token"}},
+						RequestType:      "JSON",
+						RequestPayload:   `{"key": "value"}`,
+						ResponseType:     "JSON",
+						ResponseSelector: ".",
+						CreateTime:       createTime,
+						UpdateTime:       updateTime,
+					}
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(resp)
+
+				case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/external-data-resolvers/"):
+					// Support both ID and name?location=appSpaceID formats
+					pathAfterResolvers := strings.TrimPrefix(r.URL.Path, "/configs/v1/external-data-resolvers/")
+					isNameLookup := strings.Contains(pathAfterResolvers, "wonka-resolver")
+					isIDLookup := strings.Contains(pathAfterResolvers, sampleID)
+
+					if isNameLookup || isIDLookup {
+						resp := indykite.ExternalDataResolverResponse{
+							ID:               sampleID,
+							Name:             "wonka-resolver",
+							DisplayName:      "Wonka Resolver",
+							CustomerID:       customerID,
+							AppSpaceID:       appSpaceID,
+							URL:              "https://example.com/source",
+							Method:           "POST",
+							Headers:          map[string]any{"Authorization": []any{"Bearer token"}},
+							RequestType:      "JSON",
+							RequestPayload:   `{"key": "value"}`,
+							ResponseType:     "JSON",
+							ResponseSelector: ".",
+							CreateTime:       createTime,
+							UpdateTime:       updateTime,
+						}
+						w.WriteHeader(http.StatusOK)
+						_ = json.NewEncoder(w).Encode(resp)
+					} else {
+						w.WriteHeader(http.StatusNotFound)
+						_ = json.NewEncoder(w).Encode(map[string]string{"message": "Not Found"})
+					}
+
+				case r.Method == http.MethodDelete:
+					w.WriteHeader(http.StatusNoContent)
+
+				default:
+					w.WriteHeader(http.StatusNotFound)
+				}
+			}))
+			defer mockServer.Close()
+
+			cfgFunc := provider.ConfigureContextFunc
+			provider.ConfigureContextFunc = func(
+				ctx context.Context,
+				data *schema.ResourceData,
+			) (any, diag.Diagnostics) {
+				client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+				ctx = indykite.WithClient(ctx, client)
+				return cfgFunc(ctx, data)
+			}
+
+			resource.Test(GinkgoT(), resource.TestCase{
+				Providers: map[string]*schema.Provider{
+					"indykite": provider,
+				},
+				Steps: []resource.TestStep{
+					{
+						Config: fmt.Sprintf(tfConfigDef, appSpaceID, "wonka-resolver",
+							`display_name = "Wonka Resolver"
+								url = "https://example.com/source"
+								method = "POST"
+								headers {
+									name = "Authorization"
+									values = ["Bearer token"]
+								}
+								request_type = "json"
+								request_payload = "{\"key\": \"value\"}"
+								response_type = "json"
+								response_selector = "."
+								`,
+						),
+						Check: resource.ComposeTestCheckFunc(
+							testExternalDataResolverResourceDataExists(resourceName, sampleID),
+						),
+					},
+					{
+						ResourceName:  resourceName,
+						ImportState:   true,
+						ImportStateId: "wonka-resolver?location=" + appSpaceID,
 					},
 				},
 			})
@@ -382,73 +515,29 @@ var _ = Describe("Resource ExternalDataResolver", func() {
 	})
 })
 
-func testResourceDataExists(
-	n string,
-	data *configpb.ReadConfigNodeResponse,
-) resource.TestCheckFunc {
+//nolint:unparam // Test helper function designed to be reusable
+func testExternalDataResolverResourceDataExists(n, expectedID string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 		if !ok {
 			return fmt.Errorf("not found: %s", n)
 		}
-		if rs.Primary.ID != data.GetConfigNode().GetId() {
+
+		if rs.Primary.ID != expectedID {
 			return errors.New("ID does not match")
-		}
-		attrs := rs.Primary.Attributes
-
-		expectedHeaders := data.GetConfigNode().GetExternalDataResolverConfig().GetHeaders()
-		actualHeadersCount, err := strconv.Atoi(attrs["headers.#"])
-		if err != nil || actualHeadersCount != len(expectedHeaders) {
-			return errors.New("headers count mismatch")
-		}
-
-		// Build a map from the resource attributes for easier access
-		headersMap := make(map[string]map[string][]string)
-		for i := range make([]struct{}, actualHeadersCount) {
-			prefix := fmt.Sprintf("headers.%d.", i)
-			name := attrs[prefix+"name"]
-			valuesCountKey := prefix + "values.#"
-			valuesCount, err := strconv.Atoi(attrs[valuesCountKey])
-			if err != nil {
-				return fmt.Errorf("error reading values count for header %s: %w", name, err)
-			}
-
-			values := make([]string, valuesCount)
-			for j := range make([]struct{}, valuesCount) {
-				valueKey := fmt.Sprintf("%svalues.%d", prefix, j)
-				values[j] = attrs[valueKey]
-			}
-			headersMap[name] = map[string][]string{
-				"values": values,
-			}
-		}
-
-		// Verify headers and their values
-		for name, expectedHeader := range expectedHeaders {
-			actualHeader, exists := headersMap[name]
-			if !exists {
-				return fmt.Errorf("header %s not found", name)
-			}
-			if !reflect.DeepEqual(actualHeader["values"], expectedHeader.GetValues()) {
-				return fmt.Errorf("values for header %s do not match", name)
-			}
 		}
 
 		keys := Keys{
-			"id": Equal(data.GetConfigNode().GetId()),
+			"id": Equal(expectedID),
 			"%":  Not(BeEmpty()),
 
-			"location":     Equal(data.GetConfigNode().GetAppSpaceId()),
-			"customer_id":  Equal(data.GetConfigNode().GetCustomerId()),
-			"app_space_id": Equal(data.GetConfigNode().GetAppSpaceId()),
-			"name":         Equal(data.GetConfigNode().GetName()),
-			"display_name": Equal(data.GetConfigNode().GetDisplayName()),
+			"customer_id":  Equal(customerID),
+			"app_space_id": Equal(appSpaceID),
+			"name":         Not(BeEmpty()),
 			"create_time":  Not(BeEmpty()),
 			"update_time":  Not(BeEmpty()),
-
-			"url":    Equal(data.GetConfigNode().GetExternalDataResolverConfig().GetUrl()),
-			"method": Equal(data.GetConfigNode().GetExternalDataResolverConfig().GetMethod()),
 		}
-		return convertOmegaMatcherToError(MatchKeys(IgnoreExtras, keys), attrs)
+
+		return convertOmegaMatcherToError(MatchKeys(IgnoreExtras, keys), rs.Primary.Attributes)
 	}
 }

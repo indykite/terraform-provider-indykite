@@ -15,13 +15,12 @@
 package indykite
 
 import (
+	"context"
 	"math"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/indykite/indykite-sdk-go/config"
-	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 )
 
 const (
@@ -32,16 +31,14 @@ const (
 )
 
 func resourceEntityMatchingPipeline() *schema.Resource {
-	readContext := configReadContextFunc(resourceEntityMatchingPipelineFlatten)
-
 	return &schema.Resource{
 		Description: "The EntityMatchingPipeline facilitates the setup of a configuration to detect " +
 			"and match identical nodes in the Identity Knowledge Graph. ",
 
-		CreateContext: configCreateContextFunc(resourceEntityMatchingPipelineBuild, readContext),
-		ReadContext:   readContext,
-		UpdateContext: configUpdateContextFunc(resourceEntityMatchingPipelineBuild, readContext),
-		DeleteContext: configDeleteContextFunc(),
+		CreateContext: resEntityMatchingPipelineCreate,
+		ReadContext:   resEntityMatchingPipelineRead,
+		UpdateContext: resEntityMatchingPipelineUpdate,
+		DeleteContext: resEntityMatchingPipelineDelete,
 		Importer: &schema.ResourceImporter{
 			StateContext: basicStateImporter,
 		},
@@ -80,8 +77,9 @@ func resourceEntityMatchingPipeline() *schema.Resource {
 			},
 			entityMatchingPipelineSimilarityScoreCutOffKey: {
 				Type:         schema.TypeFloat,
-				Description:  "Similarity score cutoff to be used in the entity matching pipeline.",
+				Description:  "Similarity score cutoff to be used in the entity matching pipeline. Defaults to 0.5 if not specified.",
 				Optional:     true,
+				Default:      0.5,
 				ValidateFunc: validation.FloatBetween(0, 1),
 			},
 			entityMatchingPipelineRerunInterval: {
@@ -93,60 +91,133 @@ func resourceEntityMatchingPipeline() *schema.Resource {
 	}
 }
 
-func resourceEntityMatchingPipelineFlatten(
-	data *schema.ResourceData,
-	resp *configpb.ReadConfigNodeResponse,
-) diag.Diagnostics {
+func resEntityMatchingPipelineCreate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
 	var d diag.Diagnostics
-	entitymatching := resp.GetConfigNode().GetEntityMatchingPipelineConfig()
-
-	sourceTypes := make([]string, len(entitymatching.GetNodeFilter().GetSourceNodeTypes()))
-	for i, source := range entitymatching.GetNodeFilter().GetSourceNodeTypes() {
-		sourceTypes[i] = source
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
 	}
-	setData(&d, data, entityMatchingPipelineSourceNodeFilterKey, sourceTypes)
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
+	defer cancel()
 
-	targetTypes := make([]string, len(entitymatching.GetNodeFilter().GetTargetNodeTypes()))
-	for i, target := range entitymatching.GetNodeFilter().GetTargetNodeTypes() {
-		targetTypes[i] = target
+	req := CreateEntityMatchingPipelineRequest{
+		ProjectID:   data.Get(locationKey).(string),
+		Name:        data.Get(nameKey).(string),
+		DisplayName: stringValue(optionalString(data, displayNameKey)),
+		Description: stringValue(optionalString(data, descriptionKey)),
+		NodeFilter: &EntityMatchingNodeFilter{
+			SourceNodeTypes: rawArrayToTypedArray[string](data.Get(entityMatchingPipelineSourceNodeFilterKey)),
+			TargetNodeTypes: rawArrayToTypedArray[string](data.Get(entityMatchingPipelineTargetNodeFilterKey)),
+		},
+		SimilarityScoreCutoff: float32(data.Get(entityMatchingPipelineSimilarityScoreCutOffKey).(float64)),
 	}
-	setData(&d, data, entityMatchingPipelineTargetNodeFilterKey, targetTypes)
 
-	var ratio float64 = 10000 // 4 decimal places to round number when converting float32 to float64
-	similarityScoreCutoff := entitymatching.GetSimilarityScoreCutoff()
+	if rerunInterval, ok := data.GetOk(entityMatchingPipelineRerunInterval); ok {
+		req.RerunInterval = rerunInterval.(string)
+	}
+
+	var resp EntityMatchingPipelineResponse
+	err := clientCtx.GetClient().Post(ctx, "/entity-matching-pipelines", req, &resp)
+	if HasFailed(&d, err) {
+		return d
+	}
+	data.SetId(resp.ID)
+
+	return resEntityMatchingPipelineRead(ctx, data, meta)
+}
+
+func resEntityMatchingPipelineRead(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
+	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
+	defer cancel()
+
+	var resp EntityMatchingPipelineResponse
+	// Support both ID and name?location=parent_id formats
+	path := buildReadPath("/entity-matching-pipelines", data)
+	err := clientCtx.GetClient().Get(ctx, path, &resp)
+	if readHasFailed(&d, err, data) {
+		return d
+	}
+
+	data.SetId(resp.ID)
+	setData(&d, data, customerIDKey, resp.CustomerID)
+	setData(&d, data, appSpaceIDKey, resp.AppSpaceID)
+
+	// Set location based on which is present
+	if resp.AppSpaceID != "" {
+		setData(&d, data, locationKey, resp.AppSpaceID)
+	} else if resp.CustomerID != "" {
+		setData(&d, data, locationKey, resp.CustomerID)
+	}
+
+	setData(&d, data, nameKey, resp.Name)
+	setData(&d, data, displayNameKey, resp.DisplayName)
+	setData(&d, data, descriptionKey, resp.Description)
+	setData(&d, data, createTimeKey, resp.CreateTime)
+	setData(&d, data, updateTimeKey, resp.UpdateTime)
+
+	if resp.NodeFilter != nil {
+		setData(&d, data, entityMatchingPipelineSourceNodeFilterKey, resp.NodeFilter.SourceNodeTypes)
+		setData(&d, data, entityMatchingPipelineTargetNodeFilterKey, resp.NodeFilter.TargetNodeTypes)
+	}
+
+	// Round float32 to 4 decimal places for float64 compatibility
+	var ratio float64 = 10000
 	setData(&d, data, entityMatchingPipelineSimilarityScoreCutOffKey,
-		math.Round(float64(similarityScoreCutoff)*ratio)/ratio)
+		math.Round(float64(resp.SimilarityScoreCutoff)*ratio)/ratio)
 
-	rerunInterval := entitymatching.GetRerunInterval()
-	setData(&d, data, entityMatchingPipelineRerunInterval, rerunInterval)
+	setData(&d, data, entityMatchingPipelineRerunInterval, resp.RerunInterval)
 
 	return d
 }
 
-func resourceEntityMatchingPipelineBuild(
-	_ *diag.Diagnostics,
-	data *schema.ResourceData,
-	_ *ClientContext,
-	builder *config.NodeRequest,
-) {
-	cfg := &configpb.EntityMatchingPipelineConfig{}
+func resEntityMatchingPipelineUpdate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
+	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
+	defer cancel()
 
-	sourceNodeTypes := data.Get(entityMatchingPipelineSourceNodeFilterKey)
-	targetNodeTypes := data.Get(entityMatchingPipelineTargetNodeFilterKey)
+	req := UpdateEntityMatchingPipelineRequest{
+		DisplayName: updateOptionalString(data, displayNameKey),
+		Description: updateOptionalString(data, descriptionKey),
+	}
 
-	cfg.NodeFilter = &configpb.EntityMatchingPipelineConfig_NodeFilter{
-		SourceNodeTypes: rawArrayToTypedArray[string](sourceNodeTypes),
-		TargetNodeTypes: rawArrayToTypedArray[string](targetNodeTypes),
+	if data.HasChange(entityMatchingPipelineSimilarityScoreCutOffKey) {
+		score := float32(data.Get(entityMatchingPipelineSimilarityScoreCutOffKey).(float64))
+		req.SimilarityScoreCutoff = &score
 	}
-	// Check if SimilarityScoreCutOffKey is available
-	if similarityScoreCutoff, hasSimilarityScore := data.GetOk(
-		entityMatchingPipelineSimilarityScoreCutOffKey); hasSimilarityScore {
-		cfg.SimilarityScoreCutoff = float32(similarityScoreCutoff.(float64))
+
+	if data.HasChange(entityMatchingPipelineRerunInterval) {
+		interval := data.Get(entityMatchingPipelineRerunInterval).(string)
+		req.RerunInterval = &interval
 	}
-	// Check if RerunInterval is available
-	if rerunInterval, hasRerunInterval := data.GetOk(
-		entityMatchingPipelineRerunInterval); hasRerunInterval {
-		cfg.RerunInterval = rerunInterval.(string)
+
+	var resp EntityMatchingPipelineResponse
+	err := clientCtx.GetClient().Put(ctx, "/entity-matching-pipelines/"+data.Id(), req, &resp)
+	if HasFailed(&d, err) {
+		return d
 	}
-	builder.WithEntityMatchingPipelineConfig(cfg)
+
+	return resEntityMatchingPipelineRead(ctx, data, meta)
+}
+
+func resEntityMatchingPipelineDelete(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
+	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutDelete))
+	defer cancel()
+
+	err := clientCtx.GetClient().Delete(ctx, "/entity-matching-pipelines/"+data.Id())
+	HasFailed(&d, err)
+	return d
 }

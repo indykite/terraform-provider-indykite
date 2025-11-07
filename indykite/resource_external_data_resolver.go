@@ -15,15 +15,13 @@
 package indykite
 
 import (
+	"context"
 	"regexp"
-	"sort"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/indykite/indykite-sdk-go/config"
-	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 )
 
 const (
@@ -41,15 +39,13 @@ var (
 )
 
 func resourceExternalDataResolver() *schema.Resource {
-	readContext := configReadContextFunc(resourceExternalDataResolverFlatten)
-
 	return &schema.Resource{
 		Description: "ExternalDataResolver is a configuration that allows to fetch data from external sources",
 
-		CreateContext: configCreateContextFunc(resourceExternalDataResolverBuild, readContext),
-		ReadContext:   readContext,
-		UpdateContext: configUpdateContextFunc(resourceExternalDataResolverBuild, readContext),
-		DeleteContext: configDeleteContextFunc(),
+		CreateContext: resExternalDataResolverCreate,
+		ReadContext:   resExternalDataResolverRead,
+		UpdateContext: resExternalDataResolverUpdate,
+		DeleteContext: resExternalDataResolverDelete,
 		Importer: &schema.ResourceImporter{
 			StateContext: basicStateImporter,
 		},
@@ -142,79 +138,197 @@ func resourceExternalDataResolver() *schema.Resource {
 	}
 }
 
-func resourceExternalDataResolverFlatten(
-	data *schema.ResourceData,
-	resp *configpb.ReadConfigNodeResponse,
-) diag.Diagnostics {
+func resExternalDataResolverCreate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
 	var d diag.Diagnostics
-	resolver := resp.GetConfigNode().GetExternalDataResolverConfig()
-	url := resolver.GetUrl()
-	setData(&d, data, externalDataResolverURLKey, url)
-
-	method := resolver.GetMethod()
-	setData(&d, data, externalDataResolverMethodKey, method)
-
-	headerNames := make([]string, 0, len(resolver.GetHeaders()))
-	for name := range resolver.GetHeaders() {
-		headerNames = append(headerNames, name)
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
 	}
-	sort.Strings(headerNames)
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
+	defer cancel()
 
-	headersList := make([]any, 0, len(headerNames))
-	for _, name := range headerNames {
-		header := resolver.GetHeaders()[name]
+	req := CreateExternalDataResolverRequest{
+		ProjectID:        data.Get(locationKey).(string),
+		Name:             data.Get(nameKey).(string),
+		DisplayName:      stringValue(optionalString(data, displayNameKey)),
+		Description:      stringValue(optionalString(data, descriptionKey)),
+		URL:              data.Get(externalDataResolverURLKey).(string),
+		Method:           data.Get(externalDataResolverMethodKey).(string),
+		Headers:          buildHeaders(data),
+		RequestType:      strings.ToUpper(data.Get(externalDataResolverRequestTypeKey).(string)),
+		RequestPayload:   data.Get(externalDataResolverRequestPayloadKey).(string),
+		ResponseType:     strings.ToUpper(data.Get(externalDataResolverResponseTypeKey).(string)),
+		ResponseSelector: data.Get(externalDataResolverResponseSelectorKey).(string),
+	}
+
+	var resp ExternalDataResolverResponse
+	err := clientCtx.GetClient().Post(ctx, "/external-data-resolvers", req, &resp)
+	if HasFailed(&d, err) {
+		return d
+	}
+	data.SetId(resp.ID)
+
+	return resExternalDataResolverRead(ctx, data, meta)
+}
+
+func resExternalDataResolverRead(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
+	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
+	defer cancel()
+
+	var resp ExternalDataResolverResponse
+	// Support both ID and name?location=parent_id formats
+	path := buildReadPath("/external-data-resolvers", data)
+	err := clientCtx.GetClient().Get(ctx, path, &resp)
+	if readHasFailed(&d, err, data) {
+		return d
+	}
+
+	data.SetId(resp.ID)
+	setData(&d, data, customerIDKey, resp.CustomerID)
+	setData(&d, data, appSpaceIDKey, resp.AppSpaceID)
+
+	// Set location based on which is present
+	if resp.AppSpaceID != "" {
+		setData(&d, data, locationKey, resp.AppSpaceID)
+	} else if resp.CustomerID != "" {
+		setData(&d, data, locationKey, resp.CustomerID)
+	}
+
+	setData(&d, data, nameKey, resp.Name)
+	// Only set optional fields if they have non-empty values
+	if resp.DisplayName != "" {
+		setData(&d, data, displayNameKey, resp.DisplayName)
+	}
+	if resp.Description != "" {
+		setData(&d, data, descriptionKey, resp.Description)
+	}
+	setData(&d, data, createTimeKey, resp.CreateTime)
+	setData(&d, data, updateTimeKey, resp.UpdateTime)
+
+	setData(&d, data, externalDataResolverURLKey, resp.URL)
+	setData(&d, data, externalDataResolverMethodKey, resp.Method)
+
+	// Convert headers map to list for Terraform schema
+	headersList := make([]any, 0, len(resp.Headers))
+	for name, value := range resp.Headers {
+		// Value could be a string or an array
+		var values []string
+		switch v := value.(type) {
+		case string:
+			values = []string{v}
+		case []any:
+			values = make([]string, len(v))
+			for i, val := range v {
+				values[i] = val.(string)
+			}
+		case []string:
+			values = v
+		}
 		headerMap := map[string]any{
 			"name":   name,
-			"values": header.GetValues(),
+			"values": values,
 		}
 		headersList = append(headersList, headerMap)
 	}
 	setData(&d, data, externalDataResolverHeadersKey, headersList)
 
-	requestType := resolver.GetRequestType()
-	setData(&d, data, externalDataResolverRequestTypeKey, externalDataResolverContentTypeToString[requestType])
-
-	requestPayload := resolver.GetRequestPayload()
-	setData(&d, data, externalDataResolverRequestPayloadKey, string(requestPayload))
-
-	responseType := resolver.GetResponseType()
-	setData(&d, data, externalDataResolverResponseTypeKey, externalDataResolverContentTypeToString[responseType])
-
-	responseSelector := resolver.GetResponseSelector()
-	setData(&d, data, externalDataResolverResponseSelectorKey, responseSelector)
+	setData(&d, data, externalDataResolverRequestTypeKey, strings.ToLower(resp.RequestType))
+	// Only set request_payload if it has a non-empty value
+	if resp.RequestPayload != "" {
+		setData(&d, data, externalDataResolverRequestPayloadKey, resp.RequestPayload)
+	}
+	setData(&d, data, externalDataResolverResponseTypeKey, strings.ToLower(resp.ResponseType))
+	setData(&d, data, externalDataResolverResponseSelectorKey, resp.ResponseSelector)
 
 	return d
 }
 
-func resourceExternalDataResolverBuild(
-	_ *diag.Diagnostics,
-	data *schema.ResourceData,
-	_ *ClientContext,
-	builder *config.NodeRequest,
-) {
-	requestPayloadStr := data.Get(externalDataResolverRequestPayloadKey).(string)
-	cfg := &configpb.ExternalDataResolverConfig{
-		Url:     data.Get(externalDataResolverURLKey).(string),
-		Method:  data.Get(externalDataResolverMethodKey).(string),
-		Headers: getHeaders(data),
-		RequestType: ExternalDataResolverConfigContentType[strings.ToLower(data.Get(
-			externalDataResolverRequestTypeKey).(string))],
-		RequestPayload: []byte(requestPayloadStr),
-		ResponseType: ExternalDataResolverConfigContentType[strings.ToLower(data.Get(
-			externalDataResolverResponseTypeKey).(string))],
-		ResponseSelector: data.Get(externalDataResolverResponseSelectorKey).(string),
+func resExternalDataResolverUpdate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
 	}
-	builder.WithExternalDataResolverConfig(cfg)
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
+	defer cancel()
+
+	req := UpdateExternalDataResolverRequest{
+		DisplayName: updateOptionalString(data, displayNameKey),
+		Description: updateOptionalString(data, descriptionKey),
+	}
+
+	if data.HasChange(externalDataResolverURLKey) {
+		url := data.Get(externalDataResolverURLKey).(string)
+		req.URL = &url
+	}
+
+	if data.HasChange(externalDataResolverMethodKey) {
+		method := data.Get(externalDataResolverMethodKey).(string)
+		req.Method = &method
+	}
+
+	if data.HasChange(externalDataResolverHeadersKey) {
+		req.Headers = buildHeaders(data)
+	}
+
+	if data.HasChange(externalDataResolverRequestTypeKey) {
+		requestType := strings.ToUpper(data.Get(externalDataResolverRequestTypeKey).(string))
+		req.RequestType = &requestType
+	}
+
+	if data.HasChange(externalDataResolverRequestPayloadKey) {
+		requestPayload := data.Get(externalDataResolverRequestPayloadKey).(string)
+		req.RequestPayload = &requestPayload
+	}
+
+	if data.HasChange(externalDataResolverResponseTypeKey) {
+		responseType := strings.ToUpper(data.Get(externalDataResolverResponseTypeKey).(string))
+		req.ResponseType = &responseType
+	}
+
+	if data.HasChange(externalDataResolverResponseSelectorKey) {
+		responseSelector := data.Get(externalDataResolverResponseSelectorKey).(string)
+		req.ResponseSelector = &responseSelector
+	}
+
+	var resp ExternalDataResolverResponse
+	err := clientCtx.GetClient().Put(ctx, "/external-data-resolvers/"+data.Id(), req, &resp)
+	if HasFailed(&d, err) {
+		return d
+	}
+
+	return resExternalDataResolverRead(ctx, data, meta)
 }
 
-func getHeaders(data *schema.ResourceData) map[string]*configpb.ExternalDataResolverConfig_Header {
+func resExternalDataResolverDelete(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
+	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutDelete))
+	defer cancel()
+
+	err := clientCtx.GetClient().Delete(ctx, "/external-data-resolvers/"+data.Id())
+	HasFailed(&d, err)
+	return d
+}
+
+// buildHeaders converts Terraform schema headers to REST API headers format.
+func buildHeaders(data *schema.ResourceData) map[string]any {
 	headersSet := data.Get(externalDataResolverHeadersKey).(*schema.Set)
-	headers := make(map[string]*configpb.ExternalDataResolverConfig_Header, headersSet.Len())
+	headers := make(map[string]any, headersSet.Len())
 	for _, h := range headersSet.List() {
 		headerData := h.(map[string]any)
 		name := headerData["name"].(string)
 		values := rawArrayToTypedArray[string](headerData["values"])
-		headers[name] = &configpb.ExternalDataResolverConfig_Header{Values: values}
+		// Store as array of values
+		headers[name] = values
 	}
 	return headers
 }

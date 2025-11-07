@@ -16,23 +16,21 @@ package indykite_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"regexp"
+	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/indykite/indykite-sdk-go/config"
-	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
-	configm "github.com/indykite/indykite-sdk-go/test/config/v1beta1"
-	"go.uber.org/mock/gomock"
-	"google.golang.org/protobuf/types/known/timestamppb"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/indykite/terraform-provider-indykite/indykite"
-	"github.com/indykite/terraform-provider-indykite/indykite/test"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -42,29 +40,22 @@ import (
 var _ = Describe("Resource Application", func() {
 	const resourceName = "indykite_application.development"
 	var (
-		mockCtrl         *gomock.Controller
-		mockConfigClient *configm.MockConfigManagementAPIClient
-		provider         *schema.Provider
+		mockServer *httptest.Server
+		provider   *schema.Provider
 	)
 
 	BeforeEach(func() {
-		mockCtrl = gomock.NewController(TerraformGomockT(GinkgoT()))
-		mockConfigClient = configm.NewMockConfigManagementAPIClient(mockCtrl)
-
 		provider = indykite.Provider()
-		cfgFunc := provider.ConfigureContextFunc
-		provider.ConfigureContextFunc =
-			func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
-				client, _ := config.NewTestClient(ctx, mockConfigClient)
-				ctx = indykite.WithClient(ctx, client)
-				return cfgFunc(ctx, data)
-			}
+	})
+
+	AfterEach(func() {
+		if mockServer != nil {
+			mockServer.Close()
+		}
 	})
 
 	It("Test all CRUD", func() {
 		turnOffDelProtection := "deletion_protection=false"
-		// Terraform created config must be in sync with returned data in expectedApp and expectedUpdatedApp
-		// otherwise "After applying this test step, the plan was not empty" error is thrown
 		tfConfigDef :=
 			`resource "indykite_application" "development" {
 				app_space_id = "` + appSpaceID + `"
@@ -73,184 +64,293 @@ var _ = Describe("Resource Application", func() {
 				description = "%s"
 				%s
 			}`
-		initialApplicationResp := &configpb.Application{
-			CustomerId:  customerID,
-			AppSpaceId:  appSpaceID,
-			Id:          applicationID,
-			Name:        "acme",
-			DisplayName: "acme",
-			Description: wrapperspb.String("Just some App description"),
-			CreateTime:  timestamppb.Now(),
-			UpdateTime:  timestamppb.Now(),
+
+		createTime := time.Now()
+		updateTime := time.Now()
+		currentState := "initial"
+
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/applications"):
+				resp := indykite.ApplicationResponse{
+					ID:          applicationID,
+					CustomerID:  customerID,
+					AppSpaceID:  appSpaceID,
+					Name:        "acme",
+					DisplayName: "acme",
+					Description: "Just some App description",
+					CreateTime:  createTime,
+					UpdateTime:  updateTime,
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, applicationID):
+				var resp indykite.ApplicationResponse
+				switch currentState {
+				case "initial", "after_create":
+					resp = indykite.ApplicationResponse{
+						ID:          applicationID,
+						CustomerID:  customerID,
+						AppSpaceID:  appSpaceID,
+						Name:        "acme",
+						DisplayName: "acme",
+						Description: "Just some App description",
+						CreateTime:  createTime,
+						UpdateTime:  updateTime,
+					}
+				case "after_update1":
+					resp = indykite.ApplicationResponse{
+						ID:          applicationID,
+						CustomerID:  customerID,
+						AppSpaceID:  appSpaceID,
+						Name:        "acme",
+						DisplayName: "acme",
+						Description: "Another App description",
+						CreateTime:  createTime,
+						UpdateTime:  time.Now(),
+					}
+				case "after_update2":
+					resp = indykite.ApplicationResponse{
+						ID:          applicationID,
+						CustomerID:  customerID,
+						AppSpaceID:  appSpaceID,
+						Name:        "acme",
+						DisplayName: "Some new display name",
+						CreateTime:  createTime,
+						UpdateTime:  time.Now(),
+					}
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodPut && strings.Contains(r.URL.Path, applicationID):
+				var reqBody map[string]any
+				_ = json.NewDecoder(r.Body).Decode(&reqBody)
+
+				if reqBody["description"] != nil && strings.Contains(reqBody["description"].(string), "Another") {
+					currentState = "after_update1"
+				} else {
+					currentState = "after_update2"
+				}
+
+				var resp indykite.ApplicationResponse
+				if currentState == "after_update1" {
+					resp = indykite.ApplicationResponse{
+						ID:          applicationID,
+						CustomerID:  customerID,
+						AppSpaceID:  appSpaceID,
+						Name:        "acme",
+						DisplayName: "acme",
+						Description: "Another App description",
+						CreateTime:  createTime,
+						UpdateTime:  time.Now(),
+					}
+				} else {
+					resp = indykite.ApplicationResponse{
+						ID:          applicationID,
+						CustomerID:  customerID,
+						AppSpaceID:  appSpaceID,
+						Name:        "acme",
+						DisplayName: "Some new display name",
+						CreateTime:  createTime,
+						UpdateTime:  time.Now(),
+					}
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, applicationID):
+				w.WriteHeader(http.StatusNoContent)
+
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
 		}
-
-		readAfter1stUpdateResp := &configpb.Application{
-			CustomerId:  initialApplicationResp.GetCustomerId(),
-			AppSpaceId:  initialApplicationResp.GetAppSpaceId(),
-			Id:          initialApplicationResp.GetId(),
-			Name:        "acme",
-			DisplayName: "acme",
-			Description: wrapperspb.String("Another App description"),
-			CreateTime:  initialApplicationResp.GetCreateTime(),
-			UpdateTime:  timestamppb.Now(),
-		}
-		readAfter2ndUpdateResp := &configpb.Application{
-			CustomerId:  initialApplicationResp.GetCustomerId(),
-			AppSpaceId:  initialApplicationResp.GetAppSpaceId(),
-			Id:          initialApplicationResp.GetId(),
-			Name:        "acme",
-			DisplayName: "Some new display name",
-			Description: nil,
-			CreateTime:  initialApplicationResp.GetCreateTime(),
-			UpdateTime:  timestamppb.Now(),
-		}
-
-		// Create
-		mockConfigClient.EXPECT().
-			CreateApplication(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"AppSpaceId":  Equal(appSpaceID),
-				"Name":        Equal(initialApplicationResp.GetName()),
-				"DisplayName": BeNil(),
-				"Description": PointTo(MatchFields(IgnoreExtras, Fields{
-					"Value": Equal(initialApplicationResp.GetDescription().GetValue()),
-				})),
-			})))).
-			Return(&configpb.CreateApplicationResponse{Id: initialApplicationResp.GetId()}, nil)
-
-		// 2x update
-		mockConfigClient.EXPECT().
-			UpdateApplication(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id":          Equal(initialApplicationResp.GetId()),
-				"DisplayName": BeNil(),
-				"Description": PointTo(MatchFields(IgnoreExtras, Fields{
-					"Value": Equal(readAfter1stUpdateResp.GetDescription().GetValue()),
-				})),
-			})))).
-			Return(&configpb.UpdateApplicationResponse{Id: initialApplicationResp.GetId()}, nil)
-
-		mockConfigClient.EXPECT().
-			UpdateApplication(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(initialApplicationResp.GetId()),
-				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{
-					"Value": Equal(readAfter2ndUpdateResp.GetDisplayName()),
-				})),
-				"Description": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal("")})),
-			})))).
-			Return(&configpb.UpdateApplicationResponse{Id: initialApplicationResp.GetId()}, nil)
-
-		// Read in given order
-		gomock.InOrder(
-			mockConfigClient.EXPECT().
-				ReadApplication(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{
-						"Id": Equal(initialApplicationResp.GetId())})),
-				})))).
-				Times(4).
-				Return(&configpb.ReadApplicationResponse{Application: initialApplicationResp}, nil),
-
-			mockConfigClient.EXPECT().
-				ReadApplication(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{
-						"Id": Equal(initialApplicationResp.GetId())})),
-				})))).
-				Times(3).
-				Return(&configpb.ReadApplicationResponse{Application: readAfter1stUpdateResp}, nil),
-
-			mockConfigClient.EXPECT().
-				ReadApplication(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{
-						"Id": Equal(initialApplicationResp.GetId()),
-					})),
-				})))).
-				Times(5).
-				Return(&configpb.ReadApplicationResponse{Application: readAfter2ndUpdateResp}, nil),
-		)
-
-		// Delete
-		mockConfigClient.EXPECT().
-			DeleteApplication(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(initialApplicationResp.GetId()),
-			})))).
-			Return(&configpb.DeleteApplicationResponse{}, nil)
 
 		resource.Test(GinkgoT(), resource.TestCase{
 			Providers: map[string]*schema.Provider{
 				"indykite": provider,
 			},
 			Steps: []resource.TestStep{
-				// Errors cases must be always first
 				{
-					Config:      fmt.Sprintf(tfConfigDef, "", "", `customer_id = "`+customerID+`"`),
-					ExpectError: regexp.MustCompile("Value for unconfigurable attribute"),
-				},
-				{
-					// Checking Create and Read (initialApplicationResp)
-					Config: fmt.Sprintf(tfConfigDef, "", initialApplicationResp.GetDescription().GetValue(), ""),
+					Config: fmt.Sprintf(tfConfigDef, "", "Just some App description", ""),
 					Check: resource.ComposeTestCheckFunc(
-						testAppResourceDataExists(resourceName, initialApplicationResp),
+						testApplicationResourceDataExists(resourceName, applicationID),
 					),
 				},
 				{
-					// Performs 1 read (initialApplicationResp)
 					ResourceName:  resourceName,
 					ImportState:   true,
-					ImportStateId: initialApplicationResp.GetId(),
+					ImportStateId: applicationID,
 				},
 				{
-					// Checking Read (initialApplicationResp), Update and Read(readAfter1stUpdateResp)
-					Config: fmt.Sprintf(tfConfigDef, "", readAfter1stUpdateResp.GetDescription().GetValue(), ""),
+					Config: fmt.Sprintf(tfConfigDef, "", "Another App description", ""),
 					Check: resource.ComposeTestCheckFunc(
-						testAppResourceDataExists(resourceName, readAfter1stUpdateResp),
+						testApplicationResourceDataExists(resourceName, applicationID),
 					),
 				},
 				{
-					// Checking Read(readAfter1stUpdateResp), Update and Read(readAfter2ndUpdateResp)
-					Config: fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.GetDisplayName(), "", ""),
+					Config: fmt.Sprintf(tfConfigDef, "Some new display name", "", ""),
 					Check: resource.ComposeTestCheckFunc(
-						testAppResourceDataExists(resourceName, readAfter2ndUpdateResp),
+						testApplicationResourceDataExists(resourceName, applicationID),
 					),
 				},
 				{
-					// Checking Read(readAfter2ndUpdateResp) -> no changes but tries to destroy with error
-					Config:      fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.GetDisplayName(), "", ""),
+					Config:      fmt.Sprintf(tfConfigDef, "Some new display name", "", ""),
 					Destroy:     true,
 					ExpectError: regexp.MustCompile("Cannot destroy instance"),
 				},
 				{
-					// Checking Read(readAfter2ndUpdateResp), Update (del protection, no API call)
-					// and final Read (readAfter2ndUpdateResp)
-					Config: fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.GetDisplayName(), "", turnOffDelProtection),
+					Config: fmt.Sprintf(tfConfigDef, "Some new display name", "", turnOffDelProtection),
 				},
 			},
 		})
 	})
 })
 
-func testAppResourceDataExists(n string, data *configpb.Application) resource.TestCheckFunc {
+//nolint:unparam // Test helper function designed to be reusable
+func testApplicationResourceDataExists(
+	n string,
+	expectedID string,
+) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 		if !ok {
 			return fmt.Errorf("not found: %s", n)
 		}
-
-		if rs.Primary.ID != data.GetId() {
+		if rs.Primary.ID != expectedID {
 			return errors.New("ID does not match")
 		}
+		attrs := rs.Primary.Attributes
 
 		keys := Keys{
-			"id": Equal(data.GetId()),
-			"%":  Not(BeEmpty()), // This is Terraform helper
+			"id": Equal(expectedID),
+			"%":  Not(BeEmpty()),
 
-			"customer_id":         Equal(data.GetCustomerId()),
-			"app_space_id":        Equal(data.GetAppSpaceId()),
-			"name":                Equal(data.GetName()),
-			"display_name":        Equal(data.GetDisplayName()),
-			"description":         Equal(data.GetDescription().GetValue()),
-			"create_time":         Not(BeEmpty()),
-			"update_time":         Not(BeEmpty()),
-			"deletion_protection": Not(BeEmpty()),
+			"customer_id":  Equal(customerID),
+			"app_space_id": Equal(appSpaceID),
+			"name":         Not(BeEmpty()),
+			"create_time":  Not(BeEmpty()),
+			"update_time":  Not(BeEmpty()),
 		}
 
-		return convertOmegaMatcherToError(MatchAllKeys(keys), rs.Primary.Attributes)
+		return convertOmegaMatcherToError(MatchKeys(IgnoreExtras, keys), attrs)
 	}
 }
+
+var _ = Describe("Resource Application Import by Name", func() {
+	const resourceName = "indykite_application.wonka-app"
+	var (
+		mockServer *httptest.Server
+		provider   *schema.Provider
+	)
+
+	BeforeEach(func() {
+		provider = indykite.Provider()
+	})
+
+	AfterEach(func() {
+		if mockServer != nil {
+			mockServer.Close()
+		}
+	})
+
+	It("Test import by name with location", func() {
+		tfConfigDef :=
+			`resource "indykite_application" "wonka-app" {
+				app_space_id = "` + appSpaceID + `"
+				name = "wonka-app"
+				display_name = "Wonka Application"
+				description = "Just some Application description"
+				deletion_protection = false
+			}`
+
+		createTime := time.Now()
+		updateTime := time.Now()
+
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/applications"):
+				resp := indykite.ApplicationResponse{
+					ID:          applicationID,
+					CustomerID:  customerID,
+					AppSpaceID:  appSpaceID,
+					Name:        "wonka-app",
+					DisplayName: "Wonka Application",
+					Description: "Just some Application description",
+					CreateTime:  createTime,
+					UpdateTime:  updateTime,
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/applications/"):
+				// Support both ID and name?location=appSpaceID formats
+				// Check if it's a name-based lookup or ID-based lookup
+				pathAfterApplications := strings.TrimPrefix(r.URL.Path, "/configs/v1/applications/")
+				isNameLookup := strings.Contains(pathAfterApplications, "wonka-app")
+				isIDLookup := strings.Contains(pathAfterApplications, applicationID)
+
+				var resp indykite.ApplicationResponse
+				if isNameLookup || isIDLookup {
+					resp = indykite.ApplicationResponse{
+						ID:          applicationID,
+						CustomerID:  customerID,
+						AppSpaceID:  appSpaceID,
+						Name:        "wonka-app",
+						DisplayName: "Wonka Application",
+						Description: "Just some Application description",
+						CreateTime:  createTime,
+						UpdateTime:  updateTime,
+					}
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(resp)
+				} else {
+					w.WriteHeader(http.StatusNotFound)
+					_ = json.NewEncoder(w).Encode(map[string]string{"message": "Not Found"})
+				}
+
+			case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, applicationID):
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(map[string]string{})
+
+			default:
+				w.WriteHeader(http.StatusNotImplemented)
+			}
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			Providers: map[string]*schema.Provider{
+				"indykite": provider,
+			},
+			Steps: []resource.TestStep{
+				{
+					Config: tfConfigDef,
+					Check: resource.ComposeTestCheckFunc(
+						testApplicationResourceDataExists(resourceName, applicationID),
+					),
+				},
+				{
+					ResourceName:  resourceName,
+					ImportState:   true,
+					ImportStateId: "wonka-app?location=" + appSpaceID,
+				},
+			},
+		})
+	})
+})

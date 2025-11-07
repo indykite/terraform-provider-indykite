@@ -16,7 +16,6 @@ package indykite
 
 import (
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -27,10 +26,6 @@ import (
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	sdkerrors "github.com/indykite/indykite-sdk-go/errors"
-	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
-	"google.golang.org/protobuf/types/known/timestamppb"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 	"gopkg.in/yaml.v3"
 )
 
@@ -197,23 +192,15 @@ func SuppressDurationDiff(_, oldValue, newValue string, _ *schema.ResourceData) 
 	return oldDur == newDur
 }
 
-func optionalString(data *schema.ResourceData, key string) *wrapperspb.StringValue {
+func optionalString(data *schema.ResourceData, key string) *string {
 	v, ok := data.Get(key).(string)
 	if !ok || v == "" {
 		return nil
 	}
-	return wrapperspb.String(v)
+	return &v
 }
 
-// flattenOptionalString returns String if v is not nil and v is not empty else returns nil.
-func flattenOptionalString(v *wrapperspb.StringValue) any {
-	if v.GetValue() != "" {
-		return v.GetValue()
-	}
-	return nil
-}
-
-func updateOptionalString(data *schema.ResourceData, key string) *wrapperspb.StringValue {
+func updateOptionalString(data *schema.ResourceData, key string) *string {
 	if !data.HasChange(key) {
 		return nil
 	}
@@ -221,7 +208,7 @@ func updateOptionalString(data *schema.ResourceData, key string) *wrapperspb.Str
 	if !ok {
 		return nil
 	}
-	return wrapperspb.String(v)
+	return &v
 }
 
 func setData(d *diag.Diagnostics, data *schema.ResourceData, attr string, value any) {
@@ -237,32 +224,11 @@ func setData(d *diag.Diagnostics, data *schema.ResourceData, attr string, value 
 		}
 	}
 
-	switch v := value.(type) {
-	case *wrapperspb.StringValue:
-		value = v.GetValue()
-	case *wrapperspb.Int32Value:
-		value = v.GetValue()
-	case *wrapperspb.Int64Value:
-		value = v.GetValue()
-	case *wrapperspb.UInt32Value:
-		value = v.GetValue()
-	case *wrapperspb.UInt64Value:
-		value = v.GetValue()
-	case *wrapperspb.BoolValue:
-		value = v.GetValue()
-	case *wrapperspb.BytesValue:
-		value = v.GetValue()
-	case *wrapperspb.FloatValue:
-		value = v.GetValue()
-	case *timestamppb.Timestamp:
-		if v == nil {
+	if v, ok := value.(time.Time); ok {
+		if v.IsZero() {
 			return
 		}
-		t := v.AsTime()
-		if t.IsZero() {
-			return
-		}
-		value = t.Format(time.RFC3339Nano)
+		value = v.Format(time.RFC3339Nano)
 	}
 
 	if err := data.Set(attr, value); err != nil {
@@ -294,14 +260,14 @@ func HasFailed(d *diag.Diagnostics, err error) bool {
 	case err == nil:
 		return false
 
-	case sdkerrors.IsServiceError(err):
+	case IsServiceError(err):
 		*d = append(*d, diag.Diagnostic{
 			Severity: diag.Error,
 			Summary:  "Communication with IndyKite failed, please try again later",
 			Detail:   err.Error(),
 		})
 
-	case sdkerrors.IsNotFoundError(err):
+	case IsNotFoundError(err):
 		*d = append(*d, diag.Diagnostic{
 			Severity: diag.Warning,
 			Summary:  "Resource not found",
@@ -317,7 +283,7 @@ func HasFailed(d *diag.Diagnostics, err error) bool {
 
 func readHasFailed(d *diag.Diagnostics, err error, data *schema.ResourceData) bool {
 	if HasFailed(d, err) {
-		if sdkerrors.IsNotFoundError(err) {
+		if IsNotFoundError(err) {
 			_ = schema.RemoveFromState(data, nil)
 		}
 		return true
@@ -377,18 +343,46 @@ func ReverseProtoEnumMap[Key, Value comparable](in map[Key]Value) map[Value]Key 
 	return reversed
 }
 
-// AuthorizationPolicyStatusTypes defines all supported StatusTypes and its mapping.
-var AuthorizationPolicyStatusTypes = map[string]configpb.AuthorizationPolicyConfig_Status{
-	"active":   configpb.AuthorizationPolicyConfig_STATUS_ACTIVE,
-	"inactive": configpb.AuthorizationPolicyConfig_STATUS_INACTIVE,
-	"draft":    configpb.AuthorizationPolicyConfig_STATUS_DRAFT,
+// AuthorizationPolicyStatusTypes defines all supported StatusTypes.
+var AuthorizationPolicyStatusTypes = map[string]string{
+	"active":   "active",
+	"inactive": "inactive",
+	"draft":    "draft",
 }
 
-// KnowledgeQueryStatusTypes defines all supported StatusTypes and its mapping.
-var KnowledgeQueryStatusTypes = map[string]configpb.KnowledgeQueryConfig_Status{
-	"active":   configpb.KnowledgeQueryConfig_STATUS_ACTIVE,
-	"inactive": configpb.KnowledgeQueryConfig_STATUS_INACTIVE,
-	"draft":    configpb.KnowledgeQueryConfig_STATUS_DRAFT,
+// AuthorizationPolicyStatusToAPI maps Terraform status values to API values.
+var AuthorizationPolicyStatusToAPI = map[string]string{
+	"active":   "ACTIVE",
+	"inactive": "INACTIVE",
+	"draft":    "DRAFT",
+}
+
+// AuthorizationPolicyStatusFromAPI maps API status values to Terraform values.
+var AuthorizationPolicyStatusFromAPI = map[string]string{
+	"ACTIVE":   "active",
+	"INACTIVE": "inactive",
+	"DRAFT":    "draft",
+}
+
+// KnowledgeQueryStatusTypes defines all supported StatusTypes.
+var KnowledgeQueryStatusTypes = map[string]string{
+	"active":   "active",
+	"inactive": "inactive",
+	"draft":    "draft",
+}
+
+// KnowledgeQueryStatusToAPI maps Terraform status values to API values.
+var KnowledgeQueryStatusToAPI = map[string]string{
+	"active":   "ACTIVE",
+	"inactive": "INACTIVE",
+	"draft":    "DRAFT",
+}
+
+// KnowledgeQueryStatusFromAPI maps API status values to Terraform values.
+var KnowledgeQueryStatusFromAPI = map[string]string{
+	"ACTIVE":   "active",
+	"INACTIVE": "inactive",
+	"DRAFT":    "draft",
 }
 
 // ProtoValidateError tries to define interface for all Proto Validation errors,
@@ -407,83 +401,76 @@ type ProtoValidateError interface {
 }
 
 // IngestPipelineOperationTypes defines all supported IngestPipelineOperationTypes and its mapping.
-//
-//nolint:lll
-var IngestPipelineOperationTypes = map[string]configpb.IngestPipelineOperation{
-	"OPERATION_UPSERT_NODE":                  configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_UPSERT_NODE,
-	"OPERATION_UPSERT_RELATIONSHIP":          configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_UPSERT_RELATIONSHIP,
-	"OPERATION_DELETE_NODE":                  configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_DELETE_NODE,
-	"OPERATION_DELETE_RELATIONSHIP":          configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_DELETE_RELATIONSHIP,
-	"OPERATION_DELETE_NODE_PROPERTY":         configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_DELETE_NODE_PROPERTY,
-	"OPERATION_DELETE_RELATIONSHIP_PROPERTY": configpb.IngestPipelineOperation_INGEST_PIPELINE_OPERATION_DELETE_RELATIONSHIP_PROPERTY,
+var IngestPipelineOperationTypes = map[string]string{
+	"OPERATION_UPSERT_NODE":                  "OPERATION_UPSERT_NODE",
+	"OPERATION_UPSERT_RELATIONSHIP":          "OPERATION_UPSERT_RELATIONSHIP",
+	"OPERATION_DELETE_NODE":                  "OPERATION_DELETE_NODE",
+	"OPERATION_DELETE_RELATIONSHIP":          "OPERATION_DELETE_RELATIONSHIP",
+	"OPERATION_DELETE_NODE_PROPERTY":         "OPERATION_DELETE_NODE_PROPERTY",
+	"OPERATION_DELETE_RELATIONSHIP_PROPERTY": "OPERATION_DELETE_RELATIONSHIP_PROPERTY",
 }
 
 // IngestPipelineOperationTypesReverse is reverse mapping of IngestPipelineOperationTypes.
 var IngestPipelineOperationTypesReverse = ReverseProtoEnumMap(IngestPipelineOperationTypes)
 
 // ExternalDataResolverConfigContentType defines all supported ContentTypes and its mapping.
-var ExternalDataResolverConfigContentType = map[string]configpb.ExternalDataResolverConfig_ContentType{
-	"json": configpb.ExternalDataResolverConfig_CONTENT_TYPE_JSON,
-}
-
-var externalDataResolverContentTypeToString = map[configpb.ExternalDataResolverConfig_ContentType]string{
-	configpb.ExternalDataResolverConfig_CONTENT_TYPE_INVALID: "invalid",
-	configpb.ExternalDataResolverConfig_CONTENT_TYPE_JSON:    "json",
+var ExternalDataResolverConfigContentType = map[string]string{
+	"json": "json",
 }
 
 // TrustScoreProfileScheduleFrequencies defines all supported frequencies for trust score.
-var TrustScoreProfileScheduleFrequencies = map[string]configpb.TrustScoreProfileConfig_UpdateFrequency{
-	"UPDATE_FREQUENCY_INVALID":      configpb.TrustScoreProfileConfig_UPDATE_FREQUENCY_INVALID,
-	"UPDATE_FREQUENCY_THREE_HOURS":  configpb.TrustScoreProfileConfig_UPDATE_FREQUENCY_THREE_HOURS,
-	"UPDATE_FREQUENCY_SIX_HOURS":    configpb.TrustScoreProfileConfig_UPDATE_FREQUENCY_SIX_HOURS,
-	"UPDATE_FREQUENCY_TWELVE_HOURS": configpb.TrustScoreProfileConfig_UPDATE_FREQUENCY_TWELVE_HOURS,
-	"UPDATE_FREQUENCY_DAILY":        configpb.TrustScoreProfileConfig_UPDATE_FREQUENCY_DAILY,
+var TrustScoreProfileScheduleFrequencies = map[string]string{
+	"UPDATE_FREQUENCY_INVALID":      "UPDATE_FREQUENCY_INVALID",
+	"UPDATE_FREQUENCY_THREE_HOURS":  "UPDATE_FREQUENCY_THREE_HOURS",
+	"UPDATE_FREQUENCY_SIX_HOURS":    "UPDATE_FREQUENCY_SIX_HOURS",
+	"UPDATE_FREQUENCY_TWELVE_HOURS": "UPDATE_FREQUENCY_TWELVE_HOURS",
+	"UPDATE_FREQUENCY_DAILY":        "UPDATE_FREQUENCY_DAILY",
+}
+
+// TrustScoreProfileScheduleToAPI maps Terraform schedule values to API values.
+var TrustScoreProfileScheduleToAPI = map[string]string{
+	"UPDATE_FREQUENCY_INVALID":      "INVALID",
+	"UPDATE_FREQUENCY_THREE_HOURS":  "THREE_HOURS",
+	"UPDATE_FREQUENCY_SIX_HOURS":    "SIX_HOURS",
+	"UPDATE_FREQUENCY_TWELVE_HOURS": "TWELVE_HOURS",
+	"UPDATE_FREQUENCY_DAILY":        "DAILY",
+}
+
+// TrustScoreProfileScheduleFromAPI maps API schedule values to Terraform values.
+var TrustScoreProfileScheduleFromAPI = map[string]string{
+	"INVALID":      "UPDATE_FREQUENCY_INVALID",
+	"THREE_HOURS":  "UPDATE_FREQUENCY_THREE_HOURS",
+	"SIX_HOURS":    "UPDATE_FREQUENCY_SIX_HOURS",
+	"TWELVE_HOURS": "UPDATE_FREQUENCY_TWELVE_HOURS",
+	"DAILY":        "UPDATE_FREQUENCY_DAILY",
 }
 
 // TrustScoreDimensionNames defines all supported dimensions names for trust score.
-var TrustScoreDimensionNames = map[string]configpb.TrustScoreDimension_Name{
-	"NAME_INVALID":      configpb.TrustScoreDimension_NAME_INVALID,
-	"NAME_FRESHNESS":    configpb.TrustScoreDimension_NAME_FRESHNESS,
-	"NAME_COMPLETENESS": configpb.TrustScoreDimension_NAME_COMPLETENESS,
-	"NAME_VALIDITY":     configpb.TrustScoreDimension_NAME_VALIDITY,
-	"NAME_ORIGIN":       configpb.TrustScoreDimension_NAME_ORIGIN,
-	"NAME_VERIFICATION": configpb.TrustScoreDimension_NAME_VERIFICATION,
+// Note: NAME_INVALID is not included as it's not accepted by the API.
+var TrustScoreDimensionNames = map[string]string{
+	"NAME_FRESHNESS":    "NAME_FRESHNESS",
+	"NAME_COMPLETENESS": "NAME_COMPLETENESS",
+	"NAME_VALIDITY":     "NAME_VALIDITY",
+	"NAME_ORIGIN":       "NAME_ORIGIN",
+	"NAME_VERIFICATION": "NAME_VERIFICATION",
 }
 
-func betterValidationErrorWithPath(err error) error {
-	var protoValidErr ProtoValidateError
-	if errors.As(err, &protoValidErr) {
-		err = handleProtoValidationError(protoValidErr, true)
-	}
-	return err
+// TrustScoreDimensionToAPI maps Terraform dimension names to API values.
+var TrustScoreDimensionToAPI = map[string]string{
+	"NAME_FRESHNESS":    "FRESHNESS",
+	"NAME_COMPLETENESS": "COMPLETENESS",
+	"NAME_VALIDITY":     "VALIDITY",
+	"NAME_ORIGIN":       "ORIGIN",
+	"NAME_VERIFICATION": "VERIFICATION",
 }
 
-func handleProtoValidationError(err ProtoValidateError, withPath bool) error {
-	path := []string{
-		err.Field(),
-	}
-	for err.Cause() != nil {
-		var causeErr ProtoValidateError
-		if !errors.As(err.Cause(), &causeErr) {
-			break
-		}
-		path = append(path, causeErr.Field())
-		err = causeErr
-	}
-
-	cause := ""
-	if err.Cause() != nil {
-		cause = " caused by: " + err.Cause().Error()
-	}
-
-	var attribute string
-	if withPath {
-		attribute = strings.Join(path, ".")
-	} else {
-		attribute = path[len(attribute)-1]
-	}
-
-	return fmt.Errorf("invalid %s: %s%s", attribute, err.Reason(), cause)
+// TrustScoreDimensionFromAPI maps API dimension names to Terraform values.
+var TrustScoreDimensionFromAPI = map[string]string{
+	"FRESHNESS":    "NAME_FRESHNESS",
+	"COMPLETENESS": "NAME_COMPLETENESS",
+	"VALIDITY":     "NAME_VALIDITY",
+	"ORIGIN":       "NAME_ORIGIN",
+	"VERIFICATION": "NAME_VERIFICATION",
 }
 
 func contains[E comparable](arr []E, el E) bool {

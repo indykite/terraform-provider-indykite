@@ -20,9 +20,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/indykite/indykite-sdk-go/config"
-	api "github.com/indykite/indykite-sdk-go/grpc"
-	apicfg "github.com/indykite/indykite-sdk-go/grpc/config"
 )
 
 type (
@@ -33,8 +30,8 @@ type (
 	// ClientContext defines structure returned by ConfigureContextFunc,
 	// which is passed into resources as meta arguemnt.
 	ClientContext struct {
-		configClient *config.Client
-		config       *tfConfig
+		restClient *RestClient
+		config     *tfConfig
 	}
 
 	contextKey int
@@ -71,6 +68,8 @@ func Provider() *schema.Provider {
 			"indykite_knowledge_query":              resourceKnowledgeQuery(),
 			"indykite_trust_score_profile":          resourceTrustScoreProfile(),
 			"indykite_event_sink":                   resourceEventSink(),
+			"indykite_service_account":              resourceServiceAccount(),
+			"indykite_service_account_credential":   resourceServiceAccountCredential(),
 		},
 	}
 
@@ -92,8 +91,8 @@ func providerConfigure(
 		return nil, diags
 	}
 	return &ClientContext{
-		configClient: c,
-		config:       cfg,
+		restClient: c,
+		config:     cfg,
 	}, diags // Return diagnostics even if they contain only warnings
 }
 
@@ -106,43 +105,33 @@ func getClientContext(d *diag.Diagnostics, meta any) *ClientContext {
 	return clientCtx
 }
 
-// GetClient returns Config client, which exposes the whole config API.
-func (x *ClientContext) GetClient() *config.Client {
-	return x.configClient
+// GetClient returns REST client, which exposes the whole config API.
+func (x *ClientContext) GetClient() *RestClient {
+	return x.restClient
 }
 
-// WithClient stores the config client into the context.
-func WithClient(ctx context.Context, c *config.Client) context.Context {
+// WithClient stores the REST client into the context.
+func WithClient(ctx context.Context, c *RestClient) context.Context {
 	return context.WithValue(ctx, clientContextKey, c)
 }
 
-// getConfigClient configures and returns a fully initialized getConfigClient.
-func (*tfConfig) getConfigClient(ctx context.Context) (*config.Client, diag.Diagnostics) {
-	if client, ok := ctx.Value(clientContextKey).(*config.Client); ok {
+// getConfigClient configures and returns a fully initialized REST client.
+func (*tfConfig) getConfigClient(ctx context.Context) (*RestClient, diag.Diagnostics) {
+	if client, ok := ctx.Value(clientContextKey).(*RestClient); ok {
 		return client, nil
 	}
 
 	// This can be called multiple times, because it is called from ConfigureContextFunc,
 	// which is called for each resource.
-	conn, err := config.NewClient(ctx,
-		api.WithServiceAccount(), api.WithCredentialsLoader(apicfg.DefaultEnvironmentLoaderConfig))
+	client, err := NewRestClient(ctx)
 	if err != nil {
-		conn, err = config.NewClient(ctx,
-			api.WithServiceAccount(), api.WithCredentialsLoader(apicfg.DefaultEnvironmentLoader))
-		if err != nil {
-			return nil, diag.Diagnostics{{
-				Severity: diag.Error,
-				Summary:  "Unable to create IndyKite Config client",
-				Detail:   err.Error(),
-			}}
-		}
-		return conn, diag.Diagnostics{{
-			Severity: diag.Warning,
-			Summary: "Using deprecated environment variable for IndyKite Config client." +
-				" Please use INDYKITE_SERVICE_ACCOUNT_CREDENTIALS instead.",
+		return nil, diag.Diagnostics{{
+			Severity: diag.Error,
+			Summary:  "Unable to create IndyKite Config client",
+			Detail:   err.Error(),
 		}}
 	}
-	return conn, nil
+	return client, nil
 }
 
 func defaultDataTimeouts() *schema.ResourceTimeout {

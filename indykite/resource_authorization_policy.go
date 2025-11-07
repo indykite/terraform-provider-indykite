@@ -15,14 +15,13 @@
 package indykite
 
 import (
+	"context"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/structure"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/indykite/indykite-sdk-go/config"
-	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 )
 
 const (
@@ -32,17 +31,15 @@ const (
 )
 
 func resourceAuthorizationPolicy() *schema.Resource {
-	readContext := configReadContextFunc(resourceAuthorizationPolicyFlatten)
-
 	return &schema.Resource{
 		Description: "KBAC leverages the IndyKite Knowledge Graph to express the relationships and  " +
 			"context present in the real-world, digitally and deliver context-aware, " +
 			"fine-grained authorization decisions.",
 
-		CreateContext: configCreateContextFunc(resourceAuthorizationPolicyBuild, readContext),
-		ReadContext:   readContext,
-		UpdateContext: configUpdateContextFunc(resourceAuthorizationPolicyBuild, readContext),
-		DeleteContext: configDeleteContextFunc(),
+		CreateContext: resAuthorizationPolicyCreate,
+		ReadContext:   resAuthorizationPolicyRead,
+		UpdateContext: resAuthorizationPolicyUpdate,
+		DeleteContext: resAuthorizationPolicyDelete,
 		Importer: &schema.ResourceImporter{
 			StateContext: basicStateImporter,
 		},
@@ -87,49 +84,133 @@ func resourceAuthorizationPolicy() *schema.Resource {
 	}
 }
 
-func resourceAuthorizationPolicyFlatten(
-	data *schema.ResourceData,
-	resp *configpb.ReadConfigNodeResponse,
-) diag.Diagnostics {
+func resAuthorizationPolicyCreate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
 	var d diag.Diagnostics
-	policy := resp.GetConfigNode().GetAuthorizationPolicyConfig().GetPolicy()
-	if policy == "" {
-		return append(d, buildPluginError("config in the response is not valid AuthorizationPolicyConfig"))
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
 	}
-	setData(&d, data, authzJSONConfigKey, policy)
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
+	defer cancel()
 
-	status := resp.GetConfigNode().GetAuthorizationPolicyConfig().GetStatus()
-	if status == configpb.AuthorizationPolicyConfig_STATUS_INVALID {
-		return append(d, buildPluginError("status in the response is not valid"))
+	// Map status from Terraform format to API format
+	statusValue := data.Get(authzStatusKey).(string)
+	apiStatus := AuthorizationPolicyStatusToAPI[statusValue]
+
+	req := CreateAuthorizationPolicyRequest{
+		ProjectID:   data.Get(locationKey).(string),
+		Name:        data.Get(nameKey).(string),
+		DisplayName: stringValue(optionalString(data, displayNameKey)),
+		Description: stringValue(optionalString(data, descriptionKey)),
+		Policy:      data.Get(authzJSONConfigKey).(string),
+		Status:      apiStatus,
+		Tags:        rawArrayToTypedArray[string](data.Get(authzTagsKey).([]any)),
 	}
 
-	statusKey, exist := ReverseProtoEnumMap(AuthorizationPolicyStatusTypes)[status]
-	if !exist {
-		d = append(d, buildPluginError("unsupported Policy Status Type: "+status.String()))
+	var resp AuthorizationPolicyResponse
+	err := clientCtx.GetClient().Post(ctx, "/authorization-policies", req, &resp)
+	if HasFailed(&d, err) {
+		return d
 	}
-	setData(&d, data, authzStatusKey, statusKey)
+	data.SetId(resp.ID)
 
-	tags := resp.GetConfigNode().GetAuthorizationPolicyConfig().GetTags()
-	setData(&d, data, authzTagsKey, tags)
+	return resAuthorizationPolicyRead(ctx, data, meta)
+}
+
+func resAuthorizationPolicyRead(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
+	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
+	defer cancel()
+
+	var resp AuthorizationPolicyResponse
+	// Support both ID and name?location=parent_id formats
+	path := buildReadPath("/authorization-policies", data)
+	err := clientCtx.GetClient().Get(ctx, path, &resp)
+	if readHasFailed(&d, err, data) {
+		return d
+	}
+
+	data.SetId(resp.ID)
+	setData(&d, data, customerIDKey, resp.CustomerID)
+	setData(&d, data, appSpaceIDKey, resp.AppSpaceID)
+
+	// Set location based on which is present
+	if resp.AppSpaceID != "" {
+		setData(&d, data, locationKey, resp.AppSpaceID)
+	} else if resp.CustomerID != "" {
+		setData(&d, data, locationKey, resp.CustomerID)
+	}
+
+	setData(&d, data, nameKey, resp.Name)
+	setData(&d, data, displayNameKey, resp.DisplayName)
+	setData(&d, data, descriptionKey, resp.Description)
+	setData(&d, data, authzJSONConfigKey, resp.Policy)
+
+	// Map status from API format to Terraform format
+	terraformStatus := AuthorizationPolicyStatusFromAPI[resp.Status]
+	if terraformStatus == "" {
+		terraformStatus = resp.Status // Fallback to original value if not found
+	}
+	setData(&d, data, authzStatusKey, terraformStatus)
+	setData(&d, data, authzTagsKey, resp.Tags)
+	setData(&d, data, createTimeKey, resp.CreateTime)
+	setData(&d, data, updateTimeKey, resp.UpdateTime)
 
 	return d
 }
 
-func authorizationPolicyConfigBuilder(data *schema.ResourceData) *configpb.AuthorizationPolicyConfig {
-	cfg := &configpb.AuthorizationPolicyConfig{
-		Policy: data.Get(authzJSONConfigKey).(string),
-		Status: AuthorizationPolicyStatusTypes[data.Get(authzStatusKey).(string)],
-		Tags:   rawArrayToTypedArray[string](data.Get(authzTagsKey).([]any)),
+func resAuthorizationPolicyUpdate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
 	}
-	return cfg
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
+	defer cancel()
+
+	req := UpdateAuthorizationPolicyRequest{
+		DisplayName: updateOptionalString(data, displayNameKey),
+		Description: updateOptionalString(data, descriptionKey),
+	}
+
+	if data.HasChange(authzJSONConfigKey) {
+		policy := data.Get(authzJSONConfigKey).(string)
+		req.Policy = &policy
+	}
+
+	if data.HasChange(authzStatusKey) {
+		statusValue := data.Get(authzStatusKey).(string)
+		apiStatus := AuthorizationPolicyStatusToAPI[statusValue]
+		req.Status = &apiStatus
+	}
+
+	if data.HasChange(authzTagsKey) {
+		req.Tags = rawArrayToTypedArray[string](data.Get(authzTagsKey).([]any))
+	}
+
+	var resp AuthorizationPolicyResponse
+	err := clientCtx.GetClient().Put(ctx, "/authorization-policies/"+data.Id(), req, &resp)
+	if HasFailed(&d, err) {
+		return d
+	}
+
+	return resAuthorizationPolicyRead(ctx, data, meta)
 }
 
-func resourceAuthorizationPolicyBuild(
-	_ *diag.Diagnostics,
-	data *schema.ResourceData,
-	_ *ClientContext,
-	builder *config.NodeRequest,
-) {
-	cfg := authorizationPolicyConfigBuilder(data)
-	builder.WithAuthorizationPolicyConfig(cfg)
+func resAuthorizationPolicyDelete(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
+	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutDelete))
+	defer cancel()
+
+	err := clientCtx.GetClient().Delete(ctx, "/authorization-policies/"+data.Id())
+	HasFailed(&d, err)
+	return d
 }
