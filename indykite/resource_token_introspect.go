@@ -15,17 +15,13 @@
 package indykite
 
 import (
-	"fmt"
+	"context"
 	"regexp"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/structure"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/indykite/indykite-sdk-go/config"
-	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
-	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 //nolint:gosec // there are no secrets
@@ -57,8 +53,6 @@ var (
 )
 
 func resourceTokenIntrospect() *schema.Resource {
-	readContext := configReadContextFunc(resourceTokenIntrospectFlatten)
-
 	matcherOneOf := []string{tokenIntrospectJWTKey, tokenIntrospectOpaqueKey}
 	validationOneOf := []string{tokenIntrospectOfflineKey, tokenIntrospectOnlineKey}
 
@@ -68,10 +62,10 @@ func resourceTokenIntrospect() *schema.Resource {
 		validate these tokens, and use their content in the IndyKite platform.
 		To verify these tokens, you need to create a configuration that describes how to do the token introspection.
 		`,
-		CreateContext: configCreateContextFunc(resourceTokenIntrospectBuild, readContext),
-		ReadContext:   readContext,
-		UpdateContext: configUpdateContextFunc(resourceTokenIntrospectBuild, readContext),
-		DeleteContext: configDeleteContextFunc(),
+		CreateContext: resTokenIntrospectCreate,
+		ReadContext:   resTokenIntrospectRead,
+		UpdateContext: resTokenIntrospectUpdate,
+		DeleteContext: resTokenIntrospectDelete,
 		Importer: &schema.ResourceImporter{
 			StateContext: basicStateImporter,
 		},
@@ -87,6 +81,8 @@ func resourceTokenIntrospect() *schema.Resource {
 			descriptionKey: descriptionSchema(),
 			createTimeKey:  createTimeSchema(),
 			updateTimeKey:  updateTimeSchema(),
+			createdByKey:   createdBySchema(),
+			updatedByKey:   updatedBySchema(),
 
 			tokenIntrospectJWTKey: setExactlyOneOf(&schema.Schema{
 				Type:        schema.TypeList,
@@ -212,126 +208,231 @@ func resourceTokenIntrospect() *schema.Resource {
 	}
 }
 
-func resourceTokenIntrospectFlatten(
-	data *schema.ResourceData,
-	resp *configpb.ReadConfigNodeResponse,
-) diag.Diagnostics {
+func resTokenIntrospectCreate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
 	var d diag.Diagnostics
-	tiCfg := resp.GetConfigNode().GetTokenIntrospectConfig()
-	setData(&d, data, tokenIntrospectPerformUpsertKey, tiCfg.GetPerformUpsert())
-	setData(&d, data, tokenIntrospectIKGNodeTypeKey, tiCfg.GetIkgNodeType())
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
+	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
+	defer cancel()
 
-	claimsMapping := make(map[string]any, len(tiCfg.GetClaimsMapping()))
-	for key, claim := range tiCfg.GetClaimsMapping() {
-		claimsMapping[key] = claim.GetSelector()
+	req := buildTokenIntrospectRequest(data)
+	req.ProjectID = data.Get(locationKey).(string)
+	req.Name = data.Get(nameKey).(string)
+	req.DisplayName = stringValue(optionalString(data, displayNameKey))
+	req.Description = stringValue(optionalString(data, descriptionKey))
+
+	var resp TokenIntrospectResponse
+	err := clientCtx.GetClient().Post(ctx, "/token-introspects", req, &resp)
+	if HasFailed(&d, err) {
+		return d
+	}
+	data.SetId(resp.ID)
+
+	return resTokenIntrospectRead(ctx, data, meta)
+}
+
+func resTokenIntrospectRead(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
+	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
+	defer cancel()
+
+	var resp TokenIntrospectResponse
+	// Support both ID and name?location=parent_id formats
+	path := buildReadPath("/token-introspects", data)
+	err := clientCtx.GetClient().Get(ctx, path, &resp)
+	if readHasFailed(&d, err, data) {
+		return d
+	}
+
+	data.SetId(resp.ID)
+	setData(&d, data, customerIDKey, resp.CustomerID)
+	setData(&d, data, appSpaceIDKey, resp.AppSpaceID)
+
+	// Set location based on which is present
+	if resp.AppSpaceID != "" {
+		setData(&d, data, locationKey, resp.AppSpaceID)
+	} else if resp.CustomerID != "" {
+		setData(&d, data, locationKey, resp.CustomerID)
+	}
+
+	setData(&d, data, nameKey, resp.Name)
+	setData(&d, data, displayNameKey, resp.DisplayName)
+	setData(&d, data, descriptionKey, resp.Description)
+	setData(&d, data, createTimeKey, resp.CreateTime)
+	setData(&d, data, updateTimeKey, resp.UpdateTime)
+	setData(&d, data, createdByKey, resp.CreatedBy)
+	setData(&d, data, updatedByKey, resp.UpdatedBy)
+
+	// Set token matcher (JWT or Opaque)
+	if resp.JWT != nil {
+		setData(&d, data, tokenIntrospectJWTKey, []map[string]any{{
+			tokenIntrospectIssuerKey:   resp.JWT.Issuer,
+			tokenIntrospectAudienceKey: resp.JWT.Audience,
+		}})
+	} else if resp.Opaque != nil {
+		setData(&d, data, tokenIntrospectOpaqueKey, []map[string]any{{
+			tokenIntrospectHintKey: resp.Opaque.Hint,
+		}})
+	}
+
+	// Set validation (Offline or Online)
+	if resp.Offline != nil {
+		setData(&d, data, tokenIntrospectOfflineKey, []map[string]any{{
+			tokenIntrospectPublicJWKsKey: resp.Offline.PublicJWKs,
+		}})
+	} else if resp.Online != nil {
+		setData(&d, data, tokenIntrospectOnlineKey, []map[string]any{{
+			tokenIntrospectUserInfoEPKey: resp.Online.UserinfoEndpoint,
+			tokenIntrospectCacheTTLKey:   resp.Online.CacheTTL,
+		}})
+	}
+
+	// Set claims mapping
+	claimsMapping := make(map[string]any, len(resp.ClaimsMapping))
+	for key, claim := range resp.ClaimsMapping {
+		if claim != nil {
+			claimsMapping[key] = claim.Selector
+		}
 	}
 	setData(&d, data, tokenIntrospectClaimsMappingKey, claimsMapping)
-	setData(&d, data, tokenIntrospectSubClaimKey, tiCfg.GetSubClaim().GetSelector())
 
-	switch matcher := tiCfg.GetTokenMatcher().(type) {
-	case *configpb.TokenIntrospectConfig_Jwt:
-		setData(&d, data, tokenIntrospectJWTKey, []map[string]any{{
-			tokenIntrospectIssuerKey:   matcher.Jwt.GetIssuer(),
-			tokenIntrospectAudienceKey: matcher.Jwt.GetAudience(),
-		}})
-	case *configpb.TokenIntrospectConfig_Opaque_:
-		setData(&d, data, tokenIntrospectOpaqueKey, []map[string]any{{
-			tokenIntrospectHintKey: matcher.Opaque.GetHint(),
-		}})
-	default:
-		return append(d, buildPluginError(fmt.Sprintf("unsupported Token Matcher: %T", matcher)))
+	// Set sub claim
+	if resp.SubClaim != nil {
+		setData(&d, data, tokenIntrospectSubClaimKey, resp.SubClaim.Selector)
 	}
 
-	switch tv := tiCfg.GetValidation().(type) {
-	case *configpb.TokenIntrospectConfig_Offline_:
-		jwks := make([]string, len(tv.Offline.GetPublicJwks()))
-		for i, jwk := range tv.Offline.GetPublicJwks() {
-			jwks[i] = string(jwk)
-		}
-		setData(&d, data, tokenIntrospectOfflineKey, []map[string]any{{
-			tokenIntrospectPublicJWKsKey: jwks,
-		}})
-	case *configpb.TokenIntrospectConfig_Online_:
-		setData(&d, data, tokenIntrospectOnlineKey, []map[string]any{{
-			tokenIntrospectUserInfoEPKey: tv.Online.GetUserinfoEndpoint(),
-			tokenIntrospectCacheTTLKey:   int(tv.Online.GetCacheTtl().GetSeconds()),
-		}})
-	default:
-		return append(d, buildPluginError(fmt.Sprintf("unsupported Validation: %T", tv)))
-	}
+	setData(&d, data, tokenIntrospectIKGNodeTypeKey, resp.IKGNodeType)
+	setData(&d, data, tokenIntrospectPerformUpsertKey, resp.PerformUpsert)
 
 	return d
 }
 
-func resourceTokenIntrospectBuild(
-	_ *diag.Diagnostics,
-	data *schema.ResourceData,
-	_ *ClientContext,
-	builder *config.NodeRequest,
-) {
-	claimsMapping := data.Get(tokenIntrospectClaimsMappingKey).(map[string]any)
-	cfg := &configpb.TokenIntrospectConfig{
-		ClaimsMapping: make(map[string]*configpb.TokenIntrospectConfig_Claim, len(claimsMapping)),
-		IkgNodeType:   data.Get(tokenIntrospectIKGNodeTypeKey).(string),
-		PerformUpsert: data.Get(tokenIntrospectPerformUpsertKey).(bool),
+func resTokenIntrospectUpdate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
 	}
-	if val := data.Get(tokenIntrospectSubClaimKey).(string); val != "" {
-		cfg.SubClaim = &configpb.TokenIntrospectConfig_Claim{Selector: val}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
+	defer cancel()
+
+	req := UpdateTokenIntrospectRequest{
+		DisplayName: updateOptionalString(data, displayNameKey),
+		Description: updateOptionalString(data, descriptionKey),
 	}
-	for key, selector := range claimsMapping {
-		cfg.ClaimsMapping[key] = &configpb.TokenIntrospectConfig_Claim{
-			Selector: selector.(string),
+
+	// Add changed fields
+	if data.HasChange(tokenIntrospectJWTKey) || data.HasChange(tokenIntrospectOpaqueKey) ||
+		data.HasChange(tokenIntrospectOfflineKey) || data.HasChange(tokenIntrospectOnlineKey) ||
+		data.HasChange(tokenIntrospectClaimsMappingKey) || data.HasChange(tokenIntrospectSubClaimKey) ||
+		data.HasChange(tokenIntrospectIKGNodeTypeKey) || data.HasChange(tokenIntrospectPerformUpsertKey) {
+		tokenReq := buildTokenIntrospectRequest(data)
+		req.JWT = tokenReq.JWT
+		req.Opaque = tokenReq.Opaque
+		req.Offline = tokenReq.Offline
+		req.Online = tokenReq.Online
+		req.ClaimsMapping = tokenReq.ClaimsMapping
+		req.SubClaim = tokenReq.SubClaim
+
+		if data.HasChange(tokenIntrospectIKGNodeTypeKey) {
+			nodeType := data.Get(tokenIntrospectIKGNodeTypeKey).(string)
+			req.IKGNodeType = &nodeType
+		}
+		if data.HasChange(tokenIntrospectPerformUpsertKey) {
+			performUpsert := data.Get(tokenIntrospectPerformUpsertKey).(bool)
+			req.PerformUpsert = &performUpsert
 		}
 	}
 
+	var resp TokenIntrospectResponse
+	err := clientCtx.GetClient().Put(ctx, "/token-introspects/"+data.Id(), req, &resp)
+	if HasFailed(&d, err) {
+		return d
+	}
+
+	return resTokenIntrospectRead(ctx, data, meta)
+}
+
+func resTokenIntrospectDelete(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
+	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutDelete))
+	defer cancel()
+
+	err := clientCtx.GetClient().Delete(ctx, "/token-introspects/"+data.Id())
+	HasFailed(&d, err)
+	return d
+}
+
+// buildTokenIntrospectRequest builds a CreateTokenIntrospectRequest from schema data.
+func buildTokenIntrospectRequest(data *schema.ResourceData) CreateTokenIntrospectRequest {
+	req := CreateTokenIntrospectRequest{
+		IKGNodeType:   data.Get(tokenIntrospectIKGNodeTypeKey).(string),
+		PerformUpsert: data.Get(tokenIntrospectPerformUpsertKey).(bool),
+	}
+
+	// Set JWT or Opaque matcher
 	if val, ok := data.GetOk(tokenIntrospectJWTKey); ok {
 		mapVal := val.([]any)[0].(map[string]any)
-		cfg.TokenMatcher = &configpb.TokenIntrospectConfig_Jwt{
-			Jwt: &configpb.TokenIntrospectConfig_JWT{
-				Issuer:   mapVal[tokenIntrospectIssuerKey].(string),
-				Audience: mapVal[tokenIntrospectAudienceKey].(string),
-			},
+		req.JWT = &TokenIntrospectJWT{
+			Issuer:   mapVal[tokenIntrospectIssuerKey].(string),
+			Audience: mapVal[tokenIntrospectAudienceKey].(string),
 		}
 	}
 	if val, ok := data.GetOk(tokenIntrospectOpaqueKey); ok {
 		mapVal := val.([]any)[0].(map[string]any)
-		cfg.TokenMatcher = &configpb.TokenIntrospectConfig_Opaque_{
-			Opaque: &configpb.TokenIntrospectConfig_Opaque{
-				Hint: mapVal[tokenIntrospectHintKey].(string),
-			},
+		req.Opaque = &TokenIntrospectOpaque{
+			Hint: mapVal[tokenIntrospectHintKey].(string),
 		}
 	}
 
+	// Set Offline or Online validation
 	if val, ok := data.GetOk(tokenIntrospectOfflineKey); ok {
 		listVal := val.([]any)
-		if len(listVal) > 0 {
-			var publicJwks [][]byte
-			if listVal[0] != nil {
-				mapVal := listVal[0].(map[string]any)
-				publicJwks = rawArrayToTypedArray[[]byte](mapVal[tokenIntrospectPublicJWKsKey])
+		if len(listVal) > 0 && listVal[0] != nil {
+			mapVal := listVal[0].(map[string]any)
+			publicJWKs := rawArrayToTypedArray[string](mapVal[tokenIntrospectPublicJWKsKey])
+			req.Offline = &TokenIntrospectOffline{
+				PublicJWKs: publicJWKs,
 			}
-			cfg.Validation = &configpb.TokenIntrospectConfig_Offline_{
-				Offline: &configpb.TokenIntrospectConfig_Offline{
-					PublicJwks: publicJwks,
-				},
-			}
+		} else {
+			// Empty offline validation
+			req.Offline = &TokenIntrospectOffline{}
 		}
 	}
 	if val, ok := data.GetOk(tokenIntrospectOnlineKey); ok {
 		if listVal := val.([]any); len(listVal) > 0 && listVal[0] != nil {
 			mapVal := listVal[0].(map[string]any)
-			var cacheTTL *durationpb.Duration
-			if val := mapVal[tokenIntrospectCacheTTLKey].(int); val > 0 {
-				cacheTTL = durationpb.New(time.Duration(val) * time.Second)
-			}
-			cfg.Validation = &configpb.TokenIntrospectConfig_Online_{
-				Online: &configpb.TokenIntrospectConfig_Online{
-					UserinfoEndpoint: mapVal[tokenIntrospectUserInfoEPKey].(string),
-					CacheTtl:         cacheTTL,
-				},
+			req.Online = &TokenIntrospectOnline{
+				UserinfoEndpoint: mapVal[tokenIntrospectUserInfoEPKey].(string),
+				CacheTTL:         mapVal[tokenIntrospectCacheTTLKey].(int),
 			}
 		}
 	}
 
-	builder.WithTokenIntrospectConfig(cfg)
+	// Set claims mapping
+	if claimsMapping := data.Get(tokenIntrospectClaimsMappingKey).(map[string]any); len(claimsMapping) > 0 {
+		req.ClaimsMapping = make(map[string]*TokenIntrospectClaim, len(claimsMapping))
+		for key, selector := range claimsMapping {
+			req.ClaimsMapping[key] = &TokenIntrospectClaim{
+				Selector: selector.(string),
+			}
+		}
+	}
+
+	// Set sub claim
+	if val := data.Get(tokenIntrospectSubClaimKey).(string); val != "" {
+		req.SubClaim = &TokenIntrospectClaim{Selector: val}
+	}
+
+	return req
 }

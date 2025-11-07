@@ -15,14 +15,13 @@
 package indykite
 
 import (
+	"context"
 	"math"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/indykite/indykite-sdk-go/config"
-	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 )
 
 const (
@@ -34,8 +33,6 @@ const (
 )
 
 func resourceTrustScoreProfile() *schema.Resource {
-	readContext := configReadContextFunc(resourceTrustScoreProfileFlatten)
-
 	return &schema.Resource{
 		Description: "The Trust Score Profile helps assess how trustworthy data is. " +
 			"It allows applications, authorization policies, and AI systems to define and check  " +
@@ -44,10 +41,10 @@ func resourceTrustScoreProfile() *schema.Resource {
 			"the Trust Score ensures that only high-quality and reliable data is used in decision-making. " +
 			"This reduces risk and improves the overall quality of downstream processes. ",
 
-		CreateContext: configCreateContextFunc(resourceTrustScoreProfileBuild, readContext),
-		ReadContext:   readContext,
-		UpdateContext: configUpdateContextFunc(resourceTrustScoreProfileBuild, readContext),
-		DeleteContext: configDeleteContextFunc(),
+		CreateContext: resTrustScoreProfileCreate,
+		ReadContext:   resTrustScoreProfileRead,
+		UpdateContext: resTrustScoreProfileUpdate,
+		DeleteContext: resTrustScoreProfileDelete,
 		Importer: &schema.ResourceImporter{
 			StateContext: basicStateImporter,
 		},
@@ -89,7 +86,7 @@ func resourceTrustScoreProfile() *schema.Resource {
 								"`Validity`: Checks whether the data is in the correct format " +
 								"and follows expected rules.  " +
 								"`Completeness`: Confirms that no critical information is missing from the data.  " +
-								"`Freshness`: Measures how up-to-date the data is to ensure it’s still relevant.  " +
+								"`Freshness`: Measures how up-to-date the data is to ensure it's still relevant.  " +
 								"`Verification`: Ensures the data has been reviewed and confirmed " +
 								"as accurate by a trusted source.",
 						},
@@ -117,65 +114,164 @@ func resourceTrustScoreProfile() *schema.Resource {
 	}
 }
 
-func resourceTrustScoreProfileFlatten(
-	data *schema.ResourceData,
-	resp *configpb.ReadConfigNodeResponse,
-) diag.Diagnostics {
+func resTrustScoreProfileCreate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
 	var d diag.Diagnostics
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
+	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
+	defer cancel()
 
-	trustScoreProfile := resp.GetConfigNode().GetTrustScoreProfileConfig()
+	// Map schedule from Terraform format to API format
+	scheduleValue := data.Get(trustScoreProfileSchedule).(string)
+	apiSchedule := TrustScoreProfileScheduleToAPI[scheduleValue]
 
-	nodeClassification := trustScoreProfile.GetNodeClassification()
-	setData(&d, data, trustScoreProfileNodeClassification, nodeClassification)
+	req := CreateTrustScoreProfileRequest{
+		ProjectID:          data.Get(locationKey).(string),
+		Name:               data.Get(nameKey).(string),
+		DisplayName:        stringValue(optionalString(data, displayNameKey)),
+		Description:        stringValue(optionalString(data, descriptionKey)),
+		NodeClassification: data.Get(trustScoreProfileNodeClassification).(string),
+		Dimensions:         buildDimensions(data),
+		Schedule:           apiSchedule,
+	}
 
+	var resp TrustScoreProfileResponse
+	err := clientCtx.GetClient().Post(ctx, "/trust-score-profiles", req, &resp)
+	if HasFailed(&d, err) {
+		return d
+	}
+	data.SetId(resp.ID)
+
+	return resTrustScoreProfileRead(ctx, data, meta)
+}
+
+func resTrustScoreProfileRead(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
+	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
+	defer cancel()
+
+	var resp TrustScoreProfileResponse
+	// Support both ID and name?location=parent_id formats
+	path := buildReadPath("/trust-score-profiles", data)
+	err := clientCtx.GetClient().Get(ctx, path, &resp)
+	if readHasFailed(&d, err, data) {
+		return d
+	}
+
+	data.SetId(resp.ID)
+	setData(&d, data, customerIDKey, resp.CustomerID)
+	setData(&d, data, appSpaceIDKey, resp.AppSpaceID)
+
+	// Set location based on which is present
+	if resp.AppSpaceID != "" {
+		setData(&d, data, locationKey, resp.AppSpaceID)
+	} else if resp.CustomerID != "" {
+		setData(&d, data, locationKey, resp.CustomerID)
+	}
+
+	setData(&d, data, nameKey, resp.Name)
+	setData(&d, data, displayNameKey, resp.DisplayName)
+	setData(&d, data, descriptionKey, resp.Description)
+	setData(&d, data, createTimeKey, resp.CreateTime)
+	setData(&d, data, updateTimeKey, resp.UpdateTime)
+	setData(&d, data, trustScoreProfileNodeClassification, resp.NodeClassification)
+
+	// Convert dimensions
 	var ratio float64 = 10000 // 4 decimal places to round number when converting float32 to float64
-	dimensions := make([]any, len(trustScoreProfile.GetDimensions()))
-	for i, dim := range trustScoreProfile.GetDimensions() {
+	dimensions := make([]any, len(resp.Dimensions))
+	for i, dim := range resp.Dimensions {
+		// Map dimension name from API format to Terraform format
+		terraformName := TrustScoreDimensionFromAPI[dim.Name]
+		if terraformName == "" {
+			terraformName = dim.Name // Fallback to original value if not found
+		}
 		dimensions[i] = map[string]any{
-			trustScoreProfileName:   ReverseProtoEnumMap(TrustScoreDimensionNames)[dim.GetName()],
-			trustScoreProfileWeight: math.Round(float64(dim.GetWeight())*ratio) / ratio,
+			trustScoreProfileName:   terraformName,
+			trustScoreProfileWeight: math.Round(float64(dim.Weight)*ratio) / ratio,
 		}
 	}
 	setData(&d, data, trustScoreProfileDimensionsKey, dimensions)
 
-	schedule := resp.GetConfigNode().GetTrustScoreProfileConfig().GetSchedule()
-	if schedule == configpb.TrustScoreProfileConfig_UPDATE_FREQUENCY_INVALID {
-		return append(d, buildPluginError("schedule in the response is not valid"))
+	// Map schedule from API format to Terraform format
+	terraformSchedule := TrustScoreProfileScheduleFromAPI[resp.Schedule]
+	if terraformSchedule == "" {
+		terraformSchedule = resp.Schedule // Fallback to original value if not found
 	}
-	scheduleKey, exist := ReverseProtoEnumMap(TrustScoreProfileScheduleFrequencies)[schedule]
-	if !exist {
-		d = append(d, buildPluginError("unsupported Frequency Type: "+schedule.String()))
-	}
-	setData(&d, data, trustScoreProfileSchedule, scheduleKey)
+	setData(&d, data, trustScoreProfileSchedule, terraformSchedule)
 
 	return d
 }
 
-func resourceTrustScoreProfileBuild(
-	_ *diag.Diagnostics,
-	data *schema.ResourceData,
-	_ *ClientContext,
-	builder *config.NodeRequest,
-) {
-	cfg := &configpb.TrustScoreProfileConfig{
-		NodeClassification: data.Get(trustScoreProfileNodeClassification).(string),
-		Dimensions:         getDimensions(data),
-		Schedule:           TrustScoreProfileScheduleFrequencies[data.Get(trustScoreProfileSchedule).(string)],
+func resTrustScoreProfileUpdate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
+	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
+	defer cancel()
+
+	req := UpdateTrustScoreProfileRequest{
+		DisplayName: updateOptionalString(data, displayNameKey),
+		Description: updateOptionalString(data, descriptionKey),
 	}
 
-	builder.WithTrustScoreProfileConfig(cfg)
+	if data.HasChange(trustScoreProfileDimensionsKey) {
+		req.Dimensions = buildDimensions(data)
+	}
+
+	if data.HasChange(trustScoreProfileSchedule) {
+		scheduleValue := data.Get(trustScoreProfileSchedule).(string)
+		apiSchedule := TrustScoreProfileScheduleToAPI[scheduleValue]
+		req.Schedule = &apiSchedule
+	}
+
+	var resp TrustScoreProfileResponse
+	err := clientCtx.GetClient().Put(ctx, "/trust-score-profiles/"+data.Id(), req, &resp)
+	if HasFailed(&d, err) {
+		return d
+	}
+
+	return resTrustScoreProfileRead(ctx, data, meta)
 }
 
-func getDimensions(data *schema.ResourceData) []*configpb.TrustScoreDimension {
+func resTrustScoreProfileDelete(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
+	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutDelete))
+	defer cancel()
+
+	err := clientCtx.GetClient().Delete(ctx, "/trust-score-profiles/"+data.Id())
+	HasFailed(&d, err)
+	return d
+}
+
+// buildDimensions converts Terraform schema dimensions to REST API format.
+func buildDimensions(data *schema.ResourceData) []*TrustScoreDimension {
 	dimensionsSet := data.Get(trustScoreProfileDimensionsKey).([]any)
-	var dimensions = make([]*configpb.TrustScoreDimension, len(dimensionsSet))
+	dimensions := make([]*TrustScoreDimension, len(dimensionsSet))
 	for i, o := range dimensionsSet {
 		item, ok := o.(map[string]any)
 		if !ok {
 			continue
 		}
-		dimensions[i] = &configpb.TrustScoreDimension{
-			Name:   TrustScoreDimensionNames[item[trustScoreProfileName].(string)],
+		// Map dimension name from Terraform format to API format
+		terraformName := item[trustScoreProfileName].(string)
+		apiName := TrustScoreDimensionToAPI[terraformName]
+		if apiName == "" {
+			apiName = terraformName // Fallback to original value if not found
+		}
+		dimensions[i] = &TrustScoreDimension{
+			Name:   apiName,
 			Weight: float32(item[trustScoreProfileWeight].(float64)),
 		}
 	}

@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"regexp"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -35,9 +36,53 @@ func basicStateImporter(_ context.Context, data *schema.ResourceData, _ any) ([]
 }
 
 func parseImportID(d *schema.ResourceData) error {
-	if gidBase64Regex.MatchString(d.Id()) {
+	importID := d.Id()
+
+	// Check if it's a GID (direct ID import)
+	if gidBase64Regex.MatchString(importID) {
 		return nil
 	}
 
-	return errors.New("Unimplemented id format: " + d.Id())
+	// Check if it's a name with location parameter (e.g., "my-resource?location=gid:xxx")
+	// The ID will be kept as-is and used in the read function
+	if strings.Contains(importID, "?location=") {
+		return nil
+	}
+
+	return errors.New("Unimplemented id format: " + importID +
+		". Expected either 'gid:xxx' or 'resource-name?location=gid:xxx'")
+}
+
+// buildReadPath constructs the API path for reading a resource.
+// It supports both:
+//   - Direct ID: data.Id() = "gid:xxx" -> returns "/resource/gid:xxx"
+//   - Name with location: data.Id() = "my-name?location=gid:xxx" -> returns "/resource/my-name?<param>=gid:xxx"
+//     where <param> is translated to the correct API parameter (project_id or organization_id)
+func buildReadPath(resourcePath string, data *schema.ResourceData) string {
+	id := data.Id()
+
+	// If the ID contains a query parameter, it's a name+location format
+	// Translate the generic "location" parameter to the correct API parameter
+	if strings.Contains(id, "?location=") {
+		// Determine the correct parameter name based on the resource path
+		var apiParam string
+		switch {
+		case strings.Contains(resourcePath, "/projects"):
+			// Application spaces use organization_id
+			apiParam = "organization_id"
+		case strings.Contains(resourcePath, "/service-accounts"):
+			// Service accounts use organization_id
+			apiParam = "organization_id"
+		default:
+			// Most other resources use project_id (applications, agents, policies, etc.)
+			apiParam = "project_id"
+		}
+
+		// Replace "location=" with the correct API parameter
+		translatedID := strings.Replace(id, "?location=", "?"+apiParam+"=", 1)
+		return resourcePath + "/" + translatedID
+	}
+
+	// Otherwise, it's a direct ID
+	return resourcePath + "/" + id
 }

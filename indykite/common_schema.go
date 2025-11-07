@@ -31,6 +31,9 @@ const (
 	createTimeKey         = "create_time"
 	updateTimeKey         = "update_time"
 	deletionProtectionKey = "deletion_protection"
+	createdByKey          = "created_by"
+	updatedByKey          = "updated_by"
+	ikgStatusKey          = "ikg_status"
 	filterKey             = "filter"
 	regionKey             = "region"
 	apiPermissionsKey     = "api_permissions"
@@ -304,6 +307,7 @@ func customerIDSchema() *schema.Schema {
 func appSpaceIDSchema() *schema.Schema {
 	return baseIDSchema(appSpaceIDDescription)
 }
+
 func applicationIDSchema() *schema.Schema {
 	return baseIDSchema(applicationIDDescription)
 }
@@ -318,5 +322,29 @@ func deletionProtectionSchema() *schema.Schema {
 		Optional:    true,
 		Default:     true,
 		Description: `Whether or not to allow Terraform to destroy the instance. Unless this field is set to false in Terraform state, a terraform destroy or terraform apply that would delete the instance will fail.`,
+	}
+}
+
+func createdBySchema() *schema.Schema {
+	return &schema.Schema{
+		Type:        schema.TypeString,
+		Computed:    true,
+		Description: "Identifier of the user who created the resource",
+	}
+}
+
+func updatedBySchema() *schema.Schema {
+	return &schema.Schema{
+		Type:        schema.TypeString,
+		Computed:    true,
+		Description: "Identifier of the user who last updated the resource",
+	}
+}
+
+func ikgStatusSchema() *schema.Schema {
+	return &schema.Schema{
+		Type:        schema.TypeString,
+		Computed:    true,
+		Description: "Status of the Identity Knowledge Graph",
 	}
 }

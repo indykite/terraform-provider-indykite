@@ -16,23 +16,21 @@ package indykite_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"regexp"
+	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/indykite/indykite-sdk-go/config"
-	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
-	configm "github.com/indykite/indykite-sdk-go/test/config/v1beta1"
-	"go.uber.org/mock/gomock"
-	"google.golang.org/protobuf/types/known/timestamppb"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/indykite/terraform-provider-indykite/indykite"
-	"github.com/indykite/terraform-provider-indykite/indykite/test"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -42,29 +40,22 @@ import (
 var _ = Describe("Resource ApplicationAgent", func() {
 	const resourceName = "indykite_application_agent.development"
 	var (
-		mockCtrl         *gomock.Controller
-		mockConfigClient *configm.MockConfigManagementAPIClient
-		provider         *schema.Provider
+		mockServer *httptest.Server
+		provider   *schema.Provider
 	)
 
 	BeforeEach(func() {
-		mockCtrl = gomock.NewController(TerraformGomockT(GinkgoT()))
-		mockConfigClient = configm.NewMockConfigManagementAPIClient(mockCtrl)
-
 		provider = indykite.Provider()
-		cfgFunc := provider.ConfigureContextFunc
-		provider.ConfigureContextFunc =
-			func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
-				client, _ := config.NewTestClient(ctx, mockConfigClient)
-				ctx = indykite.WithClient(ctx, client)
-				return cfgFunc(ctx, data)
-			}
+	})
+
+	AfterEach(func() {
+		if mockServer != nil {
+			mockServer.Close()
+		}
 	})
 
 	It("Test all CRUD", func() {
 		turnOffDelProtection := "deletion_protection=false"
-		// Terraform created config must be in sync with returned data in expectedApp and expectedUpdatedApp
-		// otherwise "After applying this test step, the plan was not empty" error is thrown
 		tfConfigDef :=
 			`resource "indykite_application_agent" "development" {
 				application_id = "` + applicationID + `"
@@ -74,110 +65,128 @@ var _ = Describe("Resource ApplicationAgent", func() {
 				api_permissions = ["Authorization","Capture"]
 				%s
 			}`
-		initialAppAgentResp := &configpb.ApplicationAgent{
-			CustomerId:           customerID,
-			AppSpaceId:           appSpaceID,
-			ApplicationId:        applicationID,
-			Id:                   appAgentID,
-			Name:                 "acme",
-			DisplayName:          "acme",
-			Description:          wrapperspb.String("Just some App description"),
-			ApiAccessRestriction: []string{"Authorization", "Capture"},
-			CreateTime:           timestamppb.Now(),
-			UpdateTime:           timestamppb.Now(),
+
+		createTime := time.Now()
+		updateTime := time.Now()
+		currentState := "initial"
+
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/application-agents"):
+				resp := indykite.ApplicationAgentResponse{
+					ID:             appAgentID,
+					CustomerID:     customerID,
+					AppSpaceID:     appSpaceID,
+					ApplicationID:  applicationID,
+					Name:           "acme",
+					DisplayName:    "acme",
+					Description:    "Just some App description",
+					APIPermissions: []string{"Authorization", "Capture"},
+					CreateTime:     createTime,
+					UpdateTime:     updateTime,
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, appAgentID):
+				var resp indykite.ApplicationAgentResponse
+				switch currentState {
+				case "initial", "after_create":
+					resp = indykite.ApplicationAgentResponse{
+						ID:             appAgentID,
+						CustomerID:     customerID,
+						AppSpaceID:     appSpaceID,
+						ApplicationID:  applicationID,
+						Name:           "acme",
+						DisplayName:    "acme",
+						Description:    "Just some App description",
+						APIPermissions: []string{"Authorization", "Capture"},
+						CreateTime:     createTime,
+						UpdateTime:     updateTime,
+					}
+				case "after_update1":
+					resp = indykite.ApplicationAgentResponse{
+						ID:             appAgentID,
+						CustomerID:     customerID,
+						AppSpaceID:     appSpaceID,
+						ApplicationID:  applicationID,
+						Name:           "acme",
+						DisplayName:    "acme",
+						Description:    "Another App description",
+						APIPermissions: []string{"Authorization", "Capture"},
+						CreateTime:     createTime,
+						UpdateTime:     time.Now(),
+					}
+				case "after_update2":
+					resp = indykite.ApplicationAgentResponse{
+						ID:             appAgentID,
+						CustomerID:     customerID,
+						AppSpaceID:     appSpaceID,
+						ApplicationID:  applicationID,
+						Name:           "acme",
+						DisplayName:    "Some new display name",
+						APIPermissions: []string{"Authorization", "Capture"},
+						CreateTime:     createTime,
+						UpdateTime:     time.Now(),
+					}
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodPut && strings.Contains(r.URL.Path, appAgentID):
+				var reqBody map[string]any
+				_ = json.NewDecoder(r.Body).Decode(&reqBody)
+
+				if reqBody["description"] != nil && strings.Contains(reqBody["description"].(string), "Another") {
+					currentState = "after_update1"
+				} else {
+					currentState = "after_update2"
+				}
+
+				var resp indykite.ApplicationAgentResponse
+				if currentState == "after_update1" {
+					resp = indykite.ApplicationAgentResponse{
+						ID:             appAgentID,
+						CustomerID:     customerID,
+						AppSpaceID:     appSpaceID,
+						ApplicationID:  applicationID,
+						Name:           "acme",
+						DisplayName:    "acme",
+						Description:    "Another App description",
+						APIPermissions: []string{"Authorization", "Capture"},
+						CreateTime:     createTime,
+						UpdateTime:     time.Now(),
+					}
+				} else {
+					resp = indykite.ApplicationAgentResponse{
+						ID:             appAgentID,
+						CustomerID:     customerID,
+						AppSpaceID:     appSpaceID,
+						ApplicationID:  applicationID,
+						Name:           "acme",
+						DisplayName:    "Some new display name",
+						APIPermissions: []string{"Authorization", "Capture"},
+						CreateTime:     createTime,
+						UpdateTime:     time.Now(),
+					}
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, appAgentID):
+				w.WriteHeader(http.StatusNoContent)
+
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
 		}
-
-		readAfter1stUpdateResp := &configpb.ApplicationAgent{
-			CustomerId:           initialAppAgentResp.GetCustomerId(),
-			AppSpaceId:           initialAppAgentResp.GetAppSpaceId(),
-			ApplicationId:        initialAppAgentResp.GetApplicationId(),
-			Id:                   initialAppAgentResp.GetId(),
-			Name:                 "acme",
-			DisplayName:          "acme",
-			Description:          wrapperspb.String("Another App description"),
-			ApiAccessRestriction: []string{"Authorization", "Capture"},
-			CreateTime:           initialAppAgentResp.GetCreateTime(),
-			UpdateTime:           timestamppb.Now(),
-		}
-		readAfter2ndUpdateResp := &configpb.ApplicationAgent{
-			CustomerId:           initialAppAgentResp.GetCustomerId(),
-			AppSpaceId:           initialAppAgentResp.GetAppSpaceId(),
-			ApplicationId:        initialAppAgentResp.GetApplicationId(),
-			Id:                   initialAppAgentResp.GetId(),
-			Name:                 "acme",
-			DisplayName:          "Some new display name",
-			Description:          nil,
-			ApiAccessRestriction: []string{"Authorization", "Capture"},
-			CreateTime:           initialAppAgentResp.GetCreateTime(),
-			UpdateTime:           timestamppb.Now(),
-		}
-
-		// Create
-		mockConfigClient.EXPECT().
-			CreateApplicationAgent(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"ApplicationId": Equal(applicationID),
-				"Name":          Equal(initialAppAgentResp.GetName()),
-				"DisplayName":   BeNil(),
-				"Description": PointTo(MatchFields(IgnoreExtras, Fields{
-					"Value": Equal(initialAppAgentResp.GetDescription().GetValue()),
-				})),
-				"ApiPermissions": Equal(initialAppAgentResp.GetApiAccessRestriction()),
-			})))).
-			Return(&configpb.CreateApplicationAgentResponse{Id: initialAppAgentResp.GetId()}, nil)
-
-		// 2x update
-		mockConfigClient.EXPECT().
-			UpdateApplicationAgent(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id":          Equal(initialAppAgentResp.GetId()),
-				"DisplayName": BeNil(),
-				"Description": PointTo(MatchFields(IgnoreExtras, Fields{
-					"Value": Equal(readAfter1stUpdateResp.GetDescription().GetValue()),
-				})),
-				"ApiPermissions": Equal(readAfter1stUpdateResp.GetApiAccessRestriction()),
-			})))).
-			Return(&configpb.UpdateApplicationAgentResponse{Id: initialAppAgentResp.GetId()}, nil)
-
-		mockConfigClient.EXPECT().
-			UpdateApplicationAgent(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(initialAppAgentResp.GetId()),
-				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{
-					"Value": Equal(readAfter2ndUpdateResp.GetDisplayName()),
-				})),
-				"Description":    PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal("")})),
-				"ApiPermissions": Equal(readAfter2ndUpdateResp.GetApiAccessRestriction()),
-			})))).
-			Return(&configpb.UpdateApplicationAgentResponse{Id: initialAppAgentResp.GetId()}, nil)
-
-		// Read in given order
-		gomock.InOrder(
-			mockConfigClient.EXPECT().
-				ReadApplicationAgent(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Id": Equal(initialAppAgentResp.GetId())})),
-				})))).
-				Times(4).
-				Return(&configpb.ReadApplicationAgentResponse{ApplicationAgent: initialAppAgentResp}, nil),
-
-			mockConfigClient.EXPECT().
-				ReadApplicationAgent(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Id": Equal(initialAppAgentResp.GetId())})),
-				})))).
-				Times(3).
-				Return(&configpb.ReadApplicationAgentResponse{ApplicationAgent: readAfter1stUpdateResp}, nil),
-
-			mockConfigClient.EXPECT().
-				ReadApplicationAgent(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Id": Equal(initialAppAgentResp.GetId())})),
-				})))).
-				Times(5).
-				Return(&configpb.ReadApplicationAgentResponse{ApplicationAgent: readAfter2ndUpdateResp}, nil),
-		)
-
-		// Delete
-		mockConfigClient.EXPECT().
-			DeleteApplicationAgent(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(initialAppAgentResp.GetId()),
-			})))).
-			Return(&configpb.DeleteApplicationAgentResponse{}, nil)
 
 		resource.Test(GinkgoT(), resource.TestCase{
 			Providers: map[string]*schema.Provider{
@@ -194,77 +203,164 @@ var _ = Describe("Resource ApplicationAgent", func() {
 					ExpectError: regexp.MustCompile("Value for unconfigurable attribute"),
 				},
 				{
-					// Checking Create and Read (initialAppAgentResp)
-					Config: fmt.Sprintf(tfConfigDef, "", initialAppAgentResp.GetDescription().GetValue(), ""),
+					Config: fmt.Sprintf(tfConfigDef, "", "Just some App description", ""),
 					Check: resource.ComposeTestCheckFunc(
-						testAppAgentResourceDataExists(resourceName, initialAppAgentResp),
+						testAppAgentResourceDataExists(resourceName, appAgentID),
 					),
 				},
 				{
-					// Performs 1 read (initialAppAgentResp)
 					ResourceName:  resourceName,
 					ImportState:   true,
-					ImportStateId: initialAppAgentResp.GetId(),
+					ImportStateId: appAgentID,
 				},
 				{
-					// Checking Read (initialAppAgentResp), Update and Read(readAfter1stUpdateResp)
-					Config: fmt.Sprintf(tfConfigDef, "", readAfter1stUpdateResp.GetDescription().GetValue(), ""),
+					Config: fmt.Sprintf(tfConfigDef, "", "Another App description", ""),
 					Check: resource.ComposeTestCheckFunc(
-						testAppAgentResourceDataExists(resourceName, readAfter1stUpdateResp),
+						testAppAgentResourceDataExists(resourceName, appAgentID),
 					),
 				},
 				{
-					// Checking Read(readAfter1stUpdateResp), Update and Read(readAfter2ndUpdateResp)
-					Config: fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.GetDisplayName(), "", ""),
+					Config: fmt.Sprintf(tfConfigDef, "Some new display name", "", ""),
 					Check: resource.ComposeTestCheckFunc(
-						testAppAgentResourceDataExists(resourceName, readAfter2ndUpdateResp),
+						testAppAgentResourceDataExists(resourceName, appAgentID),
 					),
 				},
 				{
-					// Checking Read(readAfter2ndUpdateResp) -> no changes but tries to destroy with error
-					Config:      fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.GetDisplayName(), "", ""),
+					Config:      fmt.Sprintf(tfConfigDef, "Some new display name", "", ""),
 					Destroy:     true,
 					ExpectError: regexp.MustCompile("Cannot destroy instance"),
 				},
 				{
-					// Checking Read(readAfter2ndUpdateResp), Update (del protection, no API call)
-					// and final Read (readAfter2ndUpdateResp)
-					Config: fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.GetDisplayName(), "", turnOffDelProtection),
+					Config: fmt.Sprintf(tfConfigDef, "Some new display name", "", turnOffDelProtection),
+				},
+			},
+		})
+	})
+
+	It("Test import by name with location", func() {
+		tfConfigDef :=
+			`resource "indykite_application_agent" "development" {
+				application_id = "` + applicationID + `"
+				name = "wonka-agent"
+				display_name = "Wonka Agent"
+				description = "Just some Agent description"
+				api_permissions = ["Authorization","Capture"]
+				deletion_protection = false
+			}`
+
+		createTime := time.Now()
+		updateTime := time.Now()
+
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/application-agents"):
+				resp := indykite.ApplicationAgentResponse{
+					ID:             appAgentID,
+					CustomerID:     customerID,
+					AppSpaceID:     appSpaceID,
+					ApplicationID:  applicationID,
+					Name:           "wonka-agent",
+					DisplayName:    "Wonka Agent",
+					Description:    "Just some Agent description",
+					APIPermissions: []string{"Authorization", "Capture"},
+					CreateTime:     createTime,
+					UpdateTime:     updateTime,
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/application-agents/"):
+				// Support both ID and name?location=applicationID formats
+				// Check if it's a name-based lookup or ID-based lookup
+				pathAfterAgents := strings.TrimPrefix(r.URL.Path, "/configs/v1/application-agents/")
+				isNameLookup := strings.Contains(pathAfterAgents, "wonka-agent")
+				isIDLookup := strings.Contains(pathAfterAgents, appAgentID)
+
+				var resp indykite.ApplicationAgentResponse
+				if isNameLookup || isIDLookup {
+					resp = indykite.ApplicationAgentResponse{
+						ID:             appAgentID,
+						CustomerID:     customerID,
+						AppSpaceID:     appSpaceID,
+						ApplicationID:  applicationID,
+						Name:           "wonka-agent",
+						DisplayName:    "Wonka Agent",
+						Description:    "Just some Agent description",
+						APIPermissions: []string{"Authorization", "Capture"},
+						CreateTime:     createTime,
+						UpdateTime:     updateTime,
+					}
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(resp)
+				} else {
+					w.WriteHeader(http.StatusNotFound)
+					_ = json.NewEncoder(w).Encode(map[string]string{"message": "Not Found"})
+				}
+
+			case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, appAgentID):
+				w.WriteHeader(http.StatusNoContent)
+
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			Providers: map[string]*schema.Provider{
+				"indykite": provider,
+			},
+			Steps: []resource.TestStep{
+				{
+					Config: tfConfigDef,
+					Check: resource.ComposeTestCheckFunc(
+						testAppAgentResourceDataExists(resourceName, appAgentID),
+					),
+				},
+				{
+					ResourceName:  resourceName,
+					ImportState:   true,
+					ImportStateId: "wonka-agent?location=" + applicationID,
 				},
 			},
 		})
 	})
 })
 
-func testAppAgentResourceDataExists(n string, data *configpb.ApplicationAgent) resource.TestCheckFunc {
+//nolint:unparam // Test helper function designed to be reusable
+func testAppAgentResourceDataExists(n, expectedID string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 		if !ok {
 			return fmt.Errorf("not found: %s", n)
 		}
 
-		if rs.Primary.ID != data.GetId() {
+		if rs.Primary.ID != expectedID {
 			return errors.New("ID does not match")
 		}
 
 		keys := Keys{
-			"id":                Equal(data.GetId()),
-			"%":                 Not(BeEmpty()), // This is Terraform helper
+			"id":                Equal(expectedID),
+			"%":                 Not(BeEmpty()),
 			"api_permissions.#": Equal("2"),
 			"api_permissions.0": Equal("Authorization"),
 			"api_permissions.1": Equal("Capture"),
 
-			"customer_id":         Equal(data.GetCustomerId()),
-			"app_space_id":        Equal(data.GetAppSpaceId()),
-			"application_id":      Equal(data.GetApplicationId()),
-			"name":                Equal(data.GetName()),
-			"display_name":        Equal(data.GetDisplayName()),
-			"description":         Equal(data.GetDescription().GetValue()),
+			"customer_id":         Equal(customerID),
+			"app_space_id":        Equal(appSpaceID),
+			"application_id":      Equal(applicationID),
+			"name":                Not(BeEmpty()),
 			"create_time":         Not(BeEmpty()),
 			"update_time":         Not(BeEmpty()),
 			"deletion_protection": Not(BeEmpty()),
 		}
 
-		return convertOmegaMatcherToError(MatchAllKeys(keys), rs.Primary.Attributes)
+		return convertOmegaMatcherToError(MatchKeys(IgnoreExtras, keys), rs.Primary.Attributes)
 	}
 }

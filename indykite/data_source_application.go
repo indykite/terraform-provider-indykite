@@ -16,28 +16,27 @@ package indykite
 
 import (
 	"context"
-	"errors"
-	"io"
+	"fmt"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 )
 
 func dataSourceApplication() *schema.Resource {
 	oneOfAppID := []string{nameKey, applicationIDKey}
+
 	return &schema.Resource{
 		Description: "An application represents the center of the solution, " +
 			"and is also the legal entity users legally interact with. " +
-			"Each application is created in an ApplicationSpace or project, and has a profile, " +
+			"Each application is created in an ApplicationSpace, and has a profile, " +
 			"an application agent and application agent credentials. ",
 		ReadContext: dataApplicationReadContext,
 		Schema: map[string]*schema.Schema{
 			customerIDKey:    setComputed(customerIDSchema()),
 			applicationIDKey: setExactlyOneOf(applicationIDSchema(), applicationIDKey, oneOfAppID),
-			nameKey:          setRequiredWith(setExactlyOneOf(nameSchema(), nameKey, oneOfAppID), appSpaceIDKey),
-			appSpaceIDKey:    setRequiredWith(appSpaceIDSchema(), nameKey),
+			nameKey:          setExactlyOneOf(nameSchema(), nameKey, oneOfAppID),
+			appSpaceIDKey:    convertToOptional(appSpaceIDSchema()),
 			displayNameKey:   displayNameSchema(),
 			descriptionKey:   descriptionSchema(),
 			createTimeKey:    createTimeSchema(),
@@ -51,7 +50,7 @@ func dataSourceApplicationList() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataApplicationListContext,
 		Schema: map[string]*schema.Schema{
-			appSpaceIDKey: appSpaceIDSchema(),
+			appSpaceIDKey: appSpaceIDSchema(), // User-facing field - ONLY this should be in configs
 			filterKey:     exactNameFilterSchema(),
 			"applications": {
 				Type:     schema.TypeList,
@@ -72,6 +71,35 @@ func dataSourceApplicationList() *schema.Resource {
 	}
 }
 
+// lookupApplicationByName finds an application by name within an app space.
+func lookupApplicationByName(
+	ctx context.Context,
+	clientCtx *ClientContext,
+	data *schema.ResourceData,
+	name string,
+) (*ApplicationResponse, diag.Diagnostic) {
+	appSpaceID := data.Get(appSpaceIDKey).(string)
+
+	// Validate that app_space_id is provided when using name
+	if appSpaceID == "" {
+		return nil, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "\"name\": all of `app_space_id, name` must be specified",
+		}
+	}
+
+	resp := &ApplicationResponse{}
+	err := clientCtx.GetClient().Get(ctx, "/applications/"+name+"?location="+appSpaceID, resp)
+	if err != nil {
+		return nil, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  fmt.Sprintf("failed to get application by name: %v", err),
+		}
+	}
+
+	return resp, diag.Diagnostic{}
+}
+
 func dataApplicationReadContext(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
 	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
@@ -79,39 +107,36 @@ func dataApplicationReadContext(ctx context.Context, data *schema.ResourceData, 
 		return d
 	}
 
-	req := &configpb.ReadApplicationRequest{}
-	if name, exists := data.GetOk(nameKey); exists {
-		req.Identifier = &configpb.ReadApplicationRequest_Name{
-			Name: &configpb.UniqueNameIdentifier{
-				Name:     name.(string),
-				Location: data.Get(appSpaceIDKey).(string),
-			},
-		}
-	} else if id, ok := data.GetOk(applicationIDKey); ok {
-		req.Identifier = &configpb.ReadApplicationRequest_Id{
-			Id: id.(string),
+	var resp *ApplicationResponse
+	var err error
+
+	// Check if we have an ID or need to look up by name
+	if id, ok := data.GetOk(applicationIDKey); ok {
+		// Direct lookup by ID
+		resp = &ApplicationResponse{}
+		err = clientCtx.GetClient().Get(ctx, "/applications/"+id.(string), resp)
+	} else if name, exists := data.GetOk(nameKey); exists {
+		// Look up by name within app space
+		var diagErr diag.Diagnostic
+		resp, diagErr = lookupApplicationByName(ctx, clientCtx, data, name.(string))
+		// Only return if there's an actual error (non-zero severity with summary)
+		if diagErr.Summary != "" {
+			return append(d, diagErr)
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
-	defer cancel()
-	resp, err := clientCtx.GetClient().ReadApplication(ctx, req)
 	if readHasFailed(&d, err, data) {
 		return d
 	}
 
-	if resp.GetApplication() == nil {
-		return diag.Diagnostics{buildPluginError("empty Application response")}
-	}
-
-	data.SetId(resp.GetApplication().GetId())
-	setData(&d, data, customerIDKey, resp.GetApplication().GetCustomerId())
-	setData(&d, data, appSpaceIDKey, resp.GetApplication().GetAppSpaceId())
-	setData(&d, data, nameKey, resp.GetApplication().GetName())
-	setData(&d, data, displayNameKey, resp.GetApplication().GetDisplayName())
-	setData(&d, data, descriptionKey, resp.GetApplication().GetDescription())
-	setData(&d, data, createTimeKey, resp.GetApplication().GetCreateTime())
-	setData(&d, data, updateTimeKey, resp.GetApplication().GetUpdateTime())
+	data.SetId(resp.ID)
+	setData(&d, data, customerIDKey, resp.CustomerID)
+	setData(&d, data, appSpaceIDKey, resp.AppSpaceID)
+	setData(&d, data, nameKey, resp.Name)
+	setData(&d, data, displayNameKey, resp.DisplayName)
+	setData(&d, data, descriptionKey, resp.Description)
+	setData(&d, data, createTimeKey, resp.CreateTime)
+	setData(&d, data, updateTimeKey, resp.UpdateTime)
 	return d
 }
 
@@ -129,36 +154,43 @@ func dataApplicationListContext(ctx context.Context, data *schema.ResourceData, 
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := clientCtx.GetClient().ListApplications(ctx, &configpb.ListApplicationsRequest{
-		AppSpaceId: data.Get(appSpaceIDKey).(string),
-		Match:      match,
-	})
+
+	// User provides app_space_id in config, we use project_id parameter for REST API
+	appSpaceID := data.Get(appSpaceIDKey).(string)
+
+	var resp ListApplicationsResponse
+	err := clientCtx.GetClient().Get(ctx, "/applications?project_id="+appSpaceID+"&search=", &resp)
 	if HasFailed(&d, err) {
 		return d
 	}
 
-	var allApplications []map[string]any
-	for {
-		app, err := resp.Recv()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
+	allApplications := make([]map[string]any, 0, len(resp.Applications))
+	for i := range resp.Applications {
+		app := &resp.Applications[i]
+		// Apply exact name match filter (MinItems: 1 ensures filter is always present)
+		matchFound := false
+		for _, filter := range match {
+			if app.Name == filter {
+				matchFound = true
 				break
 			}
-			HasFailed(&d, err)
-			return d
 		}
+		if !matchFound {
+			continue
+		}
+
 		allApplications = append(allApplications, map[string]any{
-			customerIDKey:  app.GetApplication().GetCustomerId(),
-			appSpaceIDKey:  app.GetApplication().GetAppSpaceId(),
-			"id":           app.GetApplication().GetId(),
-			nameKey:        app.GetApplication().GetName(),
-			displayNameKey: app.GetApplication().GetDisplayName(),
-			descriptionKey: flattenOptionalString(app.GetApplication().GetDescription()),
+			customerIDKey:  app.CustomerID,
+			appSpaceIDKey:  app.AppSpaceID,
+			"id":           app.ID,
+			nameKey:        app.Name,
+			displayNameKey: app.DisplayName,
+			descriptionKey: app.Description,
 		})
 	}
 	setData(&d, data, "applications", allApplications)
 
-	id := data.Get(appSpaceIDKey).(string) + "/apps/" + strings.Join(match, ",")
+	id := appSpaceID + "/apps/" + strings.Join(match, ",")
 	data.SetId(id)
 	return d
 }

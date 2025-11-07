@@ -19,7 +19,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	config "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 )
 
 func resourceApplicationAgent() *schema.Resource {
@@ -60,19 +59,21 @@ func resAppAgentCreate(ctx context.Context, data *schema.ResourceData, meta any)
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
 	defer cancel()
 
-	name := data.Get(nameKey).(string)
 	apiPermissions := rawArrayToTypedArray[string](data.Get(apiPermissionsKey).([]any))
-	resp, err := clientCtx.GetClient().CreateApplicationAgent(ctx, &config.CreateApplicationAgentRequest{
-		ApplicationId:  data.Get(applicationIDKey).(string),
-		Name:           name,
-		DisplayName:    optionalString(data, displayNameKey),
-		Description:    optionalString(data, descriptionKey),
-		ApiPermissions: apiPermissions,
-	})
+	req := CreateApplicationAgentRequest{
+		ApplicationID:  data.Get(applicationIDKey).(string),
+		Name:           data.Get(nameKey).(string),
+		DisplayName:    stringValue(optionalString(data, displayNameKey)),
+		Description:    stringValue(optionalString(data, descriptionKey)),
+		APIPermissions: apiPermissions,
+	}
+
+	var resp ApplicationAgentResponse
+	err := clientCtx.GetClient().Post(ctx, "/application-agents", req, &resp)
 	if HasFailed(&d, err) {
 		return d
 	}
-	data.SetId(resp.GetId())
+	data.SetId(resp.ID)
 
 	return resAppAgentRead(ctx, data, meta)
 }
@@ -85,29 +86,25 @@ func resAppAgentRead(ctx context.Context, data *schema.ResourceData, meta any) d
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := clientCtx.GetClient().ReadApplicationAgent(ctx, &config.ReadApplicationAgentRequest{
-		Identifier: &config.ReadApplicationAgentRequest_Id{
-			Id: data.Id(),
-		},
-	})
+
+	var resp ApplicationAgentResponse
+	// Support both ID and name?location=parent_id formats
+	path := buildReadPath("/application-agents", data)
+	err := clientCtx.GetClient().Get(ctx, path, &resp)
 	if readHasFailed(&d, err, data) {
 		return d
 	}
 
-	if resp.GetApplicationAgent() == nil {
-		return diag.Diagnostics{buildPluginError("empty ApplicationAgent response")}
-	}
-
-	data.SetId(resp.GetApplicationAgent().GetId())
-	setData(&d, data, customerIDKey, resp.GetApplicationAgent().GetCustomerId())
-	setData(&d, data, appSpaceIDKey, resp.GetApplicationAgent().GetAppSpaceId())
-	setData(&d, data, applicationIDKey, resp.GetApplicationAgent().GetApplicationId())
-	setData(&d, data, nameKey, resp.GetApplicationAgent().GetName())
-	setData(&d, data, displayNameKey, resp.GetApplicationAgent().GetDisplayName())
-	setData(&d, data, descriptionKey, resp.GetApplicationAgent().GetDescription())
-	setData(&d, data, createTimeKey, resp.GetApplicationAgent().GetCreateTime())
-	setData(&d, data, updateTimeKey, resp.GetApplicationAgent().GetUpdateTime())
-	setData(&d, data, apiPermissionsKey, resp.GetApplicationAgent().GetApiAccessRestriction())
+	data.SetId(resp.ID)
+	setData(&d, data, customerIDKey, resp.CustomerID)
+	setData(&d, data, appSpaceIDKey, resp.AppSpaceID)
+	setData(&d, data, applicationIDKey, resp.ApplicationID)
+	setData(&d, data, nameKey, resp.Name)
+	setData(&d, data, displayNameKey, resp.DisplayName)
+	setData(&d, data, descriptionKey, resp.Description)
+	setData(&d, data, createTimeKey, resp.CreateTime)
+	setData(&d, data, updateTimeKey, resp.UpdateTime)
+	setData(&d, data, apiPermissionsKey, resp.APIPermissions)
 	return d
 }
 
@@ -126,14 +123,14 @@ func resAppAgentUpdate(ctx context.Context, data *schema.ResourceData, meta any)
 	}
 
 	apiPermissions := rawArrayToTypedArray[string](data.Get(apiPermissionsKey).([]any))
-	req := &config.UpdateApplicationAgentRequest{
-		Id:             data.Id(),
+	req := UpdateApplicationAgentRequest{
 		DisplayName:    updateOptionalString(data, displayNameKey),
 		Description:    updateOptionalString(data, descriptionKey),
-		ApiPermissions: apiPermissions,
+		APIPermissions: apiPermissions,
 	}
 
-	_, err := clientCtx.GetClient().UpdateApplicationAgent(ctx, req)
+	var resp ApplicationAgentResponse
+	err := clientCtx.GetClient().Put(ctx, "/application-agents/"+data.Id(), req, &resp)
 	if HasFailed(&d, err) {
 		return d
 	}
@@ -151,9 +148,7 @@ func resAppAgentDelete(ctx context.Context, data *schema.ResourceData, meta any)
 	if hasDeleteProtection(&d, data) {
 		return d
 	}
-	_, err := clientCtx.GetClient().DeleteApplicationAgent(ctx, &config.DeleteApplicationAgentRequest{
-		Id: data.Id(),
-	})
+	err := clientCtx.GetClient().Delete(ctx, "/application-agents/"+data.Id())
 	HasFailed(&d, err)
 	return d
 }
