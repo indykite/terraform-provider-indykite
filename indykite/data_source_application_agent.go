@@ -16,17 +16,16 @@ package indykite
 
 import (
 	"context"
-	"errors"
-	"io"
+	"fmt"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 )
 
 func dataSourceAppAgent() *schema.Resource {
 	oneOfAppID := []string{nameKey, appAgentIDKey}
+
 	return &schema.Resource{
 		Description: "Application agents are the profiles that contain the credentials " +
 			"used by applications to connect to the backend.  " +
@@ -37,8 +36,8 @@ func dataSourceAppAgent() *schema.Resource {
 			customerIDKey:     setComputed(customerIDSchema()),
 			applicationIDKey:  setComputed(applicationIDSchema()),
 			appAgentIDKey:     setExactlyOneOf(appAgentIDSchema(), appAgentIDKey, oneOfAppID),
-			nameKey:           setRequiredWith(setExactlyOneOf(nameSchema(), nameKey, oneOfAppID), appSpaceIDKey),
-			appSpaceIDKey:     setRequiredWith(appSpaceIDSchema(), nameKey),
+			nameKey:           setExactlyOneOf(nameSchema(), nameKey, oneOfAppID),
+			appSpaceIDKey:     convertToOptional(appSpaceIDSchema()),
 			displayNameKey:    displayNameSchema(),
 			descriptionKey:    descriptionSchema(),
 			apiPermissionsKey: apiPermissionsSchema(),
@@ -53,7 +52,7 @@ func dataSourceAppAgentList() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataAppAgentListContext,
 		Schema: map[string]*schema.Schema{
-			appSpaceIDKey: appSpaceIDSchema(),
+			appSpaceIDKey: appSpaceIDSchema(), // User-facing field - ONLY this should be in configs
 			filterKey:     exactNameFilterSchema(),
 			"app_agents": {
 				Type:     schema.TypeList,
@@ -76,6 +75,36 @@ func dataSourceAppAgentList() *schema.Resource {
 	}
 }
 
+// lookupApplicationAgentByName finds an application agent by name within an app space.
+func lookupApplicationAgentByName(
+	ctx context.Context,
+	clientCtx *ClientContext,
+	data *schema.ResourceData,
+	name string,
+) (*ApplicationAgentResponse, diag.Diagnostic) {
+	// User provides app_space_id in config
+	appSpaceID := data.Get(appSpaceIDKey).(string)
+
+	// Validate that app_space_id is provided when using name
+	if appSpaceID == "" {
+		return nil, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "\"name\": all of `app_space_id, name` must be specified",
+		}
+	}
+
+	resp := &ApplicationAgentResponse{}
+	err := clientCtx.GetClient().Get(ctx, "/application-agents/"+name+"?location="+appSpaceID, resp)
+	if err != nil {
+		return nil, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  fmt.Sprintf("failed to get application agent by name: %v", err),
+		}
+	}
+
+	return resp, diag.Diagnostic{}
+}
+
 func dataAppAgentReadContext(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
 	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
@@ -83,41 +112,41 @@ func dataAppAgentReadContext(ctx context.Context, data *schema.ResourceData, met
 		return d
 	}
 
-	req := &configpb.ReadApplicationAgentRequest{}
-	if name, exists := data.GetOk(nameKey); exists {
-		req.Identifier = &configpb.ReadApplicationAgentRequest_Name{
-			Name: &configpb.UniqueNameIdentifier{
-				Name:     name.(string),
-				Location: data.Get(appSpaceIDKey).(string),
-			},
-		}
-	} else if id, ok := data.GetOk(appAgentIDKey); ok {
-		req.Identifier = &configpb.ReadApplicationAgentRequest_Id{
-			Id: id.(string),
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
+	defer cancel()
+
+	var resp *ApplicationAgentResponse
+	var err error
+
+	// Check if we have an ID or need to look up by name
+	if id, ok := data.GetOk(appAgentIDKey); ok {
+		// Direct lookup by ID
+		resp = &ApplicationAgentResponse{}
+		err = clientCtx.GetClient().Get(ctx, "/application-agents/"+id.(string), resp)
+	} else if name, exists := data.GetOk(nameKey); exists {
+		// Look up by name within app space
+		var diagErr diag.Diagnostic
+		resp, diagErr = lookupApplicationAgentByName(ctx, clientCtx, data, name.(string))
+		// Only return if there's an actual error (non-zero severity with summary)
+		if diagErr.Summary != "" {
+			return append(d, diagErr)
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
-	defer cancel()
-	resp, err := clientCtx.GetClient().ReadApplicationAgent(ctx, req)
 	if readHasFailed(&d, err, data) {
 		return d
 	}
 
-	if resp.GetApplicationAgent() == nil {
-		return diag.Diagnostics{buildPluginError("empty ApplicationAgent response")}
-	}
-
-	data.SetId(resp.GetApplicationAgent().GetId())
-	setData(&d, data, customerIDKey, resp.GetApplicationAgent().GetCustomerId())
-	setData(&d, data, appSpaceIDKey, resp.GetApplicationAgent().GetAppSpaceId())
-	setData(&d, data, applicationIDKey, resp.GetApplicationAgent().GetApplicationId())
-	setData(&d, data, nameKey, resp.GetApplicationAgent().GetName())
-	setData(&d, data, displayNameKey, resp.GetApplicationAgent().GetDisplayName())
-	setData(&d, data, descriptionKey, resp.GetApplicationAgent().GetDescription())
-	setData(&d, data, createTimeKey, resp.GetApplicationAgent().GetCreateTime())
-	setData(&d, data, updateTimeKey, resp.GetApplicationAgent().GetUpdateTime())
-	setData(&d, data, apiPermissionsKey, resp.GetApplicationAgent().GetApiAccessRestriction())
+	data.SetId(resp.ID)
+	setData(&d, data, customerIDKey, resp.CustomerID)
+	setData(&d, data, appSpaceIDKey, resp.AppSpaceID)
+	setData(&d, data, applicationIDKey, resp.ApplicationID)
+	setData(&d, data, nameKey, resp.Name)
+	setData(&d, data, displayNameKey, resp.DisplayName)
+	setData(&d, data, descriptionKey, resp.Description)
+	setData(&d, data, createTimeKey, resp.CreateTime)
+	setData(&d, data, updateTimeKey, resp.UpdateTime)
+	setData(&d, data, apiPermissionsKey, resp.APIPermissions)
 	return d
 }
 
@@ -135,38 +164,45 @@ func dataAppAgentListContext(ctx context.Context, data *schema.ResourceData, met
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := clientCtx.GetClient().ListApplicationAgents(ctx, &configpb.ListApplicationAgentsRequest{
-		AppSpaceId: data.Get(appSpaceIDKey).(string),
-		Match:      match,
-	})
+
+	// User provides app_space_id in config, we use project_id parameter for REST API
+	appSpaceID := data.Get(appSpaceIDKey).(string)
+
+	var resp ListApplicationAgentsResponse
+	err := clientCtx.GetClient().Get(ctx, "/application-agents?project_id="+appSpaceID, &resp)
 	if HasFailed(&d, err) {
 		return d
 	}
 
-	var allApplicationAgents []map[string]any
-	for {
-		app, err := resp.Recv()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
+	allApplicationAgents := make([]map[string]any, 0, len(resp.Agents))
+	for i := range resp.Agents {
+		agent := &resp.Agents[i]
+		// Apply exact name match filter (MinItems: 1 ensures filter is always present)
+		matchFound := false
+		for _, filter := range match {
+			if agent.Name == filter {
+				matchFound = true
 				break
 			}
-			HasFailed(&d, err)
-			return d
 		}
+		if !matchFound {
+			continue
+		}
+
 		allApplicationAgents = append(allApplicationAgents, map[string]any{
-			customerIDKey:     app.GetApplicationAgent().GetCustomerId(),
-			appSpaceIDKey:     app.GetApplicationAgent().GetAppSpaceId(),
-			applicationIDKey:  app.GetApplicationAgent().GetApplicationId(),
-			"id":              app.GetApplicationAgent().GetId(),
-			nameKey:           app.GetApplicationAgent().GetName(),
-			displayNameKey:    app.GetApplicationAgent().GetDisplayName(),
-			descriptionKey:    flattenOptionalString(app.GetApplicationAgent().GetDescription()),
-			apiPermissionsKey: app.GetApplicationAgent().GetApiAccessRestriction(),
+			customerIDKey:     agent.CustomerID,
+			appSpaceIDKey:     agent.AppSpaceID,
+			applicationIDKey:  agent.ApplicationID,
+			"id":              agent.ID,
+			nameKey:           agent.Name,
+			displayNameKey:    agent.DisplayName,
+			descriptionKey:    agent.Description,
+			apiPermissionsKey: agent.APIPermissions,
 		})
 	}
 	setData(&d, data, "app_agents", allApplicationAgents)
 
-	id := data.Get(appSpaceIDKey).(string) + "/app_agents/" + strings.Join(match, ",")
+	id := appSpaceID + "/app_agents/" + strings.Join(match, ",")
 	data.SetId(id)
 	return d
 }

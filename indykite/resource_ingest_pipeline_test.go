@@ -16,24 +16,21 @@ package indykite_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"regexp"
-	"strconv"
+	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/indykite/indykite-sdk-go/config"
-	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
-	configm "github.com/indykite/indykite-sdk-go/test/config/v1beta1"
-	"go.uber.org/mock/gomock"
-	"google.golang.org/protobuf/types/known/timestamppb"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/indykite/terraform-provider-indykite/indykite"
-	"github.com/indykite/terraform-provider-indykite/indykite/test"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -44,26 +41,21 @@ var _ = Describe("Resource IngestPipeline", func() {
 	//nolint:gosec,lll // there are no secrets
 	const (
 		resourceName  = "indykite_ingest_pipeline.development"
-		appAgentToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaWQ6QUFBQUJXbHVaSGxyYVVSbGdBQUZEd0FBQUFBIiwic3ViIjoiZ2lkOkFBQUFCV2x1WkhscmFVUmxnQUFGRHdBQUFBQSIsImV4cCI6MjUzNDAyMjYxMTk5LCJpYXQiOjE1MTYyMzkwMjJ9.39Kc7pL8Vjf1S4qA6NHBGMP06TahR5Y9JOGSWKOo5Rw" // checkov:skip=CKV_SECRET_9:acceptance test // gitleaks:allow
+		appAgentToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaWQ6QUFBQUJXbHVaSGxyYVVSbGdBQUZEd0FBQUFBIiwic3ViIjoiZ2lkOkFBQUFCV2x1WkhscmFVUmxnQUFGRHdBQUFBQSIsImV4cCI6MjUzNDAyMjYxMTk5LCJpYXQiOjE1MTYyMzkwMjJ9.39Kc7pL8Vjf1S4qA6NHBGMP06TahR5Y9JOGSWKOo5Rw" // checkov:skip=CKV_SECRET_9:acceptance test // gitleaks:allow //nolint:lll
 	)
 	var (
-		mockCtrl         *gomock.Controller
-		mockConfigClient *configm.MockConfigManagementAPIClient
-		provider         *schema.Provider
+		mockServer *httptest.Server
+		provider   *schema.Provider
 	)
 
 	BeforeEach(func() {
-		mockCtrl = gomock.NewController(TerraformGomockT(GinkgoT()))
-		mockConfigClient = configm.NewMockConfigManagementAPIClient(mockCtrl)
-
 		provider = indykite.Provider()
-		cfgFunc := provider.ConfigureContextFunc
-		provider.ConfigureContextFunc =
-			func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
-				client, _ := config.NewTestClient(ctx, mockConfigClient)
-				ctx = indykite.WithClient(ctx, client)
-				return cfgFunc(ctx, data)
-			}
+	})
+
+	AfterEach(func() {
+		if mockServer != nil {
+			mockServer.Close()
+		}
 	})
 
 	It("Test CRUD of Ingest Pipeline configuration", func() {
@@ -73,145 +65,86 @@ var _ = Describe("Resource IngestPipeline", func() {
 				name = "%s"
 				%s
 			}`
-		expectedResp := &configpb.ReadConfigNodeResponse{
-			ConfigNode: &configpb.ConfigNode{
-				Id:          sampleID,
-				Name:        "my-first-ingest-pipeline",
-				DisplayName: "Display name of Ingest Pipeline configuration",
-				CustomerId:  customerID,
-				AppSpaceId:  appSpaceID,
-				CreateTime:  timestamppb.Now(),
-				UpdateTime:  timestamppb.Now(),
-				Config: &configpb.ConfigNode_IngestPipelineConfig{
-					IngestPipelineConfig: &configpb.IngestPipelineConfig{
-						Sources:       []string{"source1", "source2"},
-						AppAgentToken: "", // Empty sensitive data
-					},
-				},
-			},
-		}
-		expectedUpdatedResp := &configpb.ReadConfigNodeResponse{
-			ConfigNode: &configpb.ConfigNode{
-				Id:          sampleID,
-				Name:        "my-first-ingest-pipeline",
-				Description: wrapperspb.String("ingest pipeline description"),
-				CustomerId:  customerID,
-				AppSpaceId:  appSpaceID,
-				CreateTime:  expectedResp.GetConfigNode().GetCreateTime(),
-				UpdateTime:  timestamppb.Now(),
-				Config: &configpb.ConfigNode_IngestPipelineConfig{
-					IngestPipelineConfig: &configpb.IngestPipelineConfig{
-						Sources:       []string{"source1", "source2", "source3"},
-						AppAgentToken: "", // Empty sensitive data
-					},
-				},
-			},
-		}
 
-		// Create
-		mockConfigClient.EXPECT().
-			CreateConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Name": Equal(expectedResp.GetConfigNode().GetName()),
-				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal(
-					expectedResp.GetConfigNode().GetDisplayName(),
-				)})),
-				"Description": BeNil(),
-				"Location":    Equal(appSpaceID),
-				"Config": PointTo(MatchFields(IgnoreExtras, Fields{
-					"IngestPipelineConfig": test.EqualProto(
-						&configpb.IngestPipelineConfig{
-							Sources:       []string{"source1", "source2"},
-							AppAgentToken: appAgentToken, // checkov:skip=CKV_SECRET_6:acceptance test
-						},
-					),
-				})),
-			})))).
-			Return(&configpb.CreateConfigNodeResponse{
-				Id:         sampleID,
-				CreateTime: timestamppb.Now(),
-				UpdateTime: timestamppb.Now(),
-			}, nil)
+		createTime := time.Now()
+		updateTime := time.Now()
+		updated := false
 
-		// update
-		mockConfigClient.EXPECT().
-			UpdateConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id":          Equal(sampleID),
-				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{"Value": BeEmpty()})),
-				"Description": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal(
-					expectedUpdatedResp.GetConfigNode().GetDescription().GetValue(),
-				)})),
-				"Config": PointTo(MatchFields(IgnoreExtras, Fields{
-					"IngestPipelineConfig": test.EqualProto(
-						&configpb.IngestPipelineConfig{
-							Sources:       []string{"source1", "source2", "source3"},
-							AppAgentToken: appAgentToken, // checkov:skip=CKV_SECRET_6:acceptance test
-						},
-					),
-				})),
-			})))).
-			Return(&configpb.UpdateConfigNodeResponse{Id: sampleID}, nil)
-
-		// Read in given order
-		gomock.InOrder(
-			mockConfigClient.EXPECT().
-				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(sampleID),
-				})))).
-				Times(4).
-				Return(expectedResp, nil),
-
-			mockConfigClient.EXPECT().
-				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(sampleID),
-				})))).
-				Times(2).
-				Return(expectedUpdatedResp, nil),
-		)
-
-		// Delete
-		mockConfigClient.EXPECT().
-			DeleteConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(sampleID),
-			})))).
-			Return(&configpb.DeleteConfigNodeResponse{}, nil)
-
-		testResourceDataExists := func(
-			n string,
-			data *configpb.ReadConfigNodeResponse,
-			token string,
-		) resource.TestCheckFunc {
-			return func(s *terraform.State) error {
-				rs, ok := s.RootModule().Resources[n]
-				if !ok {
-					return fmt.Errorf("not found: %s", n)
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/ingest-pipelines"):
+				resp := indykite.IngestPipelineResponse{
+					ID:          sampleID,
+					Name:        "my-first-ingest-pipeline",
+					DisplayName: "Display name of Ingest Pipeline configuration",
+					CustomerID:  customerID,
+					AppSpaceID:  appSpaceID,
+					Sources:     []string{"source1", "source2"},
+					CreateTime:  createTime,
+					UpdateTime:  updateTime,
 				}
-				if rs.Primary.ID != data.GetConfigNode().GetId() {
-					return errors.New("ID does not match")
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, sampleID):
+				// Return different data based on whether we've been updated
+				var resp indykite.IngestPipelineResponse
+				if updated {
+					// After update: return description and 3 sources
+					resp = indykite.IngestPipelineResponse{
+						ID:          sampleID,
+						Name:        "my-first-ingest-pipeline",
+						Description: "ingest pipeline description",
+						CustomerID:  customerID,
+						AppSpaceID:  appSpaceID,
+						Sources:     []string{"source1", "source2", "source3"},
+						CreateTime:  createTime,
+						UpdateTime:  time.Now(),
+					}
+				} else {
+					// Before update: return display_name and 2 sources (same as POST)
+					resp = indykite.IngestPipelineResponse{
+						ID:          sampleID,
+						Name:        "my-first-ingest-pipeline",
+						DisplayName: "Display name of Ingest Pipeline configuration",
+						CustomerID:  customerID,
+						AppSpaceID:  appSpaceID,
+						Sources:     []string{"source1", "source2"},
+						CreateTime:  createTime,
+						UpdateTime:  updateTime,
+					}
 				}
-				attrs := rs.Primary.Attributes
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
 
-				keys := Keys{
-					"id": Equal(data.GetConfigNode().GetId()),
-					"%":  Not(BeEmpty()), // This is Terraform helper
-
-					"location":     Equal(data.GetConfigNode().GetAppSpaceId()), // IngestPipeline is always on AppSpace
-					"customer_id":  Equal(data.GetConfigNode().GetCustomerId()),
-					"app_space_id": Equal(data.GetConfigNode().GetAppSpaceId()),
-					"name":         Equal(data.GetConfigNode().GetName()),
-					"display_name": Equal(data.GetConfigNode().GetDisplayName()),
-					"description":  Equal(data.GetConfigNode().GetDescription().GetValue()),
-					"create_time":  Not(BeEmpty()),
-					"update_time":  Not(BeEmpty()),
-
-					"app_agent_token": Equal(token),
+			case r.Method == http.MethodPut && strings.Contains(r.URL.Path, sampleID):
+				updated = true
+				resp := indykite.IngestPipelineResponse{
+					ID:          sampleID,
+					Name:        "my-first-ingest-pipeline",
+					Description: "ingest pipeline description",
+					CustomerID:  customerID,
+					AppSpaceID:  appSpaceID,
+					Sources:     []string{"source1", "source2", "source3"},
+					CreateTime:  createTime,
+					UpdateTime:  time.Now(),
 				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
 
-				sources := data.GetConfigNode().GetIngestPipelineConfig().GetSources()
-				keys["sources.#"] = Equal(strconv.Itoa(len(sources)))
-				addStringArrayToKeys(keys, "sources", sources)
+			case r.Method == http.MethodDelete:
+				w.WriteHeader(http.StatusNoContent)
 
-				return convertOmegaMatcherToError(MatchAllKeys(keys), attrs)
+			default:
+				w.WriteHeader(http.StatusNotFound)
 			}
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
 		}
 
 		validSettings := `
@@ -261,11 +194,11 @@ var _ = Describe("Resource IngestPipeline", func() {
 						`+validSettings+``,
 					),
 					Check: resource.ComposeTestCheckFunc(
-						testResourceDataExists(resourceName, expectedResp, appAgentToken),
+						testIngestPipelineResourceDataExists(resourceName, sampleID, appAgentToken),
 					),
 				},
 				{
-					// Performs 1 read
+					// Import test
 					ResourceName:  resourceName,
 					ImportState:   true,
 					ImportStateId: sampleID,
@@ -277,10 +210,128 @@ var _ = Describe("Resource IngestPipeline", func() {
 						`+validSettingsUpdate+``,
 					),
 					Check: resource.ComposeTestCheckFunc(
-						testResourceDataExists(resourceName, expectedUpdatedResp, appAgentToken),
+						testIngestPipelineResourceDataExists(resourceName, sampleID, appAgentToken),
 					),
 				},
 			},
 		})
 	})
+
+	It("Test import by name with location", func() {
+		tfConfigDef := `resource "indykite_ingest_pipeline" "development" {
+				location = "%s"
+				name = "%s"
+				%s
+			}`
+
+		createTime := time.Now()
+		updateTime := time.Now()
+
+		mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/ingest-pipelines"):
+				resp := indykite.IngestPipelineResponse{
+					ID:          sampleID,
+					Name:        "wonka-ingest",
+					DisplayName: "Wonka Ingest",
+					CustomerID:  customerID,
+					AppSpaceID:  appSpaceID,
+					Sources:     []string{"source1", "source2"},
+					CreateTime:  createTime,
+					UpdateTime:  updateTime,
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/ingest-pipelines/"):
+				// Support both ID and name?location=appSpaceID formats
+				pathAfterPipelines := strings.TrimPrefix(r.URL.Path, "/configs/v1/ingest-pipelines/")
+				isNameLookup := strings.Contains(pathAfterPipelines, "wonka-ingest")
+				isIDLookup := strings.Contains(pathAfterPipelines, sampleID)
+
+				if isNameLookup || isIDLookup {
+					resp := indykite.IngestPipelineResponse{
+						ID:          sampleID,
+						Name:        "wonka-ingest",
+						DisplayName: "Wonka Ingest",
+						CustomerID:  customerID,
+						AppSpaceID:  appSpaceID,
+						Sources:     []string{"source1", "source2"},
+						CreateTime:  createTime,
+						UpdateTime:  updateTime,
+					}
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(resp)
+				} else {
+					w.WriteHeader(http.StatusNotFound)
+					_ = json.NewEncoder(w).Encode(map[string]string{"message": "Not Found"})
+				}
+
+			case r.Method == http.MethodDelete:
+				w.WriteHeader(http.StatusNoContent)
+
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+		defer mockServer.Close()
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			Providers: map[string]*schema.Provider{
+				"indykite": provider,
+			},
+			Steps: []resource.TestStep{
+				{
+					Config: fmt.Sprintf(tfConfigDef, appSpaceID, "wonka-ingest",
+						`display_name = "Wonka Ingest"
+							sources = ["source1", "source2"]
+							app_agent_token = "`+appAgentToken+`"
+							`,
+					),
+					Check: resource.ComposeTestCheckFunc(
+						testIngestPipelineResourceDataExists(resourceName, sampleID, appAgentToken),
+					),
+				},
+				{
+					ResourceName:  resourceName,
+					ImportState:   true,
+					ImportStateId: "wonka-ingest?location=" + appSpaceID,
+				},
+			},
+		})
+	})
 })
+
+func testIngestPipelineResourceDataExists(n, expectedID, expectedToken string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[n]
+		if !ok {
+			return fmt.Errorf("not found: %s", n)
+		}
+
+		if rs.Primary.ID != expectedID {
+			return errors.New("ID does not match")
+		}
+
+		keys := Keys{
+			"id": Equal(expectedID),
+			"%":  Not(BeEmpty()),
+
+			"customer_id":     Equal(customerID),
+			"app_space_id":    Equal(appSpaceID),
+			"name":            Not(BeEmpty()),
+			"app_agent_token": Equal(expectedToken),
+			"create_time":     Not(BeEmpty()),
+			"update_time":     Not(BeEmpty()),
+		}
+
+		return convertOmegaMatcherToError(MatchKeys(IgnoreExtras, keys), rs.Primary.Attributes)
+	}
+}

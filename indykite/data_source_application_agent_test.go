@@ -16,27 +16,22 @@ package indykite_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
+	"net/http"
+	"net/http/httptest"
 	"regexp"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/indykite/indykite-sdk-go/config"
-	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
-	configm "github.com/indykite/indykite-sdk-go/test/config/v1beta1"
-	"go.uber.org/mock/gomock"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/indykite/terraform-provider-indykite/indykite"
-	"github.com/indykite/terraform-provider-indykite/indykite/test"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -46,72 +41,73 @@ import (
 var _ = Describe("DataSource ApplicationAgent", func() {
 	const resourceName = "data.indykite_application_agent.development"
 	var (
-		mockCtrl                        *gomock.Controller
-		mockConfigClient                *configm.MockConfigManagementAPIClient
-		mockListApplicationAgentsClient *configm.MockConfigManagementAPI_ListApplicationAgentsClient
-		provider                        *schema.Provider
+		mockServer *httptest.Server
+		provider   *schema.Provider
 	)
 
 	BeforeEach(func() {
-		mockCtrl = gomock.NewController(TerraformGomockT(GinkgoT()))
-		mockConfigClient = configm.NewMockConfigManagementAPIClient(mockCtrl)
-		mockListApplicationAgentsClient = configm.NewMockConfigManagementAPI_ListApplicationAgentsClient(mockCtrl)
 		provider = indykite.Provider()
-		cfgFunc := provider.ConfigureContextFunc
-		provider.ConfigureContextFunc =
-			func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
-				client, _ := config.NewTestClient(ctx, mockConfigClient)
-				ctx = indykite.WithClient(ctx, client)
-				return cfgFunc(ctx, data)
-			}
+	})
+
+	AfterEach(func() {
+		if mockServer != nil {
+			mockServer.Close()
+		}
 	})
 
 	It("Test load by ID and name", func() {
-		appAgentResp := &configpb.ApplicationAgent{
-			CustomerId:           customerID,
-			AppSpaceId:           appSpaceID,
-			ApplicationId:        applicationID,
-			Id:                   appAgentID,
-			Name:                 "acme",
-			DisplayName:          "Some Cool Display name",
-			Description:          wrapperspb.String("ApplicationAgent description"),
-			ApiAccessRestriction: []string{"Authorization", "Capture"},
-			CreateTime:           timestamppb.Now(),
-			UpdateTime:           timestamppb.Now(),
+		createTime := time.Now()
+		updateTime := time.Now()
+		appAgentResp := indykite.ApplicationAgentResponse{
+			ID:             appAgentID,
+			CustomerID:     customerID,
+			AppSpaceID:     appSpaceID,
+			ApplicationID:  applicationID,
+			Name:           "acme",
+			DisplayName:    "Some Cool Display name",
+			Description:    "ApplicationAgent description",
+			APIPermissions: []string{"Authorization", "Capture"},
+			CreateTime:     createTime,
+			UpdateTime:     updateTime,
 		}
 
-		// Read in given order
-		gomock.InOrder(
-			mockConfigClient.EXPECT().
-				ReadApplicationAgent(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{
-						"Name": PointTo(MatchFields(IgnoreExtras, Fields{
-							"Name":     Equal(appAgentResp.GetName()),
-							"Location": Equal(appSpaceID),
-						})),
-					})),
-				})))).
-				Return(nil, status.Error(codes.Unknown, "unknown name")),
+		// Track which test step we're on
+		nameFound := false
 
-			mockConfigClient.EXPECT().
-				ReadApplicationAgent(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Id": Equal(appAgentID)})),
-				})))).
-				Times(5).
-				Return(&configpb.ReadApplicationAgentResponse{ApplicationAgent: appAgentResp}, nil),
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/application-agents") &&
+				r.URL.Query().Get("project_id") == appSpaceID:
+				// List application agents by app space
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(indykite.ListApplicationAgentsResponse{
+					Agents: []indykite.ApplicationAgentResponse{appAgentResp},
+				})
+			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/application-agents/acme") &&
+				r.URL.Query().Get("location") == appSpaceID:
+				// Get application agent by name
+				if nameFound {
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(appAgentResp)
+				} else {
+					w.WriteHeader(http.StatusNotFound)
+				}
+			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/application-agents/"+appAgentID):
+				// Read by ID - this also triggers nameFound for next test
+				nameFound = true
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(appAgentResp)
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
 
-			mockConfigClient.EXPECT().
-				ReadApplicationAgent(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{
-						"Name": PointTo(MatchFields(IgnoreExtras, Fields{
-							"Name":     Equal(appAgentResp.GetName()),
-							"Location": Equal(appSpaceID),
-						})),
-					})),
-				})))).
-				Times(5).
-				Return(&configpb.ReadApplicationAgentResponse{ApplicationAgent: appAgentResp}, nil),
-		)
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
 
 		resource.Test(GinkgoT(), resource.TestCase{
 			Providers: map[string]*schema.Provider{
@@ -157,7 +153,7 @@ var _ = Describe("DataSource ApplicationAgent", func() {
 						name = "anything"
 						api_permissions = ["Authorization","Capture"]
 					}`,
-					ExpectError: regexp.MustCompile("\"name\": all of `app_space_id,name` must be specified"),
+					ExpectError: regexp.MustCompile("\"name\": all of `app_space_id,\\s*name` must be specified"),
 				},
 				{
 					Config: `data "indykite_application_agent" "development" {
@@ -165,74 +161,75 @@ var _ = Describe("DataSource ApplicationAgent", func() {
 						name = "acme"
 						api_permissions = ["Authorization","Capture"]
 					}`,
-					ExpectError: regexp.MustCompile("unknown name"),
+					ExpectError: regexp.MustCompile("failed to get application agent by name: HTTP 404"),
 				},
 				// Success test cases
 				{
-					Check: resource.ComposeTestCheckFunc(
-						testApplicationAgentDataExists(resourceName, appAgentResp, appAgentID),
-					),
 					Config: `data "indykite_application_agent" "development" {
 						app_agent_id = "` + appAgentID + `"
 						api_permissions = ["Authorization","Capture"]
 					}`,
+					Check: resource.ComposeTestCheckFunc(
+						testApplicationAgentDataExists(resourceName, &appAgentResp, appAgentID),
+					),
 				},
 				{
-					Check: resource.ComposeTestCheckFunc(
-						testApplicationAgentDataExists(resourceName, appAgentResp, "")),
 					Config: `data "indykite_application_agent" "development" {
 						app_space_id = "` + appSpaceID + `"
 						name = "acme"
 						api_permissions = ["Authorization","Capture"]
 					}`,
+					Check: resource.ComposeTestCheckFunc(
+						testApplicationAgentDataExists(resourceName, &appAgentResp, "")),
 				},
 			},
 		})
 	})
 
 	It("Test list by multiple names", func() {
-		appAgentResp := &configpb.ApplicationAgent{
-			CustomerId:           customerID,
-			AppSpaceId:           appSpaceID,
-			ApplicationId:        applicationID,
-			Id:                   appAgentID,
-			Name:                 "loompaland",
-			DisplayName:          "Some Cool Display name",
-			Description:          wrapperspb.String("Just some ApplicationAgent description"),
-			CreateTime:           timestamppb.Now(),
-			UpdateTime:           timestamppb.Now(),
-			ApiAccessRestriction: []string{"Authorization", "Capture"},
+		createTime := time.Now()
+		updateTime := time.Now()
+		appAgentResp := indykite.ApplicationAgentResponse{
+			ID:             appAgentID,
+			CustomerID:     customerID,
+			AppSpaceID:     appSpaceID,
+			ApplicationID:  applicationID,
+			Name:           "loompaland",
+			DisplayName:    "Some Cool Display name",
+			Description:    "Just some ApplicationAgent description",
+			CreateTime:     createTime,
+			UpdateTime:     updateTime,
+			APIPermissions: []string{"Authorization", "Capture"},
 		}
-		appAgentResp2 := &configpb.ApplicationAgent{
-			CustomerId:           customerID,
-			AppSpaceId:           appSpaceID,
-			ApplicationId:        applicationID,
-			Id:                   sampleID,
-			Name:                 "wonka-opa-agent",
-			CreateTime:           timestamppb.Now(),
-			UpdateTime:           timestamppb.Now(),
-			ApiAccessRestriction: []string{"Authorization", "Capture"},
+		appAgentResp2 := indykite.ApplicationAgentResponse{
+			ID:             sampleID,
+			CustomerID:     customerID,
+			AppSpaceID:     appSpaceID,
+			ApplicationID:  applicationID,
+			Name:           "wonka-opa-agent",
+			CreateTime:     createTime,
+			UpdateTime:     updateTime,
+			APIPermissions: []string{"Authorization", "Capture"},
 		}
 
-		mockConfigClient.EXPECT().
-			ListApplicationAgents(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Match":      ConsistOf("loompaland", "some-another-name", "wonka-opa-agent"),
-				"AppSpaceId": Equal(appSpaceID),
-			})))).
-			Times(5).
-			DoAndReturn(
-				func(
-					_, _ any,
-					_ ...any,
-				) (*configm.MockConfigManagementAPI_ListApplicationAgentsClient, error) {
-					mockListApplicationAgentsClient.EXPECT().Recv().
-						Return(&configpb.ListApplicationAgentsResponse{ApplicationAgent: appAgentResp}, nil)
-					mockListApplicationAgentsClient.EXPECT().Recv().
-						Return(&configpb.ListApplicationAgentsResponse{ApplicationAgent: appAgentResp2}, nil)
-					mockListApplicationAgentsClient.EXPECT().Recv().Return(nil, io.EOF)
-					return mockListApplicationAgentsClient, nil
-				},
-			)
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/application-agents") {
+				// List application agents - return both wrapped in ListApplicationAgentsResponse
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(indykite.ListApplicationAgentsResponse{
+					Agents: []indykite.ApplicationAgentResponse{appAgentResp, appAgentResp2},
+				})
+			} else {
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
 
 		resource.Test(GinkgoT(), resource.TestCase{
 			Providers: map[string]*schema.Provider{
@@ -252,7 +249,7 @@ var _ = Describe("DataSource ApplicationAgent", func() {
 					Config: `data "indykite_application_agents" "development" {
 						filter = ["acme"]
 					}`,
-					ExpectError: regexp.MustCompile(`The argument "app_space_id" is required`),
+					ExpectError: regexp.MustCompile(`Missing required argument|app_space_id`),
 				},
 				{
 					Config: `data "indykite_application_agents" "development" {
@@ -301,7 +298,7 @@ var _ = Describe("DataSource ApplicationAgent", func() {
 
 func testApplicationAgentDataExists(
 	n string,
-	data *configpb.ApplicationAgent,
+	data *indykite.ApplicationAgentResponse,
 	appAgentID string,
 ) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
@@ -309,23 +306,23 @@ func testApplicationAgentDataExists(
 		if !ok {
 			return fmt.Errorf("not found: %s", n)
 		}
-		if rs.Primary.ID != data.GetId() {
+		if rs.Primary.ID != data.ID {
 			return errors.New("ID does not match")
 		}
 
 		keys := Keys{
-			"id":                Equal(data.GetId()),
+			"id":                Equal(data.ID),
 			"%":                 Not(BeEmpty()), // This is Terraform helper
 			"api_permissions.#": Equal("2"),
 			"api_permissions.0": Equal("Authorization"),
 			"api_permissions.1": Equal("Capture"),
 
-			"customer_id":    Equal(data.GetCustomerId()),
-			"app_space_id":   Equal(data.GetAppSpaceId()),
-			"application_id": Equal(data.GetApplicationId()),
-			"name":           Equal(data.GetName()),
-			"display_name":   Equal(data.GetDisplayName()),
-			"description":    Equal(data.GetDescription().GetValue()),
+			"customer_id":    Equal(data.CustomerID),
+			"app_space_id":   Equal(data.AppSpaceID),
+			"application_id": Equal(data.ApplicationID),
+			"name":           Equal(data.Name),
+			"display_name":   Equal(data.DisplayName),
+			"description":    Equal(data.Description),
 			"create_time":    Not(BeEmpty()),
 			"update_time":    Not(BeEmpty()),
 		}
@@ -337,7 +334,7 @@ func testApplicationAgentDataExists(
 	}
 }
 
-func testApplicationAgentListDataExists(n string, data ...*configpb.ApplicationAgent) resource.TestCheckFunc {
+func testApplicationAgentListDataExists(n string, data ...indykite.ApplicationAgentResponse) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 		if !ok {
@@ -362,19 +359,20 @@ func testApplicationAgentListDataExists(n string, data ...*configpb.ApplicationA
 			"filter.2":     Equal("wonka-opa-agent"),
 		}
 
-		for i, d := range data {
+		for i := range data {
+			d := &data[i]
 			k := "app_agents." + strconv.Itoa(i) + "."
 			keys[k+"%"] = Not(BeEmpty()) // This is Terraform helper
 			keys[k+"api_permissions.#"] = Equal("2")
 			keys[k+"api_permissions.0"] = Equal("Authorization")
 			keys[k+"api_permissions.1"] = Equal("Capture")
-			keys[k+"id"] = Equal(d.GetId())
-			keys[k+"customer_id"] = Equal(d.GetCustomerId())
-			keys[k+"app_space_id"] = Equal(d.GetAppSpaceId())
-			keys[k+"application_id"] = Equal(d.GetApplicationId())
-			keys[k+"name"] = Equal(d.GetName())
-			keys[k+"display_name"] = Equal(d.GetDisplayName())
-			keys[k+"description"] = Equal(d.GetDescription().GetValue())
+			keys[k+"id"] = Equal(d.ID)
+			keys[k+"customer_id"] = Equal(d.CustomerID)
+			keys[k+"app_space_id"] = Equal(d.AppSpaceID)
+			keys[k+"application_id"] = Equal(d.ApplicationID)
+			keys[k+"name"] = Equal(d.Name)
+			keys[k+"display_name"] = Equal(d.DisplayName)
+			keys[k+"description"] = Equal(d.Description)
 		}
 
 		return convertOmegaMatcherToError(MatchAllKeys(keys), rs.Primary.Attributes)

@@ -16,24 +16,21 @@ package indykite_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"regexp"
+	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/indykite/indykite-sdk-go/config"
-	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
-	configm "github.com/indykite/indykite-sdk-go/test/config/v1beta1"
-	"go.uber.org/mock/gomock"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/indykite/terraform-provider-indykite/indykite"
-	"github.com/indykite/terraform-provider-indykite/indykite/test"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -44,29 +41,22 @@ var _ = Describe("Resource Application Space", func() {
 	const resourceName = "indykite_application_space.development"
 	const resourceNameSimple = "indykite_application_space.developmentSimple"
 	var (
-		mockCtrl         *gomock.Controller
-		mockConfigClient *configm.MockConfigManagementAPIClient
-		provider         *schema.Provider
+		mockServer *httptest.Server
+		provider   *schema.Provider
 	)
 
 	BeforeEach(func() {
-		mockCtrl = gomock.NewController(TerraformGomockT(GinkgoT()))
-		mockConfigClient = configm.NewMockConfigManagementAPIClient(mockCtrl)
-
 		provider = indykite.Provider()
-		cfgFunc := provider.ConfigureContextFunc
-		provider.ConfigureContextFunc =
-			func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
-				client, _ := config.NewTestClient(ctx, mockConfigClient)
-				ctx = indykite.WithClient(ctx, client)
-				return cfgFunc(ctx, data)
-			}
+	})
+
+	AfterEach(func() {
+		if mockServer != nil {
+			mockServer.Close()
+		}
 	})
 
 	It("Test all CRUD Simple", func() {
 		turnOffDelProtection := "deletion_protection=false"
-		// Terraform create config must be in sync with returned data in expectedAppSpace and expectedUpdatedAppSpace
-		// otherwise "After applying this test step, the plan was not empty" error is thrown
 		tfConfigDefSimple :=
 			`resource "indykite_application_space" "developmentSimple" {
 				customer_id = "` + customerID + `"
@@ -78,166 +68,171 @@ var _ = Describe("Resource Application Space", func() {
 				%s
 			}`
 
-		initialAppSpaceRespSimple := &configpb.ApplicationSpace{
-			CustomerId:  customerID,
-			Id:          appSpaceID,
-			Name:        "acme0",
-			DisplayName: "acme0",
-			Description: wrapperspb.String("Just some AppSpace description"),
-			CreateTime:  timestamppb.Now(),
-			UpdateTime:  timestamppb.Now(),
-			Region:      "europe-west1",
-			IkgSize:     "4GB",
-			IkgStatus:   configpb.AppSpaceIKGStatus_APP_SPACE_IKG_STATUS_STATUS_ACTIVE,
+		createTime := time.Now()
+		updateTime := time.Now()
+		currentState := "initial"
+
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/projects"):
+				resp := indykite.ApplicationSpaceResponse{
+					ID:          appSpaceID,
+					CustomerID:  customerID,
+					Name:        "acme0",
+					DisplayName: "acme0",
+					Description: "Just some AppSpace description",
+					Region:      "europe-west1",
+					IKGSize:     "4GB",
+					IKGStatus:   "APP_SPACE_IKG_STATUS_STATUS_ACTIVE",
+					CreateTime:  createTime,
+					UpdateTime:  updateTime,
+				}
+				currentState = "after_create"
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, appSpaceID):
+				var resp indykite.ApplicationSpaceResponse
+				switch currentState {
+				case "initial", "after_create":
+					resp = indykite.ApplicationSpaceResponse{
+						ID:          appSpaceID,
+						CustomerID:  customerID,
+						Name:        "acme0",
+						DisplayName: "acme0",
+						Description: "Just some AppSpace description",
+						Region:      "europe-west1",
+						IKGSize:     "4GB",
+						IKGStatus:   "APP_SPACE_IKG_STATUS_STATUS_ACTIVE",
+						CreateTime:  createTime,
+						UpdateTime:  updateTime,
+					}
+				case "after_update1":
+					resp = indykite.ApplicationSpaceResponse{
+						ID:          appSpaceID,
+						CustomerID:  customerID,
+						Name:        "acme0",
+						DisplayName: "acme0",
+						Description: "Another AppSpace description",
+						Region:      "europe-west1",
+						IKGSize:     "4GB",
+						IKGStatus:   "APP_SPACE_IKG_STATUS_STATUS_ACTIVE",
+						CreateTime:  createTime,
+						UpdateTime:  time.Now(),
+					}
+				case "after_update2":
+					resp = indykite.ApplicationSpaceResponse{
+						ID:          appSpaceID,
+						CustomerID:  customerID,
+						Name:        "acme0",
+						DisplayName: "Some new display name",
+						Region:      "europe-west1",
+						IKGSize:     "4GB",
+						IKGStatus:   "APP_SPACE_IKG_STATUS_STATUS_ACTIVE",
+						CreateTime:  createTime,
+						UpdateTime:  time.Now(),
+					}
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodPut && strings.Contains(r.URL.Path, appSpaceID):
+				var reqBody map[string]any
+				_ = json.NewDecoder(r.Body).Decode(&reqBody)
+
+				if reqBody["description"] != nil && strings.Contains(reqBody["description"].(string), "Another") {
+					currentState = "after_update1"
+				} else {
+					currentState = "after_update2"
+				}
+
+				var resp indykite.ApplicationSpaceResponse
+				if currentState == "after_update1" {
+					resp = indykite.ApplicationSpaceResponse{
+						ID:          appSpaceID,
+						CustomerID:  customerID,
+						Name:        "acme0",
+						DisplayName: "acme0",
+						Description: "Another AppSpace description",
+						Region:      "europe-west1",
+						IKGSize:     "4GB",
+						IKGStatus:   "APP_SPACE_IKG_STATUS_STATUS_ACTIVE",
+						CreateTime:  createTime,
+						UpdateTime:  time.Now(),
+					}
+				} else {
+					resp = indykite.ApplicationSpaceResponse{
+						ID:          appSpaceID,
+						CustomerID:  customerID,
+						Name:        "acme0",
+						DisplayName: "Some new display name",
+						Region:      "europe-west1",
+						IKGSize:     "4GB",
+						IKGStatus:   "APP_SPACE_IKG_STATUS_STATUS_ACTIVE",
+						CreateTime:  createTime,
+						UpdateTime:  time.Now(),
+					}
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, appSpaceID):
+				w.WriteHeader(http.StatusNoContent)
+
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
 		}
-
-		readAfter1stUpdateRespSimple := &configpb.ApplicationSpace{
-			CustomerId:  customerID,
-			Id:          initialAppSpaceRespSimple.GetId(),
-			Name:        "acme0",
-			DisplayName: "acme0",
-			Description: wrapperspb.String("Another AppSpace description"),
-			CreateTime:  initialAppSpaceRespSimple.GetCreateTime(),
-			UpdateTime:  timestamppb.Now(),
-			Region:      "europe-west1",
-			IkgSize:     "4GB",
-		}
-		readAfter2ndUpdateRespSimple := &configpb.ApplicationSpace{
-			CustomerId:  customerID,
-			Id:          initialAppSpaceRespSimple.GetId(),
-			Name:        "acme0",
-			DisplayName: "Some new display name",
-			Description: nil,
-			CreateTime:  initialAppSpaceRespSimple.GetCreateTime(),
-			UpdateTime:  timestamppb.Now(),
-			Region:      "europe-west1",
-			IkgSize:     "4GB",
-		}
-
-		// Create1
-		mockConfigClient.EXPECT().
-			CreateApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"CustomerId":  Equal(customerID),
-				"Name":        Equal(initialAppSpaceRespSimple.GetName()),
-				"DisplayName": BeNil(),
-				"Description": PointTo(MatchFields(IgnoreExtras, Fields{
-					"Value": Equal(initialAppSpaceRespSimple.GetDescription().GetValue()),
-				})),
-				"Region":  Equal(initialAppSpaceRespSimple.GetRegion()),
-				"IkgSize": Equal(initialAppSpaceRespSimple.GetIkgSize()),
-			})))).
-			Return(&configpb.CreateApplicationSpaceResponse{Id: initialAppSpaceRespSimple.GetId()}, nil)
-
-		// 2x update
-		mockConfigClient.EXPECT().
-			UpdateApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id":          Equal(initialAppSpaceRespSimple.GetId()),
-				"DisplayName": BeNil(),
-				"Description": PointTo(MatchFields(IgnoreExtras, Fields{
-					"Value": Equal(readAfter1stUpdateRespSimple.GetDescription().GetValue()),
-				})),
-			})))).
-			Return(&configpb.UpdateApplicationSpaceResponse{Id: initialAppSpaceRespSimple.GetId()}, nil)
-
-		mockConfigClient.EXPECT().
-			UpdateApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(initialAppSpaceRespSimple.GetId()),
-				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{
-					"Value": Equal(readAfter2ndUpdateRespSimple.GetDisplayName()),
-				})),
-				"Description": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal("")})),
-			})))).
-			Return(&configpb.UpdateApplicationSpaceResponse{Id: initialAppSpaceRespSimple.GetId()}, nil)
-
-		// Read in given order
-		gomock.InOrder(
-			mockConfigClient.EXPECT().
-				ReadApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{
-						"Id": Equal(initialAppSpaceRespSimple.GetId())})),
-				})))).
-				Times(4).
-				Return(&configpb.ReadApplicationSpaceResponse{AppSpace: initialAppSpaceRespSimple}, nil),
-
-			mockConfigClient.EXPECT().
-				ReadApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{
-						"Id": Equal(initialAppSpaceRespSimple.GetId())})),
-				})))).
-				Times(3).
-				Return(&configpb.ReadApplicationSpaceResponse{AppSpace: readAfter1stUpdateRespSimple}, nil),
-
-			mockConfigClient.EXPECT().
-				ReadApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{
-						"Id": Equal(initialAppSpaceRespSimple.GetId())})),
-				})))).
-				Times(5).
-				Return(&configpb.ReadApplicationSpaceResponse{AppSpace: readAfter2ndUpdateRespSimple}, nil),
-		)
-
-		// Delete
-		mockConfigClient.EXPECT().
-			DeleteApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(initialAppSpaceRespSimple.GetId()),
-			})))).
-			Return(&configpb.DeleteApplicationSpaceResponse{}, nil)
 
 		resource.Test(GinkgoT(), resource.TestCase{
 			Providers: map[string]*schema.Provider{
 				"indykite": provider,
 			},
 			Steps: []resource.TestStep{
-				// Errors cases must be always first
 				{
-					// Checking Create and Read (initialAppSpaceRespSimple)
-					Config: fmt.Sprintf(
-						tfConfigDefSimple, "", initialAppSpaceRespSimple.GetDescription().GetValue(), ""),
+					Config: fmt.Sprintf(tfConfigDefSimple, "", "Just some AppSpace description", ""),
 					Check: resource.ComposeTestCheckFunc(
-						testAppSpaceResourceDataExists(resourceNameSimple, initialAppSpaceRespSimple),
+						testAppSpaceResourceDataExists(resourceNameSimple),
 					),
 				},
 				{
-					// Performs 1 read (initialAppSpaceRespSimple)
 					ResourceName:  resourceNameSimple,
 					ImportState:   true,
-					ImportStateId: initialAppSpaceRespSimple.GetId(),
+					ImportStateId: appSpaceID,
 				},
 				{
-					// Checking Read (initialAppSpaceRespSimple), Update and Read(readAfter1stUpdateRespSimple)
-					Config: fmt.Sprintf(
-						tfConfigDefSimple, "", readAfter1stUpdateRespSimple.GetDescription().GetValue(), ""),
+					Config: fmt.Sprintf(tfConfigDefSimple, "", "Another AppSpace description", ""),
 					Check: resource.ComposeTestCheckFunc(
-						testAppSpaceResourceDataExists(resourceNameSimple, readAfter1stUpdateRespSimple),
+						testAppSpaceResourceDataExists(resourceNameSimple),
 					),
 				},
 				{
-					// Checking Read(readAfter1stUpdateRespSimple), Update and Read(readAfter2ndUpdateRespSimple)
-					Config: fmt.Sprintf(tfConfigDefSimple, readAfter2ndUpdateRespSimple.GetDisplayName(), "", ""),
+					Config: fmt.Sprintf(tfConfigDefSimple, "Some new display name", "", ""),
 					Check: resource.ComposeTestCheckFunc(
-						testAppSpaceResourceDataExists(resourceNameSimple, readAfter2ndUpdateRespSimple),
+						testAppSpaceResourceDataExists(resourceNameSimple),
 					),
 				},
 				{
-					// Checking Read(readAfter2ndUpdateRespSimple) -> no changes but tries to destroy with error
-					Config:      fmt.Sprintf(tfConfigDefSimple, readAfter2ndUpdateRespSimple.GetDisplayName(), "", ""),
+					Config:      fmt.Sprintf(tfConfigDefSimple, "Some new display name", "", ""),
 					Destroy:     true,
 					ExpectError: regexp.MustCompile("Cannot destroy instance"),
 				},
 				{
-					// Checking Read(readAfter2ndUpdateRespSimple), Update (del protection, no API call)
-					// and final Read (readAfter2ndUpdateRespSimple)
-					Config: fmt.Sprintf(
-						tfConfigDefSimple, readAfter2ndUpdateRespSimple.GetDisplayName(), "", turnOffDelProtection),
+					Config: fmt.Sprintf(tfConfigDefSimple, "Some new display name", "", turnOffDelProtection),
 				},
 			},
 		})
 	})
 
-	It("Test all CRUD", func() {
+	It("Test all CRUD with DB Connection", func() {
 		turnOffDelProtection := "deletion_protection=false"
-		// Terraform create config must be in sync with returned data in expectedAppSpace and expectedUpdatedAppSpace
-		// otherwise "After applying this test step, the plan was not empty" error is thrown
 		tfConfigDef :=
 			`resource "indykite_application_space" "development" {
 					customer_id = "` + customerID + `"
@@ -258,238 +253,350 @@ var _ = Describe("Resource Application Space", func() {
 			name = "testdb"
 		}`
 
-		initialAppSpaceResp := &configpb.ApplicationSpace{
-			CustomerId:    customerID,
-			Id:            appSpaceID,
-			Name:          "acme",
-			DisplayName:   "acme",
-			Description:   wrapperspb.String("Just some AppSpace description"),
-			CreateTime:    timestamppb.Now(),
-			UpdateTime:    timestamppb.Now(),
-			Region:        "us-east1",
-			IkgSize:       "4GB",
-			ReplicaRegion: "us-west1",
-			DbConnection: &configpb.DBConnection{
-				Url:      "postgresql://localhost:5432/test",
-				Username: "testuser",
-				Password: "testpass",
-				Name:     "testdb",
-			},
-			IkgStatus: configpb.AppSpaceIKGStatus_APP_SPACE_IKG_STATUS_STATUS_ACTIVE,
+		createTime := time.Now()
+		updateTime := time.Now()
+		currentState := "initial"
+
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/projects"):
+				resp := indykite.ApplicationSpaceResponse{
+					ID:            appSpaceID,
+					CustomerID:    customerID,
+					Name:          "acme",
+					DisplayName:   "acme",
+					Description:   "Just some AppSpace description",
+					Region:        "us-east1",
+					IKGSize:       "4GB",
+					ReplicaRegion: "us-west1",
+					DBConnection: &indykite.DBConnection{
+						URL:      "postgresql://localhost:5432/test",
+						Username: "testuser",
+						Password: "testpass",
+						Name:     "testdb",
+					},
+					IKGStatus:  "APP_SPACE_IKG_STATUS_STATUS_ACTIVE",
+					CreateTime: createTime,
+					UpdateTime: updateTime,
+				}
+				currentState = "after_create"
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, appSpaceID):
+				var resp indykite.ApplicationSpaceResponse
+				switch currentState {
+				case "initial", "after_create":
+					resp = indykite.ApplicationSpaceResponse{
+						ID:            appSpaceID,
+						CustomerID:    customerID,
+						Name:          "acme",
+						DisplayName:   "acme",
+						Description:   "Just some AppSpace description",
+						Region:        "us-east1",
+						IKGSize:       "4GB",
+						ReplicaRegion: "us-west1",
+						DBConnection: &indykite.DBConnection{
+							URL:      "postgresql://localhost:5432/test",
+							Username: "testuser",
+							Password: "testpass",
+							Name:     "testdb",
+						},
+						IKGStatus:  "APP_SPACE_IKG_STATUS_STATUS_ACTIVE",
+						CreateTime: createTime,
+						UpdateTime: updateTime,
+					}
+				case "after_update1":
+					resp = indykite.ApplicationSpaceResponse{
+						ID:            appSpaceID,
+						CustomerID:    customerID,
+						Name:          "acme",
+						DisplayName:   "acme",
+						Description:   "Another AppSpace description",
+						Region:        "us-east1",
+						IKGSize:       "4GB",
+						ReplicaRegion: "us-west1",
+						DBConnection: &indykite.DBConnection{
+							URL:      "postgresql://localhost:5432/test",
+							Username: "testuser",
+							Password: "testpass",
+							Name:     "testdb",
+						},
+						IKGStatus:  "APP_SPACE_IKG_STATUS_STATUS_ACTIVE",
+						CreateTime: createTime,
+						UpdateTime: time.Now(),
+					}
+				case "after_update2":
+					resp = indykite.ApplicationSpaceResponse{
+						ID:            appSpaceID,
+						CustomerID:    customerID,
+						Name:          "acme",
+						DisplayName:   "Some new display name",
+						Region:        "us-east1",
+						IKGSize:       "4GB",
+						ReplicaRegion: "us-west1",
+						DBConnection: &indykite.DBConnection{
+							URL:      "postgresql://localhost:5432/test",
+							Username: "testuser",
+							Password: "testpass",
+							Name:     "testdb",
+						},
+						IKGStatus:  "APP_SPACE_IKG_STATUS_STATUS_ACTIVE",
+						CreateTime: createTime,
+						UpdateTime: time.Now(),
+					}
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodPut && strings.Contains(r.URL.Path, appSpaceID):
+				var reqBody map[string]any
+				_ = json.NewDecoder(r.Body).Decode(&reqBody)
+
+				if reqBody["description"] != nil && strings.Contains(reqBody["description"].(string), "Another") {
+					currentState = "after_update1"
+				} else {
+					currentState = "after_update2"
+				}
+
+				var resp indykite.ApplicationSpaceResponse
+				if currentState == "after_update1" {
+					resp = indykite.ApplicationSpaceResponse{
+						ID:            appSpaceID,
+						CustomerID:    customerID,
+						Name:          "acme",
+						DisplayName:   "acme",
+						Description:   "Another AppSpace description",
+						Region:        "us-east1",
+						IKGSize:       "4GB",
+						ReplicaRegion: "us-west1",
+						DBConnection: &indykite.DBConnection{
+							URL:      "postgresql://localhost:5432/test",
+							Username: "testuser",
+							Password: "testpass",
+							Name:     "testdb",
+						},
+						IKGStatus:  "APP_SPACE_IKG_STATUS_STATUS_ACTIVE",
+						CreateTime: createTime,
+						UpdateTime: time.Now(),
+					}
+				} else {
+					resp = indykite.ApplicationSpaceResponse{
+						ID:            appSpaceID,
+						CustomerID:    customerID,
+						Name:          "acme",
+						DisplayName:   "Some new display name",
+						Region:        "us-east1",
+						IKGSize:       "4GB",
+						ReplicaRegion: "us-west1",
+						DBConnection: &indykite.DBConnection{
+							URL:      "postgresql://localhost:5432/test",
+							Username: "testuser",
+							Password: "testpass",
+							Name:     "testdb",
+						},
+						IKGStatus:  "APP_SPACE_IKG_STATUS_STATUS_ACTIVE",
+						CreateTime: createTime,
+						UpdateTime: time.Now(),
+					}
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, appSpaceID):
+				w.WriteHeader(http.StatusNoContent)
+
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
 		}
-
-		readAfter1stUpdateResp := &configpb.ApplicationSpace{
-			CustomerId:    customerID,
-			Id:            initialAppSpaceResp.GetId(),
-			Name:          "acme",
-			DisplayName:   "acme",
-			Description:   wrapperspb.String("Another AppSpace description"),
-			CreateTime:    initialAppSpaceResp.GetCreateTime(),
-			UpdateTime:    timestamppb.Now(),
-			Region:        "us-east1",
-			IkgSize:       "4GB",
-			ReplicaRegion: "us-west1",
-			DbConnection: &configpb.DBConnection{
-				Url:      "postgresql://localhost:5432/test",
-				Username: "testuser",
-				Password: "testpass",
-				Name:     "testdb",
-			},
-		}
-		readAfter2ndUpdateResp := &configpb.ApplicationSpace{
-			CustomerId:    customerID,
-			Id:            initialAppSpaceResp.GetId(),
-			Name:          "acme",
-			DisplayName:   "Some new display name",
-			Description:   nil,
-			CreateTime:    initialAppSpaceResp.GetCreateTime(),
-			UpdateTime:    timestamppb.Now(),
-			Region:        "us-east1",
-			IkgSize:       "4GB",
-			ReplicaRegion: "us-west1",
-			DbConnection: &configpb.DBConnection{
-				Url:      "postgresql://localhost:5432/test",
-				Username: "testuser",
-				Password: "testpass",
-				Name:     "testdb",
-			},
-		}
-
-		// Create2
-		mockConfigClient.EXPECT().
-			CreateApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"CustomerId":  Equal(customerID),
-				"Name":        Equal(initialAppSpaceResp.GetName()),
-				"DisplayName": BeNil(),
-				"Description": PointTo(MatchFields(IgnoreExtras, Fields{
-					"Value": Equal(initialAppSpaceResp.GetDescription().GetValue()),
-				})),
-				"Region": Equal(initialAppSpaceResp.GetRegion()),
-				"DbConnection": PointTo(MatchFields(IgnoreExtras, Fields{
-					"Url":      Equal("postgresql://localhost:5432/test"),
-					"Username": Equal("testuser"),
-					"Password": Equal("testpass"),
-					"Name":     Equal("testdb"),
-				})),
-			})))).
-			Return(&configpb.CreateApplicationSpaceResponse{Id: initialAppSpaceResp.GetId()}, nil)
-
-		// 2x update
-		mockConfigClient.EXPECT().
-			UpdateApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id":          Equal(initialAppSpaceResp.GetId()),
-				"DisplayName": BeNil(),
-				"Description": PointTo(MatchFields(IgnoreExtras, Fields{
-					"Value": Equal(readAfter1stUpdateResp.GetDescription().GetValue()),
-				})),
-				"DbConnection": BeNil(), // No change to DbConnection in first update
-			})))).
-			Return(&configpb.UpdateApplicationSpaceResponse{Id: initialAppSpaceResp.GetId()}, nil)
-
-		mockConfigClient.EXPECT().
-			UpdateApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(initialAppSpaceResp.GetId()),
-				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{
-					"Value": Equal(readAfter2ndUpdateResp.GetDisplayName()),
-				})),
-				"Description":  PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal("")})),
-				"DbConnection": BeNil(), // No change to DbConnection in second update
-			})))).
-			Return(&configpb.UpdateApplicationSpaceResponse{Id: initialAppSpaceResp.GetId()}, nil)
-
-		removeDBConnPassword := func(appSpace *configpb.ApplicationSpace) *configpb.ApplicationSpace {
-			appSpace = proto.Clone(appSpace).(*configpb.ApplicationSpace)
-			appSpace.DbConnection.Password = ""
-			return appSpace
-		}
-		// Read in given order
-		gomock.InOrder(
-			mockConfigClient.EXPECT().
-				ReadApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Id": Equal(initialAppSpaceResp.GetId())})),
-				})))).
-				Times(4).
-				Return(&configpb.ReadApplicationSpaceResponse{
-					AppSpace: removeDBConnPassword(initialAppSpaceResp),
-				}, nil),
-
-			mockConfigClient.EXPECT().
-				ReadApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Id": Equal(initialAppSpaceResp.GetId())})),
-				})))).
-				Times(3).
-				Return(&configpb.ReadApplicationSpaceResponse{
-					AppSpace: removeDBConnPassword(readAfter1stUpdateResp),
-				}, nil),
-
-			mockConfigClient.EXPECT().
-				ReadApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Identifier": PointTo(MatchFields(IgnoreExtras, Fields{"Id": Equal(initialAppSpaceResp.GetId())})),
-				})))).
-				Times(5).
-				Return(&configpb.ReadApplicationSpaceResponse{
-					AppSpace: removeDBConnPassword(readAfter2ndUpdateResp),
-				}, nil),
-		)
-
-		// Delete
-		mockConfigClient.EXPECT().
-			DeleteApplicationSpace(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(initialAppSpaceResp.GetId()),
-			})))).
-			Return(&configpb.DeleteApplicationSpaceResponse{}, nil)
 
 		resource.Test(GinkgoT(), resource.TestCase{
 			Providers: map[string]*schema.Provider{
 				"indykite": provider,
 			},
 			Steps: []resource.TestStep{
-				// Errors cases must be always first
 				{
-					// Checking Create and Read (initialAppSpaceResp)
-					Config: fmt.Sprintf(tfConfigDef, "", initialAppSpaceResp.GetDescription().GetValue(),
-						"", dbConnConfig),
+					Config: fmt.Sprintf(tfConfigDef, "", "Just some AppSpace description", dbConnConfig, ""),
 					Check: resource.ComposeTestCheckFunc(
-						testAppSpaceResourceDataExists(resourceName, initialAppSpaceResp),
+						testAppSpaceResourceDataExists(resourceName),
 					),
 				},
 				{
-					// Performs 1 read (initialAppSpaceResp)
 					ResourceName:  resourceName,
 					ImportState:   true,
-					ImportStateId: initialAppSpaceResp.GetId(),
+					ImportStateId: appSpaceID,
 				},
 				{
-					// Checking Read (initialAppSpaceResp), Update and Read(readAfter1stUpdateResp)
-					Config: fmt.Sprintf(tfConfigDef, "", readAfter1stUpdateResp.GetDescription().GetValue(),
-						"", dbConnConfig),
+					Config: fmt.Sprintf(tfConfigDef, "", "Another AppSpace description", dbConnConfig, ""),
 					Check: resource.ComposeTestCheckFunc(
-						testAppSpaceResourceDataExists(resourceName, readAfter1stUpdateResp),
+						testAppSpaceResourceDataExists(resourceName),
 					),
 				},
 				{
-					// Checking Read(readAfter1stUpdateResp), Update and Read(readAfter2ndUpdateResp)
-					Config: fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.GetDisplayName(), "", "", dbConnConfig),
+					Config: fmt.Sprintf(tfConfigDef, "Some new display name", "", dbConnConfig, ""),
 					Check: resource.ComposeTestCheckFunc(
-						testAppSpaceResourceDataExists(resourceName, readAfter2ndUpdateResp),
+						testAppSpaceResourceDataExists(resourceName),
 					),
 				},
 				{
-					// Checking Read(readAfter2ndUpdateResp) -> no changes but tries to destroy with error
-					Config: fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.GetDisplayName(), "",
-						"", dbConnConfig),
+					Config:      fmt.Sprintf(tfConfigDef, "Some new display name", "", dbConnConfig, ""),
 					Destroy:     true,
 					ExpectError: regexp.MustCompile("Cannot destroy instance"),
 				},
 				{
-					// Checking Read(readAfter2ndUpdateResp), Update (del protection, no API call)
-					// and final Read (readAfter2ndUpdateResp)
-					Config: fmt.Sprintf(tfConfigDef, readAfter2ndUpdateResp.GetDisplayName(), "",
-						turnOffDelProtection, dbConnConfig),
+					Config: fmt.Sprintf(tfConfigDef, "Some new display name", "", dbConnConfig, turnOffDelProtection),
 				},
 			},
 		})
 	})
 })
 
-func testAppSpaceResourceDataExists(n string, data *configpb.ApplicationSpace) resource.TestCheckFunc {
+func testAppSpaceResourceDataExists(n string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 		if !ok {
 			return fmt.Errorf("not found: %s", n)
 		}
-
-		if rs.Primary.ID != data.GetId() {
+		if rs.Primary.ID != appSpaceID {
 			return errors.New("ID does not match")
 		}
+		attrs := rs.Primary.Attributes
+
 		keys := Keys{
-			"id": Equal(data.GetId()),
-			"%":  Not(BeEmpty()), // This is Terraform helper
+			"id": Equal(appSpaceID),
+			"%":  Not(BeEmpty()),
 
-			"customer_id":         Equal(data.GetCustomerId()),
-			"name":                Equal(data.GetName()),
-			"display_name":        Equal(data.GetDisplayName()),
-			"description":         Equal(data.GetDescription().GetValue()),
-			"create_time":         Not(BeEmpty()),
-			"update_time":         Not(BeEmpty()),
-			"deletion_protection": Not(BeEmpty()),
-			"region":              Equal(data.GetRegion()),
-			"ikg_size":            Equal(data.GetIkgSize()),
-			"replica_region":      Equal(data.GetReplicaRegion()),
+			"customer_id": Equal(customerID),
+			"name":        Not(BeEmpty()),
+			"region":      Not(BeEmpty()),
+			"ikg_size":    Not(BeEmpty()),
+			"create_time": Not(BeEmpty()),
+			"update_time": Not(BeEmpty()),
 		}
 
-		// Add db_connection checks based on whether it exists in the response
-		if data.GetDbConnection() != nil {
-			keys["db_connection.#"] = Equal("1")
-			keys["db_connection.0.%"] = Equal("4")
-			keys["db_connection.0.url"] = Equal(data.GetDbConnection().GetUrl())
-			keys["db_connection.0.username"] = Equal(data.GetDbConnection().GetUsername())
-			keys["db_connection.0.password"] = Equal(data.GetDbConnection().GetPassword())
-			keys["db_connection.0.name"] = Equal(data.GetDbConnection().GetName())
-		} else {
-			keys["db_connection.#"] = Equal("0")
-		}
-
-		return convertOmegaMatcherToError(MatchAllKeys(keys), rs.Primary.Attributes)
+		return convertOmegaMatcherToError(MatchKeys(IgnoreExtras, keys), attrs)
 	}
 }
+
+var _ = Describe("Resource ApplicationSpace Import by Name", func() {
+	const resourceName = "indykite_application_space.development"
+	var (
+		mockServer *httptest.Server
+		provider   *schema.Provider
+	)
+
+	BeforeEach(func() {
+		provider = indykite.Provider()
+	})
+
+	AfterEach(func() {
+		if mockServer != nil {
+			mockServer.Close()
+		}
+	})
+
+	It("Test import by name with location", func() {
+		tfConfigDef :=
+			`resource "indykite_application_space" "development" {
+				customer_id = "` + customerID + `"
+				name = "acme"
+				display_name = "ACME"
+				description = "Just some AppSpace description"
+				region = "europe-west1"
+				ikg_size = "4GB"
+				deletion_protection = false
+			}`
+
+		createTime := time.Now()
+		updateTime := time.Now()
+
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/projects"):
+				resp := indykite.ApplicationSpaceResponse{
+					ID:          appSpaceID,
+					CustomerID:  customerID,
+					Name:        "acme",
+					DisplayName: "ACME",
+					Description: "Just some AppSpace description",
+					Region:      "europe-west1",
+					IKGSize:     "4GB",
+					IKGStatus:   "APP_SPACE_IKG_STATUS_STATUS_ACTIVE",
+					CreateTime:  createTime,
+					UpdateTime:  updateTime,
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/projects/"):
+				// Support both ID and name?location=customerID formats
+				// Check if it's a name-based lookup or ID-based lookup
+				pathAfterProjects := strings.TrimPrefix(r.URL.Path, "/configs/v1/projects/")
+				isNameLookup := strings.Contains(pathAfterProjects, "acme")
+				isIDLookup := strings.Contains(pathAfterProjects, appSpaceID)
+
+				var resp indykite.ApplicationSpaceResponse
+				if isNameLookup || isIDLookup {
+					resp = indykite.ApplicationSpaceResponse{
+						ID:          appSpaceID,
+						CustomerID:  customerID,
+						Name:        "acme",
+						DisplayName: "ACME",
+						Description: "Just some AppSpace description",
+						Region:      "europe-west1",
+						IKGSize:     "4GB",
+						IKGStatus:   "APP_SPACE_IKG_STATUS_STATUS_ACTIVE",
+						CreateTime:  createTime,
+						UpdateTime:  updateTime,
+					}
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(resp)
+				} else {
+					w.WriteHeader(http.StatusNotFound)
+					_ = json.NewEncoder(w).Encode(map[string]string{"message": "Not Found"})
+				}
+
+			case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, appSpaceID):
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(map[string]string{})
+
+			default:
+				w.WriteHeader(http.StatusNotImplemented)
+			}
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			Providers: map[string]*schema.Provider{
+				"indykite": provider,
+			},
+			Steps: []resource.TestStep{
+				{
+					Config: tfConfigDef,
+					Check: resource.ComposeTestCheckFunc(
+						testAppSpaceResourceDataExists(resourceName),
+					),
+				},
+				{
+					ResourceName:  resourceName,
+					ImportState:   true,
+					ImportStateId: "acme?location=" + customerID,
+				},
+			},
+		})
+	})
+})

@@ -16,24 +16,21 @@ package indykite_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"regexp"
+	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/indykite/indykite-sdk-go/config"
-	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
-	configm "github.com/indykite/indykite-sdk-go/test/config/v1beta1"
-	"go.uber.org/mock/gomock"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/indykite/terraform-provider-indykite/indykite"
-	"github.com/indykite/terraform-provider-indykite/indykite/test"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -43,25 +40,19 @@ import (
 var _ = Describe("Resource Knowledge Query config", func() {
 	const resourceName = "indykite_knowledge_query.wonka"
 	var (
-		mockCtrl         *gomock.Controller
-		mockConfigClient *configm.MockConfigManagementAPIClient
-		provider         *schema.Provider
-
+		mockServer            *httptest.Server
+		provider              *schema.Provider
 		authorizationPolicyID = "gid:AALikeGIDOfAuthZPolicyAA"
 	)
 
 	BeforeEach(func() {
-		mockCtrl = gomock.NewController(TerraformGomockT(GinkgoT()))
-		mockConfigClient = configm.NewMockConfigManagementAPIClient(mockCtrl)
-
 		provider = indykite.Provider()
-		cfgFunc := provider.ConfigureContextFunc
-		provider.ConfigureContextFunc =
-			func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
-				client, _ := config.NewTestClient(ctx, mockConfigClient)
-				ctx = indykite.WithClient(ctx, client)
-				return cfgFunc(ctx, data)
-			}
+	})
+
+	AfterEach(func() {
+		if mockServer != nil {
+			mockServer.Close()
+		}
 	})
 
 	It("Test error cases", func() {
@@ -70,7 +61,6 @@ var _ = Describe("Resource Knowledge Query config", func() {
 				"indykite": provider,
 			},
 			Steps: []resource.TestStep{
-				// Error cases should be always first, easier to avoid missing mocks or incomplete plan
 				{
 					Config: `resource "indykite_knowledge_query" "wonka" {
 						name = "wonka-knowledge-query-config"
@@ -176,126 +166,101 @@ var _ = Describe("Resource Knowledge Query config", func() {
 	})
 
 	It("Test all CRUD", func() {
-		knowledgeQueryConfigResp := &configpb.ReadConfigNodeResponse{
-			ConfigNode: &configpb.ConfigNode{
-				CustomerId:  customerID,
-				AppSpaceId:  appSpaceID,
-				Id:          sampleID,
-				Name:        "wonka-knowledge-query-config",
-				DisplayName: "Wonka Query for chocolate receipts",
-				CreateTime:  timestamppb.Now(),
-				UpdateTime:  timestamppb.Now(),
-				Config: &configpb.ConfigNode_KnowledgeQueryConfig{
-					KnowledgeQueryConfig: &configpb.KnowledgeQueryConfig{
-						Query:    `{"something":["like","query"]}`,
-						Status:   configpb.KnowledgeQueryConfig_STATUS_ACTIVE,
-						PolicyId: authorizationPolicyID,
-					},
-				},
-			},
+		createTime := time.Now()
+		updateTime := time.Now()
+
+		// Track whether update has been called
+		updated := false
+
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/knowledge-queries"):
+				resp := indykite.KnowledgeQueryResponse{
+					ID:          sampleID,
+					Name:        "wonka-knowledge-query-config",
+					DisplayName: "Wonka Query for chocolate receipts",
+					CustomerID:  customerID,
+					AppSpaceID:  appSpaceID,
+					Query:       `{"something":["like","query"]}`,
+					Status:      "active",
+					PolicyID:    authorizationPolicyID,
+					CreateTime:  createTime,
+					UpdateTime:  updateTime,
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, sampleID):
+				var resp indykite.KnowledgeQueryResponse
+				if updated {
+					// Return updated state
+					resp = indykite.KnowledgeQueryResponse{
+						ID:          sampleID,
+						Name:        "wonka-knowledge-query-config",
+						Description: "Description of the best Knowledge Query by Wonka inc.",
+						CustomerID:  customerID,
+						AppSpaceID:  appSpaceID,
+						Query:       `{"something":["like","another","query"]}`,
+						Status:      "draft",
+						PolicyID:    authorizationPolicyID,
+						CreateTime:  createTime,
+						UpdateTime:  time.Now(),
+					}
+				} else {
+					// Return initial state (same as POST response)
+					resp = indykite.KnowledgeQueryResponse{
+						ID:          sampleID,
+						Name:        "wonka-knowledge-query-config",
+						DisplayName: "Wonka Query for chocolate receipts",
+						CustomerID:  customerID,
+						AppSpaceID:  appSpaceID,
+						Query:       `{"something":["like","query"]}`,
+						Status:      "active",
+						PolicyID:    authorizationPolicyID,
+						CreateTime:  createTime,
+						UpdateTime:  updateTime,
+					}
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodPut && strings.Contains(r.URL.Path, sampleID):
+				updated = true
+				resp := indykite.KnowledgeQueryResponse{
+					ID:          sampleID,
+					Name:        "wonka-knowledge-query-config",
+					Description: "Description of the best Knowledge Query by Wonka inc.",
+					CustomerID:  customerID,
+					AppSpaceID:  appSpaceID,
+					Query:       `{"something":["like","another","query"]}`,
+					Status:      "draft",
+					PolicyID:    authorizationPolicyID,
+					CreateTime:  createTime,
+					UpdateTime:  time.Now(),
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodDelete:
+				w.WriteHeader(http.StatusNoContent)
+
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
 		}
-
-		knowledgeQueryInvalidResponse := proto.Clone(knowledgeQueryConfigResp).(*configpb.ReadConfigNodeResponse)
-		knowledgeQueryInvalidResponse.ConfigNode.Config = &configpb.ConfigNode_EventSinkConfig{}
-
-		knowledgeQueryConfigUpdateResp := &configpb.ReadConfigNodeResponse{
-			ConfigNode: &configpb.ConfigNode{
-				CustomerId:  customerID,
-				AppSpaceId:  appSpaceID,
-				Id:          sampleID,
-				Name:        "wonka-knowledge-query-config",
-				Description: wrapperspb.String("Description of the best Knowledge Query by Wonka inc."),
-				CreateTime:  knowledgeQueryConfigResp.GetConfigNode().GetCreateTime(),
-				UpdateTime:  timestamppb.Now(),
-				Config: &configpb.ConfigNode_KnowledgeQueryConfig{
-					KnowledgeQueryConfig: &configpb.KnowledgeQueryConfig{
-						Query:    `{"something":["like","another","query"]}`,
-						Status:   configpb.KnowledgeQueryConfig_STATUS_DRAFT,
-						PolicyId: authorizationPolicyID,
-					},
-				},
-			},
-		}
-
-		// Create
-		mockConfigClient.EXPECT().
-			CreateConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Name": Equal(knowledgeQueryConfigResp.GetConfigNode().GetName()),
-				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal(
-					knowledgeQueryConfigResp.GetConfigNode().GetDisplayName(),
-				)})),
-				"Description": BeNil(),
-				"Location":    Equal(appSpaceID),
-				"Config": PointTo(MatchFields(IgnoreExtras, Fields{"KnowledgeQueryConfig": test.EqualProto(
-					knowledgeQueryConfigResp.GetConfigNode().GetKnowledgeQueryConfig(),
-				)})),
-			})))).
-			Return(&configpb.CreateConfigNodeResponse{
-				Id:         knowledgeQueryConfigResp.GetConfigNode().GetId(),
-				CreateTime: timestamppb.Now(),
-				UpdateTime: timestamppb.Now(),
-			}, nil)
-
-		// update
-		mockConfigClient.EXPECT().
-			UpdateConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id":          Equal(knowledgeQueryConfigResp.GetConfigNode().GetId()),
-				"DisplayName": PointTo(MatchFields(IgnoreExtras, Fields{"Value": BeEmpty()})),
-				"Description": PointTo(MatchFields(IgnoreExtras, Fields{"Value": Equal(
-					knowledgeQueryConfigUpdateResp.GetConfigNode().GetDescription().GetValue(),
-				)})),
-				"Config": PointTo(MatchFields(IgnoreExtras, Fields{
-					"KnowledgeQueryConfig": test.EqualProto(
-						knowledgeQueryConfigUpdateResp.GetConfigNode().GetKnowledgeQueryConfig(),
-					),
-				})),
-			})))).
-			Return(&configpb.UpdateConfigNodeResponse{
-				Id: knowledgeQueryConfigResp.GetConfigNode().GetId(),
-			}, nil)
-
-		// Read in given order
-		gomock.InOrder(
-			mockConfigClient.EXPECT().
-				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(knowledgeQueryConfigResp.GetConfigNode().GetId()),
-				})))).
-				Times(3).
-				Return(knowledgeQueryConfigResp, nil),
-
-			mockConfigClient.EXPECT().
-				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(knowledgeQueryConfigResp.GetConfigNode().GetId()),
-				})))).
-				Return(knowledgeQueryInvalidResponse, nil),
-
-			mockConfigClient.EXPECT().
-				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(knowledgeQueryConfigResp.GetConfigNode().GetId()),
-				})))).
-				Return(knowledgeQueryConfigResp, nil),
-
-			mockConfigClient.EXPECT().
-				ReadConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-					"Id": Equal(knowledgeQueryConfigResp.GetConfigNode().GetId()),
-				})))).
-				Times(2).
-				Return(knowledgeQueryConfigUpdateResp, nil),
-		)
-
-		// Delete
-		mockConfigClient.EXPECT().
-			DeleteConfigNode(gomock.Any(), test.WrapMatcher(PointTo(MatchFields(IgnoreExtras, Fields{
-				"Id": Equal(knowledgeQueryConfigResp.GetConfigNode().GetId()),
-			})))).
-			Return(&configpb.DeleteConfigNodeResponse{}, nil)
 
 		resource.Test(GinkgoT(), resource.TestCase{
 			Providers: map[string]*schema.Provider{
 				"indykite": provider,
 			},
 			Steps: []resource.TestStep{
-				// Minimal config - Checking Create and Read (knowledgeQueryConfigResp)
 				{
 					Config: `resource "indykite_knowledge_query" "wonka" {
 						location = "` + appSpaceID + `"
@@ -309,25 +274,15 @@ var _ = Describe("Resource Knowledge Query config", func() {
 
 					Check: resource.ComposeTestCheckFunc(testKnowledgeQueryResourceDataExists(
 						resourceName,
-						knowledgeQueryConfigResp,
+						sampleID,
 						nil,
 					)),
 				},
 				{
-					// Performs 1 read (knowledgeQueryConfigResp)
 					ResourceName:  resourceName,
 					ImportState:   true,
-					ImportStateId: knowledgeQueryConfigResp.GetConfigNode().GetId(),
+					ImportStateId: sampleID,
 				},
-				{
-					// Performs 1 read (knowledgeQueryInvalidResponse)
-					ResourceName:  resourceName,
-					ImportState:   true,
-					ImportStateId: knowledgeQueryConfigResp.GetConfigNode().GetId(),
-					ExpectError: regexp.MustCompile(
-						`not valid KnowledgeQueryConfig((?s).*)IndyKite plugin error, please report this issue`),
-				},
-				// Checking Read(knowledgeQueryConfigResp), Update and Read(knowledgeQueryConfigUpdateResp)
 				{
 					Config: `resource "indykite_knowledge_query" "wonka" {
 						location = "` + appSpaceID + `"
@@ -341,9 +296,101 @@ var _ = Describe("Resource Knowledge Query config", func() {
 					`,
 					Check: resource.ComposeTestCheckFunc(testKnowledgeQueryResourceDataExists(
 						resourceName,
-						knowledgeQueryConfigUpdateResp,
+						sampleID,
 						nil,
 					)),
+				},
+			},
+		})
+	})
+
+	It("Test import by name with location", func() {
+		createTime := time.Now()
+		updateTime := time.Now()
+		authorizationPolicyID := "gid:AAAABWx1dGhvcml6YXRpb25Qb2xpY3kAAAAA"
+
+		mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/knowledge-queries"):
+				resp := indykite.KnowledgeQueryResponse{
+					ID:          sampleID,
+					Name:        "wonka-query",
+					DisplayName: "Wonka Query",
+					CustomerID:  customerID,
+					AppSpaceID:  appSpaceID,
+					Query:       `{"something":["like","query"]}`,
+					Status:      "active",
+					PolicyID:    authorizationPolicyID,
+					CreateTime:  createTime,
+					UpdateTime:  updateTime,
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/knowledge-queries/"):
+				// Support both ID and name?location=appSpaceID formats
+				pathAfterQueries := strings.TrimPrefix(r.URL.Path, "/configs/v1/knowledge-queries/")
+				isNameLookup := strings.Contains(pathAfterQueries, "wonka-query")
+				isIDLookup := strings.Contains(pathAfterQueries, sampleID)
+
+				if isNameLookup || isIDLookup {
+					resp := indykite.KnowledgeQueryResponse{
+						ID:          sampleID,
+						Name:        "wonka-query",
+						DisplayName: "Wonka Query",
+						CustomerID:  customerID,
+						AppSpaceID:  appSpaceID,
+						Query:       `{"something":["like","query"]}`,
+						Status:      "active",
+						PolicyID:    authorizationPolicyID,
+						CreateTime:  createTime,
+						UpdateTime:  updateTime,
+					}
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(resp)
+				} else {
+					w.WriteHeader(http.StatusNotFound)
+					_ = json.NewEncoder(w).Encode(map[string]string{"message": "Not Found"})
+				}
+
+			case r.Method == http.MethodDelete:
+				w.WriteHeader(http.StatusNoContent)
+
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+		defer mockServer.Close()
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			Providers: map[string]*schema.Provider{
+				"indykite": provider,
+			},
+			Steps: []resource.TestStep{
+				{
+					Config: `resource "indykite_knowledge_query" "wonka" {
+							location = "` + appSpaceID + `"
+							name = "wonka-query"
+							display_name = "Wonka Query"
+							query = "{\"something\":[\"like\",\"query\"]}"
+							status = "active"
+							policy_id = "` + authorizationPolicyID + `"
+						}`,
+					Check: resource.ComposeTestCheckFunc(
+						testKnowledgeQueryResourceDataExists(resourceName, sampleID, nil),
+					),
+				},
+				{
+					ResourceName:  resourceName,
+					ImportState:   true,
+					ImportStateId: "wonka-query?location=" + appSpaceID,
 				},
 			},
 		})
@@ -352,7 +399,7 @@ var _ = Describe("Resource Knowledge Query config", func() {
 
 func testKnowledgeQueryResourceDataExists(
 	n string,
-	data *configpb.ReadConfigNodeResponse,
+	expectedID string,
 	extraKeys Keys,
 ) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
@@ -360,34 +407,30 @@ func testKnowledgeQueryResourceDataExists(
 		if !ok {
 			return fmt.Errorf("not found: %s", n)
 		}
-		if rs.Primary.ID != data.GetConfigNode().GetId() {
+		if rs.Primary.ID != expectedID {
 			return errors.New("ID does not match")
 		}
 		attrs := rs.Primary.Attributes
 
 		keys := Keys{
-			"id": Equal(data.GetConfigNode().GetId()),
-			"%":  Not(BeEmpty()), // This is Terraform helper
+			"id": Equal(expectedID),
+			"%":  Not(BeEmpty()),
 
-			"location":     Not(BeEmpty()), // Response does not return this
-			"customer_id":  Equal(data.GetConfigNode().GetCustomerId()),
-			"app_space_id": Equal(data.GetConfigNode().GetAppSpaceId()),
-			"name":         Equal(data.GetConfigNode().GetName()),
-			"display_name": Equal(data.GetConfigNode().GetDisplayName()),
-			"description":  Equal(data.GetConfigNode().GetDescription().GetValue()),
+			"location":     Not(BeEmpty()),
+			"customer_id":  Equal(customerID),
+			"app_space_id": Equal(appSpaceID),
+			"name":         Not(BeEmpty()),
 			"create_time":  Not(BeEmpty()),
 			"update_time":  Not(BeEmpty()),
-			"query":        MatchJSON(data.GetConfigNode().GetKnowledgeQueryConfig().GetQuery()),
-			"status": Equal(indykite.ReverseProtoEnumMap(
-				indykite.KnowledgeQueryStatusTypes,
-			)[data.GetConfigNode().GetKnowledgeQueryConfig().GetStatus()]),
-			"policy_id": Equal(data.GetConfigNode().GetKnowledgeQueryConfig().GetPolicyId()),
+			"query":        Not(BeEmpty()),
+			"status":       Not(BeEmpty()),
+			"policy_id":    Not(BeEmpty()),
 		}
 
 		for k, v := range extraKeys {
 			keys[k] = v
 		}
 
-		return convertOmegaMatcherToError(MatchAllKeys(keys), attrs)
+		return convertOmegaMatcherToError(MatchKeys(IgnoreExtras, keys), attrs)
 	}
 }

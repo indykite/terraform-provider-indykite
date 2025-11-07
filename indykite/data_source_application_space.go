@@ -16,13 +16,11 @@ package indykite
 
 import (
 	"context"
-	"errors"
-	"io"
+	"fmt"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
 )
 
 func dataSourceAppSpace() *schema.Resource {
@@ -81,6 +79,38 @@ func dataSourceAppSpaceList() *schema.Resource {
 	}
 }
 
+// lookupApplicationSpaceByName finds an application space by name within a customer.
+func lookupApplicationSpaceByName(
+	ctx context.Context,
+	clientCtx *ClientContext,
+	data *schema.ResourceData,
+	name string,
+) (*ApplicationSpaceResponse, diag.Diagnostic) {
+	customerID := data.Get(customerIDKey).(string)
+	var listResp ListApplicationSpacesResponse
+	err := clientCtx.GetClient().Get(ctx, "/projects?organization_id="+customerID, &listResp)
+	if err != nil {
+		return nil, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  fmt.Sprintf("failed to list application spaces: %v", err),
+		}
+	}
+
+	// Find app space by name
+	for i := range listResp.AppSpaces {
+		if listResp.AppSpaces[i].Name == name {
+			return &listResp.AppSpaces[i], diag.Diagnostic{}
+		}
+	}
+
+	return nil, diag.Diagnostic{
+		Severity: diag.Error,
+		Summary: fmt.Sprintf(
+			"application space with name '%s' not found in customer '%s'",
+			name, customerID),
+	}
+}
+
 func dataAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
 	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
@@ -88,46 +118,50 @@ func dataAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, met
 		return d
 	}
 
-	req := &configpb.ReadApplicationSpaceRequest{}
-	if name, exists := data.GetOk(nameKey); exists {
-		req.Identifier = &configpb.ReadApplicationSpaceRequest_Name{
-			Name: &configpb.UniqueNameIdentifier{
-				Name:     name.(string),
-				Location: data.Get(customerIDKey).(string),
-			},
-		}
-	} else if id, ok := data.GetOk(appSpaceIDKey); ok {
-		req.Identifier = &configpb.ReadApplicationSpaceRequest_Id{
-			Id: id.(string),
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
+	defer cancel()
+
+	var resp *ApplicationSpaceResponse
+	var err error
+
+	// Check if we have an ID or need to look up by name
+	if id, ok := data.GetOk(appSpaceIDKey); ok {
+		// Direct lookup by ID
+		resp = &ApplicationSpaceResponse{}
+		err = clientCtx.GetClient().Get(ctx, "/projects/"+id.(string), resp)
+	} else if name, exists := data.GetOk(nameKey); exists {
+		// Look up by name within customer
+		var diagErr diag.Diagnostic
+		resp, diagErr = lookupApplicationSpaceByName(ctx, clientCtx, data, name.(string))
+		// Only return if there's an actual error (non-zero severity with summary)
+		if diagErr.Summary != "" {
+			return append(d, diagErr)
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
-	defer cancel()
-	resp, err := clientCtx.GetClient().ReadApplicationSpace(ctx, req)
 	if readHasFailed(&d, err, data) {
 		return d
 	}
 
-	return dataAppSpaceFlatten(data, resp.GetAppSpace())
+	return dataAppSpaceFlatten(data, resp)
 }
 
-func dataAppSpaceFlatten(data *schema.ResourceData, resp *configpb.ApplicationSpace) diag.Diagnostics {
+func dataAppSpaceFlatten(data *schema.ResourceData, resp *ApplicationSpaceResponse) diag.Diagnostics {
 	var d diag.Diagnostics
 	if resp == nil {
 		return diag.Diagnostics{buildPluginError("empty ApplicationSpace response")}
 	}
-	data.SetId(resp.GetId())
-	setData(&d, data, customerIDKey, resp.GetCustomerId())
-	setData(&d, data, nameKey, resp.GetName())
-	setData(&d, data, displayNameKey, resp.GetDisplayName())
-	setData(&d, data, descriptionKey, resp.GetDescription())
-	setData(&d, data, createTimeKey, resp.GetCreateTime())
-	setData(&d, data, updateTimeKey, resp.GetUpdateTime())
-	setData(&d, data, regionKey, resp.GetRegion())
-	setData(&d, data, ikgSizeKey, resp.GetIkgSize())
-	setData(&d, data, replicaRegionKey, resp.GetReplicaRegion())
-	setDBConnectionData(&d, data, resp.GetDbConnection())
+	data.SetId(resp.ID)
+	setData(&d, data, customerIDKey, resp.CustomerID)
+	setData(&d, data, nameKey, resp.Name)
+	setData(&d, data, displayNameKey, resp.DisplayName)
+	setData(&d, data, descriptionKey, resp.Description)
+	setData(&d, data, createTimeKey, resp.CreateTime)
+	setData(&d, data, updateTimeKey, resp.UpdateTime)
+	setData(&d, data, regionKey, resp.Region)
+	setData(&d, data, ikgSizeKey, resp.IKGSize)
+	setData(&d, data, replicaRegionKey, resp.ReplicaRegion)
+	setDBConnectionData(&d, data, resp.DBConnection)
 	return d
 }
 
@@ -145,39 +179,44 @@ func dataAppSpaceListContext(ctx context.Context, data *schema.ResourceData, met
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
 	defer cancel()
-	resp, err := clientCtx.GetClient().ListApplicationSpaces(ctx, &configpb.ListApplicationSpacesRequest{
-		CustomerId: data.Get(customerIDKey).(string),
-		Match:      match,
-	})
+
+	customerID := data.Get(customerIDKey).(string)
+	var resp ListApplicationSpacesResponse
+	err := clientCtx.GetClient().Get(ctx, "/projects?organization_id="+customerID, &resp)
 	if HasFailed(&d, err) {
 		return d
 	}
 
-	var allAppSpaces []map[string]any
-	for {
-		appSpace, err := resp.Recv()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
+	allAppSpaces := make([]map[string]any, 0, len(resp.AppSpaces))
+	for i := range resp.AppSpaces {
+		appSpace := &resp.AppSpaces[i]
+		// Apply exact name match filter (MinItems: 1 ensures filter is always present)
+		matchFound := false
+		for _, filter := range match {
+			if appSpace.Name == filter {
+				matchFound = true
 				break
 			}
-			HasFailed(&d, err)
-			return d
 		}
+		if !matchFound {
+			continue
+		}
+
 		allAppSpaces = append(allAppSpaces, map[string]any{
-			customerIDKey:    appSpace.GetAppSpace().GetCustomerId(),
-			"id":             appSpace.GetAppSpace().GetId(),
-			nameKey:          appSpace.GetAppSpace().GetName(),
-			displayNameKey:   appSpace.GetAppSpace().GetDisplayName(),
-			descriptionKey:   flattenOptionalString(appSpace.GetAppSpace().GetDescription()),
-			regionKey:        appSpace.GetAppSpace().GetRegion(),
-			ikgSizeKey:       appSpace.GetAppSpace().GetIkgSize(),
-			replicaRegionKey: appSpace.GetAppSpace().GetReplicaRegion(),
+			customerIDKey:    appSpace.CustomerID,
+			"id":             appSpace.ID,
+			nameKey:          appSpace.Name,
+			displayNameKey:   appSpace.DisplayName,
+			descriptionKey:   appSpace.Description,
+			regionKey:        appSpace.Region,
+			ikgSizeKey:       appSpace.IKGSize,
+			replicaRegionKey: appSpace.ReplicaRegion,
 			// db_connection intentionally omitted from list view for security
 		})
 	}
 	setData(&d, data, "app_spaces", allAppSpaces)
 
-	id := data.Get(customerIDKey).(string) + "/appSpaces/" + strings.Join(match, ",")
+	id := customerID + "/appSpaces/" + strings.Join(match, ",")
 	data.SetId(id)
 	return d
 }

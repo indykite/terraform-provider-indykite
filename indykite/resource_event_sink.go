@@ -22,9 +22,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/indykite/indykite-sdk-go/config"
-	configpb "github.com/indykite/indykite-sdk-go/gen/indykite/config/v1beta1"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 const (
@@ -35,7 +32,6 @@ const (
 	stopProcessingKey   = "stop_processing"
 	keysValuesKey       = "keys_values_filter"
 	keyValuePairsKey    = "key_value_pairs"
-	providerKey         = "provider"
 	kafkaKey            = "kafka"
 	azureEventGridKey   = "azure_event_grid"
 	azureServiceBusKey  = "azure_service_bus"
@@ -91,7 +87,6 @@ const (
 )
 
 func resourceEventSink() *schema.Resource {
-	readContext := configReadContextFunc(resourceEventSinkFlatten)
 	providerOneOf := []string{kafkaKey, azureEventGridKey, azureServiceBusKey}
 
 	return &schema.Resource{
@@ -108,10 +103,10 @@ func resourceEventSink() *schema.Resource {
 
 		` + supportedFilters,
 
-		CreateContext: configCreateContextFunc(resourceEventSinkBuild, readContext),
-		ReadContext:   readContext,
-		UpdateContext: configUpdateContextFunc(resourceEventSinkBuild, readContext),
-		DeleteContext: configDeleteContextFunc(),
+		CreateContext: resEventSinkCreate,
+		ReadContext:   resEventSinkRead,
+		UpdateContext: resEventSinkUpdate,
+		DeleteContext: resEventSinkDelete,
 		Importer: &schema.ResourceImporter{
 			StateContext: basicStateImporter,
 		},
@@ -357,266 +352,440 @@ func keysValuesSchema() map[string]*schema.Schema {
 	}
 }
 
-func resourceEventSinkFlatten(
-	data *schema.ResourceData,
-	resp *configpb.ReadConfigNodeResponse,
-) diag.Diagnostics {
+func resEventSinkCreate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
 	var d diag.Diagnostics
-	eventSink := resp.GetConfigNode().GetEventSinkConfig()
-	var results []map[string]any
-	for key, p := range eventSink.GetProviders() {
-		switch p.GetProvider().(type) {
-		case *configpb.EventSinkConfig_Provider_Kafka:
-			var oldPassword any
-			if val, ok := data.Get(providersKey).([]any); ok && len(val) > 0 {
-				for _, y := range val {
-					if kafkaList, ok := y.(map[string]any)[kafkaKey].([]any); ok && len(kafkaList) > 0 {
-						kafka := kafkaList[0].(map[string]any)
-						oldPassword = kafka[passwordKey]
-					}
-				}
-			}
-			kafkaConfig := map[string]any{
-				brokersKey:  p.GetKafka().GetBrokers(),
-				topicKey:    p.GetKafka().GetTopic(),
-				usernameKey: p.GetKafka().GetUsername(),
-				// Password is not retrieved from response, but omitting here would result in removing.
-				// First read old value and set it here too.
-				passwordKey:        oldPassword,
-				disableTLSKey:      p.GetKafka().GetDisableTls(),
-				tlsSkipVerifyKey:   p.GetKafka().GetTlsSkipVerify(),
-				providerDisplayKey: p.GetKafka().GetDisplayName().GetValue(),
-				lastErrorKey:       p.GetKafka().GetLastError(),
-			}
-			result := map[string]any{
-				providerNameKey: key,
-				kafkaKey:        []any{kafkaConfig},
-			}
-			results = append(results, result)
-		case *configpb.EventSinkConfig_Provider_AzureEventGrid:
-			var oldAccessKey any
-			if val, ok := data.Get(providersKey).([]any); ok && len(val) > 0 {
-				for _, y := range val {
-					if gridList, ok := y.(map[string]any)[azureEventGridKey].([]any); ok && len(gridList) > 0 {
-						grid := gridList[0].(map[string]any)
-						oldAccessKey = grid[accessKey]
-					}
-				}
-			}
-			gridConfig := map[string]any{
-				topicEndpointKey:   p.GetAzureEventGrid().GetTopicEndpoint(),
-				accessKey:          oldAccessKey,
-				providerDisplayKey: p.GetAzureEventGrid().GetDisplayName().GetValue(),
-				lastErrorKey:       p.GetAzureEventGrid().GetLastError(),
-			}
-			result := map[string]any{
-				providerNameKey:   key,
-				azureEventGridKey: []any{gridConfig},
-			}
-			results = append(results, result)
-		case *configpb.EventSinkConfig_Provider_AzureServiceBus:
-			var oldConnection any
-			if val, ok := data.Get(providersKey).([]any); ok && len(val) > 0 {
-				for _, y := range val {
-					if busList, ok := y.(map[string]any)[azureServiceBusKey].([]any); ok && len(busList) > 0 {
-						bus := busList[0].(map[string]any)
-						oldConnection = bus[connectionStringKey]
-					}
-				}
-			}
-			busConfig := map[string]any{
-				connectionStringKey: oldConnection,
-				queueKey:            p.GetAzureServiceBus().GetQueueOrTopicName(),
-				providerDisplayKey:  p.GetAzureServiceBus().GetDisplayName().GetValue(),
-				lastErrorKey:        p.GetAzureServiceBus().GetLastError(),
-			}
-			result := map[string]any{
-				providerNameKey:    key,
-				azureServiceBusKey: []any{busConfig},
-			}
-			results = append(results, result)
-		}
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
 	}
-	setData(&d, data, providersKey, results)
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
+	defer cancel()
 
-	routes := make([]any, len(eventSink.GetRoutes()))
-	for i, route := range eventSink.GetRoutes() {
-		switch filter := route.GetFilter().(type) {
-		case *configpb.EventSinkConfig_Route_KeysValues:
-			keyValuePairs := make([]any, len(route.GetKeysValues().GetKeyValuePairs()))
-			for i, pair := range route.GetKeysValues().GetKeyValuePairs() {
-				keyValuePairs[i] = map[string]any{
-					keyKey:   pair.GetKey(),
-					valueKey: pair.GetValue(),
-				}
-			}
-			routes[i] = map[string]any{
-				providerIDKey:     route.GetProviderId(),
-				stopProcessingKey: route.GetStopProcessing(),
-				keysValuesKey: []map[string]any{
-					{
-						keyValuePairsKey: keyValuePairs,
-						evTypeKey:        filter.KeysValues.GetEventType(),
-					},
-				},
-				routeDisplayKey: route.GetDisplayName().GetValue(),
-				routeIDKey:      route.GetId().GetValue(),
-			}
-		default:
-			return append(d, buildPluginError(fmt.Sprintf("unsupported EventSink Filter: %T", route)))
-		}
+	providers := data.Get(providersKey).([]any)
+	routes := data.Get(routesKey).([]any)
+
+	req := CreateEventSinkRequest{
+		ProjectID:   data.Get(locationKey).(string),
+		Name:        data.Get(nameKey).(string),
+		DisplayName: stringValue(optionalString(data, displayNameKey)),
+		Description: stringValue(optionalString(data, descriptionKey)),
+		Providers:   buildProvidersMap(providers),
+		Routes:      buildRoutesList(routes),
 	}
-	setData(&d, data, routesKey, routes)
+
+	var resp EventSinkResponse
+	err := clientCtx.GetClient().Post(ctx, "/event-sinks", req, &resp)
+	if HasFailed(&d, err) {
+		return d
+	}
+	data.SetId(resp.ID)
+
+	return resEventSinkRead(ctx, data, meta)
+}
+
+func resEventSinkRead(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
+	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutRead))
+	defer cancel()
+
+	var resp EventSinkResponse
+	// Support both ID and name?location=parent_id formats
+	path := buildReadPath("/event-sinks", data)
+	err := clientCtx.GetClient().Get(ctx, path, &resp)
+	if readHasFailed(&d, err, data) {
+		return d
+	}
+
+	data.SetId(resp.ID)
+	setData(&d, data, customerIDKey, resp.CustomerID)
+	setData(&d, data, appSpaceIDKey, resp.AppSpaceID)
+
+	// Set location based on which is present
+	if resp.AppSpaceID != "" {
+		setData(&d, data, locationKey, resp.AppSpaceID)
+	} else if resp.CustomerID != "" {
+		setData(&d, data, locationKey, resp.CustomerID)
+	}
+
+	setData(&d, data, nameKey, resp.Name)
+	setData(&d, data, displayNameKey, resp.DisplayName)
+	setData(&d, data, descriptionKey, resp.Description)
+	setData(&d, data, createTimeKey, resp.CreateTime)
+	setData(&d, data, updateTimeKey, resp.UpdateTime)
+
+	// Flatten providers and routes from Config
+	flattenEventSinkConfig(&d, data, resp.Config)
+
 	return d
 }
 
-func resourceEventSinkBuild(
-	_ *diag.Diagnostics,
-	data *schema.ResourceData,
-	_ *ClientContext,
-	builder *config.NodeRequest,
-) {
+func resEventSinkUpdate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
+	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
+	defer cancel()
+
+	req := UpdateEventSinkRequest{
+		DisplayName: updateOptionalString(data, displayNameKey),
+		Description: updateOptionalString(data, descriptionKey),
+	}
+
+	if data.HasChange(providersKey) || data.HasChange(routesKey) {
+		req.Config = buildEventSinkConfig(data)
+	}
+
+	var resp EventSinkResponse
+	err := clientCtx.GetClient().Put(ctx, "/event-sinks/"+data.Id(), req, &resp)
+	if HasFailed(&d, err) {
+		return d
+	}
+
+	return resEventSinkRead(ctx, data, meta)
+}
+
+func resEventSinkDelete(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
+	var d diag.Diagnostics
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return d
+	}
+	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutDelete))
+	defer cancel()
+
+	err := clientCtx.GetClient().Delete(ctx, "/event-sinks/"+data.Id())
+	HasFailed(&d, err)
+	return d
+}
+
+// buildEventSinkConfig converts Terraform schema data to Config map.
+func buildEventSinkConfig(data *schema.ResourceData) map[string]any {
 	providers := data.Get(providersKey).([]any)
 	routes := data.Get(routesKey).([]any)
-	cfg := &configpb.EventSinkConfig{
-		Providers: make(map[string]*configpb.EventSinkConfig_Provider, len(providers)),
-		Routes:    make([]*configpb.EventSinkConfig_Route, len(routes)),
+
+	return map[string]any{
+		"providers": buildProvidersMap(providers),
+		"routes":    buildRoutesList(routes),
 	}
+}
+
+// buildProvidersMap builds the providers map from Terraform schema data.
+func buildProvidersMap(providers []any) map[string]any {
+	providersMap := make(map[string]any, len(providers))
 	for _, provider := range providers {
 		item, ok := provider.(map[string]any)
 		if !ok {
 			continue
 		}
 		key := item[providerNameKey].(string)
-		if kafkaList, ok := item[kafkaKey].([]any); ok && len(kafkaList) > 0 {
-			kafkaData := kafkaList[0].(map[string]any)
-			cfg.Providers[key] = &configpb.EventSinkConfig_Provider{
-				Provider: &configpb.EventSinkConfig_Provider_Kafka{
-					Kafka: &configpb.KafkaSinkConfig{
-						Brokers:  rawArrayToTypedArray[string](kafkaData[brokersKey]),
-						Topic:    kafkaData[topicKey].(string),
-						Username: kafkaData[usernameKey].(string),
-						Password: kafkaData[passwordKey].(string),
-						DisableTls: func() bool {
-							if val, ok := kafkaData[disableTLSKey].(bool); ok {
-								return val
-							}
-							return false
-						}(),
-						TlsSkipVerify: func() bool {
-							if val, ok := kafkaData[tlsSkipVerifyKey].(bool); ok {
-								return val
-							}
-							return false
-						}(),
-						DisplayName: func() *wrapperspb.StringValue {
-							v, ok := kafkaData[providerDisplayKey].(string)
-							if !ok || v == "" {
-								return nil
-							}
-							return wrapperspb.String(v)
-						}(),
-					},
-				},
-			}
-			continue
-		}
-		if gridList, ok := item[azureEventGridKey].([]any); ok && len(gridList) > 0 {
-			gridData := gridList[0].(map[string]any)
-			cfg.Providers[key] = &configpb.EventSinkConfig_Provider{
-				Provider: &configpb.EventSinkConfig_Provider_AzureEventGrid{
-					AzureEventGrid: &configpb.AzureEventGridSinkConfig{
-						TopicEndpoint: gridData[topicEndpointKey].(string),
-						AccessKey:     gridData[accessKey].(string),
-						DisplayName: func() *wrapperspb.StringValue {
-							v, ok := gridData[providerDisplayKey].(string)
-							if !ok || v == "" {
-								return nil
-							}
-							return wrapperspb.String(v)
-						}(),
-					},
-				},
-			}
-			continue
-		}
-		if busList, ok := item[azureServiceBusKey].([]any); ok && len(busList) > 0 {
-			busData := busList[0].(map[string]any)
-			cfg.Providers[key] = &configpb.EventSinkConfig_Provider{
-				Provider: &configpb.EventSinkConfig_Provider_AzureServiceBus{
-					AzureServiceBus: &configpb.AzureServiceBusSinkConfig{
-						ConnectionString: busData[connectionStringKey].(string),
-						QueueOrTopicName: busData[queueKey].(string),
-						DisplayName: func() *wrapperspb.StringValue {
-							v, ok := busData[providerDisplayKey].(string)
-							if !ok || v == "" {
-								return nil
-							}
-							return wrapperspb.String(v)
-						}(),
-					},
-				},
-			}
+		providerConfig := buildProviderConfig(item)
+		if providerConfig != nil {
+			providersMap[key] = providerConfig
 		}
 	}
-	cfg.Routes = getRoutes(data)
-	builder.WithEventSinkConfig(cfg)
+	return providersMap
 }
 
-func getRoutes(data *schema.ResourceData) []*configpb.EventSinkConfig_Route {
-	routesSet, ok := data.Get(routesKey).([]any)
-	if !ok {
-		return nil
+// buildProviderConfig builds a single provider configuration.
+func buildProviderConfig(item map[string]any) map[string]any {
+	if kafkaList, ok := item[kafkaKey].([]any); ok && len(kafkaList) > 0 {
+		return buildKafkaProviderMap(kafkaList[0].(map[string]any))
 	}
-	var routes = make([]*configpb.EventSinkConfig_Route, len(routesSet))
-	for i, o := range routesSet {
-		item, exists := o.(map[string]any)
-		if !exists {
-			continue
-		}
-		val, ok := item[keysValuesKey]
-		if !ok {
-			continue
-		}
-		list, ok := val.([]any)
-		if !ok {
-			continue
-		}
+	if gridList, ok := item[azureEventGridKey].([]any); ok && len(gridList) > 0 {
+		return buildAzureEventGridMap(gridList[0].(map[string]any))
+	}
+	if busList, ok := item[azureServiceBusKey].([]any); ok && len(busList) > 0 {
+		return buildAzureServiceBusMap(busList[0].(map[string]any))
+	}
+	return nil
+}
 
-		if len(list) > 0 {
-			routes[i] = &configpb.EventSinkConfig_Route{
-				ProviderId:     item[providerIDKey].(string),
-				StopProcessing: item[stopProcessingKey].(bool),
-				Filter: &configpb.EventSinkConfig_Route_KeysValues{
-					KeysValues: &configpb.EventSinkConfig_Route_EventTypeKeysValues{
-						KeyValuePairs: getKeyValuePairs(item),
-						EventType:     checkEventType(item),
-					},
-				},
-				DisplayName: func() *wrapperspb.StringValue {
-					v, ok := item[routeDisplayKey].(string)
-					if !ok || v == "" {
-						return nil
-					}
-					return wrapperspb.String(v)
-				}(),
-				Id: func() *wrapperspb.StringValue {
-					v, ok := item[routeIDKey].(string)
-					if !ok || v == "" {
-						return nil
-					}
-					return wrapperspb.String(v)
-				}(),
+// buildKafkaProviderMap builds Kafka provider configuration map.
+func buildKafkaProviderMap(kafkaData map[string]any) map[string]any {
+	return map[string]any{
+		"kafka": map[string]any{
+			"brokers":         kafkaData[brokersKey],
+			"topic":           kafkaData[topicKey],
+			"username":        kafkaData[usernameKey],
+			"password":        kafkaData[passwordKey],
+			"disable_tls":     kafkaData[disableTLSKey],
+			"tls_skip_verify": kafkaData[tlsSkipVerifyKey],
+			"display_name":    kafkaData[providerDisplayKey],
+		},
+	}
+}
+
+// buildAzureEventGridMap builds Azure Event Grid configuration map.
+func buildAzureEventGridMap(gridData map[string]any) map[string]any {
+	return map[string]any{
+		"azure_event_grid": map[string]any{
+			"topic_endpoint": gridData[topicEndpointKey],
+			"access_key":     gridData[accessKey],
+			"display_name":   gridData[providerDisplayKey],
+		},
+	}
+}
+
+// buildAzureServiceBusMap builds Azure Service Bus configuration map.
+func buildAzureServiceBusMap(busData map[string]any) map[string]any {
+	return map[string]any{
+		"azure_service_bus": map[string]any{
+			"connection_string":   busData[connectionStringKey],
+			"queue_or_topic_name": busData[queueKey],
+			"display_name":        busData[providerDisplayKey],
+		},
+	}
+}
+
+// buildRoutesList builds the routes list from Terraform schema data.
+func buildRoutesList(routes []any) []any {
+	routesList := make([]any, len(routes))
+	for i, route := range routes {
+		item, ok := route.(map[string]any)
+		if !ok {
+			continue
+		}
+		routesList[i] = buildRouteMap(item)
+	}
+	return routesList
+}
+
+// buildRouteMap builds a single route map.
+func buildRouteMap(item map[string]any) map[string]any {
+	routeMap := map[string]any{
+		"provider_id":     item[providerIDKey],
+		"stop_processing": item[stopProcessingKey],
+		"display_name":    item[routeDisplayKey],
+		"id":              item[routeIDKey],
+	}
+
+	if kvList, ok := item[keysValuesKey].([]any); ok && len(kvList) > 0 {
+		routeMap["event_type_key_values_filter"] = buildKeysValuesMap(kvList[0].(map[string]any))
+	}
+
+	return routeMap
+}
+
+// buildKeysValuesMap builds the keysValues map for a route.
+func buildKeysValuesMap(kvData map[string]any) map[string]any {
+	var pairs []any
+	if pairsList, ok := kvData[keyValuePairsKey].([]any); ok {
+		pairs = make([]any, 0, len(pairsList))
+		for _, pair := range pairsList {
+			if pairData, ok := pair.(map[string]any); ok {
+				pairs = append(pairs, map[string]any{
+					"key":   pairData[keyKey],
+					"value": pairData[valueKey],
+				})
 			}
 		}
 	}
-	return routes
+	return map[string]any{
+		"key_value_pairs": pairs,
+		"event_type":      kvData[evTypeKey],
+	}
+}
+
+// buildKafkaConfig builds Kafka configuration preserving sensitive password from state.
+func buildKafkaConfig(kafkaData map[string]any, data *schema.ResourceData) map[string]any {
+	// Preserve sensitive password from state
+	var oldPassword any
+	if val, ok := data.Get(providersKey).([]any); ok && len(val) > 0 {
+		for _, y := range val {
+			if kafkaList, ok := y.(map[string]any)[kafkaKey].([]any); ok && len(kafkaList) > 0 {
+				kafka := kafkaList[0].(map[string]any)
+				oldPassword = kafka[passwordKey]
+			}
+		}
+	}
+
+	// Helper to get value from either snake_case or camelCase
+	getValue := func(snakeCase, camelCase string) any {
+		if val, ok := kafkaData[snakeCase]; ok {
+			return val
+		}
+		return kafkaData[camelCase]
+	}
+
+	return map[string]any{
+		brokersKey:         getValue("brokers", "brokers"),
+		topicKey:           getValue("topic", "topic"),
+		usernameKey:        getValue("username", "username"),
+		passwordKey:        oldPassword,
+		disableTLSKey:      getValue("disable_tls", "disableTls"),
+		tlsSkipVerifyKey:   getValue("tls_skip_verify", "tlsSkipVerify"),
+		providerDisplayKey: getValue("display_name", "displayName"),
+	}
+}
+
+// flattenEventSinkConfig converts Config map to Terraform schema data.
+func buildAzureEventGridConfig(gridData map[string]any, data *schema.ResourceData) map[string]any {
+	// Preserve sensitive access key from state
+	var oldAccessKey any
+	if val, ok := data.Get(providersKey).([]any); ok && len(val) > 0 {
+		for _, y := range val {
+			if gridList, ok := y.(map[string]any)[azureEventGridKey].([]any); ok && len(gridList) > 0 {
+				grid := gridList[0].(map[string]any)
+				oldAccessKey = grid[accessKey]
+			}
+		}
+	}
+
+	// Helper to get value from either snake_case or camelCase
+	getValue := func(snakeCase, camelCase string) any {
+		if val, ok := gridData[snakeCase]; ok {
+			return val
+		}
+		return gridData[camelCase]
+	}
+
+	return map[string]any{
+		topicEndpointKey:   getValue("topic_endpoint", "topicEndpoint"),
+		accessKey:          oldAccessKey,
+		providerDisplayKey: getValue("display_name", "displayName"),
+	}
+}
+
+func buildAzureServiceBusConfig(busData map[string]any, data *schema.ResourceData) map[string]any {
+	// Preserve sensitive connection string from state
+	var oldConnection any
+	if val, ok := data.Get(providersKey).([]any); ok && len(val) > 0 {
+		for _, y := range val {
+			if busList, ok := y.(map[string]any)[azureServiceBusKey].([]any); ok && len(busList) > 0 {
+				bus := busList[0].(map[string]any)
+				oldConnection = bus[connectionStringKey]
+			}
+		}
+	}
+
+	// Helper to get value from either snake_case or camelCase
+	getValue := func(snakeCase, camelCase string) any {
+		if val, ok := busData[snakeCase]; ok {
+			return val
+		}
+		return busData[camelCase]
+	}
+
+	return map[string]any{
+		connectionStringKey: oldConnection,
+		queueKey:            getValue("queue_or_topic_name", "queueOrTopicName"),
+		providerDisplayKey:  getValue("display_name", "displayName"),
+	}
+}
+
+func flattenEventSinkConfig(d *diag.Diagnostics, data *schema.ResourceData, config map[string]any) {
+	providersMap, _ := config["providers"].(map[string]any)
+	var results []map[string]any
+
+	for key, p := range providersMap {
+		providerData, _ := p.(map[string]any)
+
+		// Try both snake_case and camelCase for provider types
+		if kafkaData, ok := providerData["kafka"].(map[string]any); ok {
+			kafkaConfig := buildKafkaConfig(kafkaData, data)
+			results = append(results, map[string]any{
+				providerNameKey: key,
+				kafkaKey:        []any{kafkaConfig},
+			})
+		} else if gridData, ok := providerData["azure_event_grid"].(map[string]any); !ok {
+			if gridData, ok = providerData["azureEventGrid"].(map[string]any); ok {
+				gridConfig := buildAzureEventGridConfig(gridData, data)
+				results = append(results, map[string]any{
+					providerNameKey:   key,
+					azureEventGridKey: []any{gridConfig},
+				})
+			}
+		} else {
+			gridConfig := buildAzureEventGridConfig(gridData, data)
+			results = append(results, map[string]any{
+				providerNameKey:   key,
+				azureEventGridKey: []any{gridConfig},
+			})
+		}
+		if busData, ok := providerData["azure_service_bus"].(map[string]any); !ok {
+			if busData, ok = providerData["azureServiceBus"].(map[string]any); ok {
+				busConfig := buildAzureServiceBusConfig(busData, data)
+				results = append(results, map[string]any{
+					providerNameKey:    key,
+					azureServiceBusKey: []any{busConfig},
+				})
+			}
+		} else {
+			busConfig := buildAzureServiceBusConfig(busData, data)
+			results = append(results, map[string]any{
+				providerNameKey:    key,
+				azureServiceBusKey: []any{busConfig},
+			})
+		}
+	}
+	setData(d, data, providersKey, results)
+
+	routesList, _ := config["routes"].([]any)
+	routes := make([]any, len(routesList))
+	for i, r := range routesList {
+		routeData, _ := r.(map[string]any)
+
+		// Helper to get value from either snake_case or camelCase
+		getValue := func(snakeCase, camelCase string) any {
+			if val, ok := routeData[snakeCase]; ok {
+				return val
+			}
+			return routeData[camelCase]
+		}
+
+		routeMap := map[string]any{
+			providerIDKey:     getValue("provider_id", "providerId"),
+			stopProcessingKey: getValue("stop_processing", "stopProcessing"),
+			routeDisplayKey:   getValue("display_name", "displayName"),
+			routeIDKey:        routeData["id"],
+		}
+
+		// Try both snake_case and camelCase for keysValues
+		var kvData map[string]any
+		var ok bool
+		if kvData, ok = routeData["event_type_key_values_filter"].(map[string]any); !ok {
+			kvData, ok = routeData["keysValues"].(map[string]any)
+		}
+
+		if ok {
+			// Helper to get value from keysValues map
+			getKVValue := func(snakeCase, camelCase string) any {
+				if val, ok := kvData[snakeCase]; ok {
+					return val
+				}
+				return kvData[camelCase]
+			}
+
+			pairsList, _ := getKVValue("key_value_pairs", "keyValuePairs").([]any)
+			keyValuePairs := make([]any, len(pairsList))
+			for j, pair := range pairsList {
+				pairData, _ := pair.(map[string]any)
+				keyValuePairs[j] = map[string]any{
+					keyKey:   pairData["key"],
+					valueKey: pairData["value"],
+				}
+			}
+			routeMap[keysValuesKey] = []map[string]any{
+				{
+					keyValuePairsKey: keyValuePairs,
+					evTypeKey:        getKVValue("event_type", "eventType"),
+				},
+			}
+		}
+
+		routes[i] = routeMap
+	}
+	setData(d, data, routesKey, routes)
 }
 
 func validateProviderOneOf(providerTypes []string) schema.CustomizeDiffFunc {
-	return func(ctx context.Context, d *schema.ResourceDiff, _ any) error {
-		_ = ctx
-
+	return func(_ context.Context, d *schema.ResourceDiff, _ any) error {
 		providers := d.Get(providersKey).([]any)
 		for i, p := range providers {
 			if p == nil {
@@ -644,40 +813,4 @@ func validateProviderOneOf(providerTypes []string) schema.CustomizeDiffFunc {
 		}
 		return nil
 	}
-}
-
-func checkEventType(item map[string]any) string {
-	var eventType string
-	if innerMap, ok := item[keysValuesKey].([]any)[0].(map[string]any); ok {
-		if inn, ok := innerMap[evTypeKey]; ok {
-			if str, ok := inn.(string); ok {
-				eventType = str
-			}
-		}
-	}
-	return eventType
-}
-
-func getKeyValuePairs(item map[string]any) []*configpb.EventSinkConfig_Route_KeyValuePair {
-	innerMap, ok := item[keysValuesKey].([]any)[0].(map[string]any)
-	if !ok {
-		return nil
-	}
-	if pairsMap, ok := innerMap[keyValuePairsKey]; ok {
-		var pairs = make([]*configpb.EventSinkConfig_Route_KeyValuePair, len(pairsMap.([]any)))
-		pairsSet, ok := pairsMap.([]any)
-		if !ok {
-			return nil
-		}
-		for i, o := range pairsSet {
-			if pairMap, ok := o.(map[string]any); ok {
-				pairs[i] = &configpb.EventSinkConfig_Route_KeyValuePair{
-					Key:   pairMap[keyKey].(string),
-					Value: pairMap[valueKey].(string),
-				}
-			}
-		}
-		return pairs
-	}
-	return nil
 }
