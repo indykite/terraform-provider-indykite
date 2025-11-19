@@ -193,6 +193,7 @@ resource "indykite_knowledge_query" "create-query" {
   }
 }
 
+
 resource "indykite_event_sink" "create-event" {
   name         = "terraform-event-sink-${time_static.example.unix}"
   display_name = "Terraform event sink  ${time_static.example.unix}"
@@ -302,6 +303,295 @@ resource "indykite_entity_matching_pipeline" "create-pipeline" {
 
   source_node_filter = ["Person"]
   target_node_filter = ["Person"]
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# ====================================================
+# Additional tests for different configuration options
+# ====================================================
+
+# -----------------------------------------------------------------------------
+# Test: Minimal configuration (only required fields)
+# -----------------------------------------------------------------------------
+
+# Authorization policy with simple config for ciq
+resource "indykite_authorization_policy" "policy_minimal" {
+  name = "terraform-pipeline-policy-minimal-${time_static.example.unix}"
+  json = jsonencode({
+    "meta" : {
+      "policy_version" : "1.0-ciq"
+    },
+    "subject" : {
+      "type" : "Person"
+    },
+    "condition" : {
+      "cypher" : "MATCH (company:Company)-[:OFFERS]->(contract:Contract)<-[:ACCEPTED]-(subject:Person)-[:HAS]->(payment:PaymentMethod), (contract)-[:COVERS]->(vehicle:Vehicle)-[:HAS]->(ln:LicenseNumber)",
+      "filter" : [
+        {
+          "operator" : "AND",
+          "operands" : [
+            {
+              "attribute" : "subject.external_id",
+              "operator" : "=",
+              "value" : "$subject_external_id"
+            },
+            {
+              "attribute" : "$token.sub",
+              "operator" : "=",
+              "value" : "$token_sub"
+            }
+          ]
+        }
+      ]
+    },
+    "allowed_reads" : {
+      "nodes" : [
+        "company.*",
+        "subject.*",
+        "payment.*"
+      ]
+    },
+    "allowed_upserts" : {
+      "relationships" : {
+        "relationship_types" : [
+          {
+            "type" : "GRANTED",
+            "source_node_label" : "Company",
+            "target_node_label" : "PaymentMethod"
+          }
+        ]
+      }
+    }
+  })
+  location = indykite_application_space.appspace.id
+  status   = "active"
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# External data resolver with minimal config (GET without headers)
+resource "indykite_external_data_resolver" "resolver_minimal" {
+  name     = "terraform-resolver-minimal-${time_static.example.unix}"
+  location = indykite_application_space.appspace.id
+
+  url               = "https://api.example.com/data"
+  method            = "GET"
+  request_type      = "json"
+  response_type     = "json"
+  response_selector = "."
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# Knowledge query with minimal config
+resource "indykite_knowledge_query" "query_minimal" {
+  name     = "terraform-knowledge-query-minimal-${time_static.example.unix}"
+  location = indykite_application_space.appspace.id
+  query = jsonencode({
+    "nodes" : [
+      "company.external_id",
+      "subject.external_id",
+      "payment.external_id"
+    ],
+    "upsert_relationships" : [
+      {
+        "name" : "newRel",
+        "source" : "company",
+        "target" : "payment",
+        "type" : "GRANTED"
+      }
+    ]
+  })
+  status    = "active"
+  policy_id = indykite_authorization_policy.policy_minimal.id
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# Trust score profile with minimal dimensions
+resource "indykite_trust_score_profile" "score_minimal" {
+  name                = "terraform-trust-score-minimal-${time_static.example.unix}"
+  location            = local.location_id
+  node_classification = "Organization"
+  dimension {
+    name   = "NAME_FRESHNESS"
+    weight = 1.0
+  }
+  schedule = "UPDATE_FREQUENCY_SIX_HOURS"
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# Entity matching pipeline with minimal config
+resource "indykite_entity_matching_pipeline" "pipeline_minimal" {
+  name     = "terraform-entitymatching-minimal-${time_static.example.unix}"
+  location = local.location_id
+
+  source_node_filter = ["Organization"]
+  target_node_filter = ["Organization"]
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Test: Different trust score dimensions and schedules
+# -----------------------------------------------------------------------------
+
+# Trust score profile with all dimensions
+resource "indykite_trust_score_profile" "score_all_dimensions" {
+  name                = "terraform-trust-score-all-dims-${time_static.example.unix}"
+  display_name        = "All dimensions profile"
+  description         = "Profile testing all available dimensions"
+  location            = local.location_id
+  node_classification = "Asset"
+  dimension {
+    name   = "NAME_ORIGIN"
+    weight = 0.2
+  }
+  dimension {
+    name   = "NAME_VALIDITY"
+    weight = 0.2
+  }
+  dimension {
+    name   = "NAME_COMPLETENESS"
+    weight = 0.2
+  }
+  dimension {
+    name   = "NAME_FRESHNESS"
+    weight = 0.2
+  }
+  dimension {
+    name   = "NAME_VERIFICATION"
+    weight = 0.2
+  }
+  schedule = "UPDATE_FREQUENCY_SIX_HOURS"
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Test: External data resolver with different methods and configurations
+# -----------------------------------------------------------------------------
+
+# External data resolver with multiple headers
+resource "indykite_external_data_resolver" "resolver_multi_headers" {
+  name         = "terraform-resolver-multi-headers-${time_static.example.unix}"
+  display_name = "Resolver with multiple headers"
+  description  = "Testing multiple header configurations"
+  location     = indykite_application_space.appspace.id
+
+  url    = "https://api.example.com/enrichment"
+  method = "GET"
+  headers {
+    name   = "Authorization"
+    values = ["Bearer token123"]
+  }
+  headers {
+    name   = "X-API-Key"
+    values = ["api-key-value"]
+  }
+  headers {
+    name   = "Accept"
+    values = ["application/json", "application/xml"]
+  }
+  request_type      = "json"
+  response_type     = "json"
+  response_selector = ".data"
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# External data resolver with POST and payload
+resource "indykite_external_data_resolver" "resolver_post_payload" {
+  name     = "terraform-resolver-post-payload-${time_static.example.unix}"
+  location = indykite_application_space.appspace.id
+
+  url               = "https://api.example.com/query"
+  method            = "POST"
+  request_type      = "json"
+  request_payload   = jsonencode({ query = "SELECT * FROM users WHERE id = $1", params = ["$userId"] })
+  response_type     = "json"
+  response_selector = ".results[0]"
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Test: Authorization policies with different policy versions
+# -----------------------------------------------------------------------------
+
+# Authorization policy with draft status
+resource "indykite_authorization_policy" "policy_draft" {
+  name         = "terraform-pipeline-policy-draft-${time_static.example.unix}"
+  display_name = "Draft policy for testing"
+  json = jsonencode({
+    meta = {
+      policyVersion = "1.0-indykite"
+    },
+    subject = {
+      type = "User"
+    },
+    actions = ["CAN_EDIT"],
+    resource = {
+      type = "File"
+    },
+    condition = {
+      cypher = "MATCH (subject:User)-[:EDITOR_OF]->(resource:File)"
+    }
+  })
+  location = indykite_application_space.appspace.id
+  status   = "draft"
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Test: Data source lookups for existing resources
+# -----------------------------------------------------------------------------
+
+# Look up the application space we created
+data "indykite_application_space" "lookup_appspace" {
+  app_space_id = indykite_application_space.appspace.id
+  depends_on   = [indykite_application_space.appspace]
+}
+
+# Look up the application we created
+data "indykite_application" "lookup_application" {
+  application_id = indykite_application.application.id
+  depends_on     = [indykite_application.application]
+}
+
+# Look up the application agent we created
+data "indykite_application_agent" "lookup_agent" {
+  app_agent_id    = indykite_application_agent.agent.id
+  api_permissions = ["Authorization", "Capture"]
+  depends_on      = [indykite_application_agent.agent]
+}
+
+# -----------------------------------------------------------------------------
+# Test: Entity matching pipeline with multiple node filters
+# -----------------------------------------------------------------------------
+
+# Entity matching pipeline with multiple source and target filters
+resource "indykite_entity_matching_pipeline" "pipeline_multi_filters" {
+  name         = "terraform-entitymatching-multi-${time_static.example.unix}"
+  display_name = "Multi-filter pipeline"
+  description  = "Pipeline with multiple source and target filters"
+  location     = local.location_id
+
+  source_node_filter = ["Person", "Organization", "Device"]
+  target_node_filter = ["Person", "Organization"]
   lifecycle {
     create_before_destroy = true
   }
