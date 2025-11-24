@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.28.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.27.0...v0.28.0) (2025-11-24)
+
+
+### Features
+
+* add new tests after refactor ([18b8c59](https://github.com/indykite/terraform-provider-indykite/commit/18b8c590a381ce7fb6e39593aa0af8019692c0be))
+* refactor with rest endpoints ([504c7fa](https://github.com/indykite/terraform-provider-indykite/commit/504c7fa6d17a0c3d680307651ebc6097eb7fb653))
+
+
+### Miscellaneous Chores
+
+* **deps:** update module golang.org/x/crypto to v0.45.0 [SECURITY] ([e36ddd7](https://github.com/indykite/terraform-provider-indykite/commit/e36ddd78e56a31fcdc3910fcb93d6b092310891a))
+
 ## [0.27.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.26.5...v0.27.0) (2025-11-06)
 
 
