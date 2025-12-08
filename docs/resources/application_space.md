@@ -95,7 +95,7 @@ resource "indykite_application_space" "appspace_with_db" {
 
 - `db_connection` (Block List, Max: 1) DBConnection (see [below for nested schema](#nestedblock--db_connection))
 - `deletion_protection` (Boolean) Whether or not to allow Terraform to destroy the instance. Unless this field is set to false in Terraform state, a terraform destroy or terraform apply that would delete the instance will fail.
-- `description` (String) Your own description of the resource. Must be less than or equal to 256 UTF-8 bytes.
+- `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
 - `ikg_size` (String) IKG size that will be allocated, which corresponds also to number of CPU nodes (default 2GB).
 		Valid values are: 2GB (1 CPU), 4GB (1 CPU), 8GB (2 CPUs), 16GB (3 CPUs), 32GB (6 CPUs), 64GB (12 CPUs),

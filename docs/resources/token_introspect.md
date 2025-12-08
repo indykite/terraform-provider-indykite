@@ -183,7 +183,7 @@ resource "indykite_token_introspect" "custom_claims" {
 
     Key specifies the new name and also the name of the property in IKG.
     Value specifies which claim to map and how.
-- `description` (String) Your own description of the resource. Must be less than or equal to 256 UTF-8 bytes.
+- `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
 - `jwt_matcher` (Block List, Max: 1) Specifies all attributes required to match a JWT token. (see [below for nested schema](#nestedblock--jwt_matcher))
 - `offline_validation` (Block List, Max: 1) Offline validation works only with JWT and checks token locally. (see [below for nested schema](#nestedblock--offline_validation))

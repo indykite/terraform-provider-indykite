@@ -190,7 +190,7 @@ resource "indykite_authorization_policy" "policy_for_ciq" {
 
 ### Optional
 
-- `description` (String) Your own description of the resource. Must be less than or equal to 256 UTF-8 bytes.
+- `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
 - `tags` (List of String) Tags of the Authorization Policy.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))

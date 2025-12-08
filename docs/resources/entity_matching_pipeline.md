@@ -88,7 +88,7 @@ resource "indykite_entity_matching_pipeline" "resource_pipeline" {
 
 ### Optional
 
-- `description` (String) Your own description of the resource. Must be less than or equal to 256 UTF-8 bytes.
+- `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
 - `rerun_interval` (String) RerunInterval is the time between scheduled re-runs.
 - `similarity_score_cutoff` (Number) Similarity score cutoff to be used in the entity matching pipeline. Defaults to 0.5 if not specified.

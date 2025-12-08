@@ -168,7 +168,7 @@ resource "indykite_external_data_resolver" "post_complex" {
 
 ### Optional
 
-- `description` (String) Your own description of the resource. Must be less than or equal to 256 UTF-8 bytes.
+- `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
 - `headers` (Block Set) Headers to be sent with the request, including authorization if needed (see [below for nested schema](#nestedblock--headers))
 - `request_payload` (String) Request payload to be sent to the endpoint. It should be in proper format based on request type
