@@ -24,7 +24,7 @@ Ingest pipeline configuration adds support for 3rd party data sources, which can
 
 ### Optional
 
-- `description` (String) Your own description of the resource. Must be less than or equal to 256 UTF-8 bytes.
+- `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
 - `operations` (List of String, Deprecated) List of operations is no longer used. All previously saved values are ignored.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))

@@ -179,8 +179,8 @@ func descriptionSchema() *schema.Schema {
 	return &schema.Schema{
 		Type:         schema.TypeString,
 		Optional:     true,
-		ValidateFunc: validation.StringLenBetween(0, 256),
-		Description:  `Your own description of the resource. Must be less than or equal to 256 UTF-8 bytes.`,
+		ValidateFunc: validation.StringLenBetween(0, 65000),
+		Description:  `Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.`,
 	}
 }
 
