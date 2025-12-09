@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.29.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.28.0...v0.29.0) (2025-12-09)
+
+
+### Features
+
+* update dep and descriptions ([5f3a2da](https://github.com/indykite/terraform-provider-indykite/commit/5f3a2da64c82a7fbe8c6b565ff62239d3d69b4b6))
+
+
+### Miscellaneous Chores
+
+* update dependencies ([5c31510](https://github.com/indykite/terraform-provider-indykite/commit/5c31510893928018d66aaaa72ddd053fc7f98c13))
+
 ## [0.28.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.27.0...v0.28.0) (2025-11-24)
 
 
