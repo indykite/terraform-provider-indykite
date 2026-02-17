@@ -6,7 +6,7 @@ variable "LOCATION_ID" {
 }
 
 locals {
-  app_space_name = "terraform-pipeline-appspace-${time_static.example.unix}"
+  app_space_name = "automation-terraform-appspace-${time_static.example.unix}"
   location_id    = var.LOCATION_ID
 }
 
@@ -17,7 +17,7 @@ data "indykite_customer" "customer" {
 resource "indykite_application_space" "appspace" {
   customer_id    = data.indykite_customer.customer.id
   name           = local.app_space_name
-  display_name   = "Terraform appspace ${time_static.example.unix}"
+  display_name   = "Automation Terraform appspace ${time_static.example.unix}"
   description    = "Application space for terraform pipeline"
   region         = "us-east1"
   ikg_size       = "4GB"
@@ -50,8 +50,8 @@ resource "indykite_application_space" "appspace" {
 
 resource "indykite_application" "application" {
   app_space_id = indykite_application_space.appspace.id
-  name         = "terraform-pipeline-application-${time_static.example.unix}"
-  display_name = "Terraform application ${time_static.example.unix}"
+  name         = "automation-terraform-application-${time_static.example.unix}"
+  display_name = "Automation Terraform application ${time_static.example.unix}"
   description  = "Application for terraform pipeline"
   lifecycle {
     create_before_destroy = true
@@ -61,8 +61,8 @@ resource "indykite_application" "application" {
 
 resource "indykite_application_agent" "agent" {
   application_id  = indykite_application.application.id
-  name            = "terraform-pipeline-agent-${time_static.example.unix}"
-  display_name    = "Terraform agent ${time_static.example.unix}"
+  name            = "automation-terraform-agent-${time_static.example.unix}"
+  display_name    = "Automation Terraform agent ${time_static.example.unix}"
   description     = "Agent for terraform pipeline"
   api_permissions = ["Authorization", "Capture"]
   lifecycle {
@@ -73,7 +73,7 @@ resource "indykite_application_agent" "agent" {
 
 resource "indykite_application_agent_credential" "with_public" {
   app_agent_id = indykite_application_agent.agent.id
-  display_name = "Terraform credential ${time_static.example.unix}"
+  display_name = "Automation Terraform credential ${time_static.example.unix}"
   expire_time  = "2026-12-31T12:34:56-01:00"
   lifecycle {
     create_before_destroy = true
@@ -81,8 +81,8 @@ resource "indykite_application_agent_credential" "with_public" {
 }
 
 resource "indykite_authorization_policy" "policy_drive_car" {
-  name         = "terraform-pipeline-policy-drive-car-${time_static.example.unix}"
-  display_name = "Terraform policy drive car ${time_static.example.unix}"
+  name         = "automation-terraform-policy-drive-car-${time_static.example.unix}"
+  display_name = "AutomationTerraform policy drive car ${time_static.example.unix}"
   description  = "Policy for terraform pipeline"
   json = jsonencode({
     meta = {
@@ -107,8 +107,8 @@ resource "indykite_authorization_policy" "policy_drive_car" {
 }
 
 resource "indykite_external_data_resolver" "get-resolver" {
-  name         = "terraform-resolver-get-${time_static.example.unix}"
-  display_name = "Terraform external data resolver get ${time_static.example.unix}"
+  name         = "automation-terraform-resolver-get-${time_static.example.unix}"
+  display_name = "AutomationTerraform external data resolver get ${time_static.example.unix}"
   description  = "External data resolver for terraform pipeline"
   location     = indykite_application_space.appspace.id
 
@@ -127,8 +127,8 @@ resource "indykite_external_data_resolver" "get-resolver" {
 }
 
 resource "indykite_external_data_resolver" "post-resolver" {
-  name         = "terraform-resolver-post-${time_static.example.unix}"
-  display_name = "Terraform external data resolver post ${time_static.example.unix}"
+  name         = "automation-terraform-resolver-post-${time_static.example.unix}"
+  display_name = "Automation Terraform external data resolver post ${time_static.example.unix}"
   description  = "External data resolver for terraform pipeline"
   location     = indykite_application_space.appspace.id
 
@@ -152,8 +152,8 @@ resource "indykite_external_data_resolver" "post-resolver" {
 }
 
 resource "indykite_authorization_policy" "policy_for_ciq" {
-  name         = "terraform-pipeline-policy-for-ciq-${time_static.example.unix}"
-  display_name = "Terraform policy for CIQ ${time_static.example.unix}"
+  name         = "automation-terraform-policy-for-ciq-${time_static.example.unix}"
+  display_name = "Automation Terraform policy for CIQ ${time_static.example.unix}"
   description  = "Policy for CIQ in terraform pipeline"
   json = jsonencode({
     "meta" : { "policy_version" : "1.0-ciq" },
@@ -176,8 +176,8 @@ resource "indykite_authorization_policy" "policy_for_ciq" {
 
 
 resource "indykite_knowledge_query" "create-query" {
-  name         = "terraform-knowledge-query-${time_static.example.unix}"
-  display_name = "Terraform knowledge-query  ${time_static.example.unix}"
+  name         = "automation-terraform-knowledge-query-${time_static.example.unix}"
+  display_name = "Automation Terraform knowledge-query  ${time_static.example.unix}"
   description  = "Knowledge query for terraform"
   location     = indykite_application_space.appspace.id
   query = jsonencode({
@@ -195,8 +195,8 @@ resource "indykite_knowledge_query" "create-query" {
 
 
 resource "indykite_event_sink" "create-event" {
-  name         = "terraform-event-sink-${time_static.example.unix}"
-  display_name = "Terraform event sink  ${time_static.example.unix}"
+  name         = "automation-terraform-event-sink-${time_static.example.unix}"
+  display_name = "Automation Terraform event sink  ${time_static.example.unix}"
   description  = "Event sink for terraform"
   location     = indykite_application_space.appspace.id
   providers {
@@ -276,8 +276,8 @@ resource "indykite_event_sink" "create-event" {
 }
 
 resource "indykite_trust_score_profile" "create-score" {
-  name                = "terraform-trust-score-profile-${time_static.example.unix}"
-  display_name        = "Terraform trust score profile  ${time_static.example.unix}"
+  name                = "automation-terraform-trust-score-${time_static.example.unix}"
+  display_name        = "AutomationTerraform trust score profile  ${time_static.example.unix}"
   description         = "Trust score profile for terraform"
   location            = local.location_id
   node_classification = "Person"
@@ -296,8 +296,8 @@ resource "indykite_trust_score_profile" "create-score" {
 }
 
 resource "indykite_entity_matching_pipeline" "create-pipeline" {
-  name         = "terraform-entitymatching-pipeline-${time_static.example.unix}"
-  display_name = "Terraform entitymatching pipeline  ${time_static.example.unix}"
+  name         = "automation-terraform-entitymatching-${time_static.example.unix}"
+  display_name = "Automation Terraform entitymatching pipeline  ${time_static.example.unix}"
   description  = "External entitymatching pipeline for terraform"
   location     = local.location_id
 
@@ -318,7 +318,7 @@ resource "indykite_entity_matching_pipeline" "create-pipeline" {
 
 # Authorization policy with simple config for ciq
 resource "indykite_authorization_policy" "policy_minimal" {
-  name = "terraform-pipeline-policy-minimal-${time_static.example.unix}"
+  name = "automation-terraform-policy-minimal-${time_static.example.unix}"
   json = jsonencode({
     "meta" : {
       "policy_version" : "1.0-ciq"
@@ -374,7 +374,7 @@ resource "indykite_authorization_policy" "policy_minimal" {
 
 # External data resolver with minimal config (GET without headers)
 resource "indykite_external_data_resolver" "resolver_minimal" {
-  name     = "terraform-resolver-minimal-${time_static.example.unix}"
+  name     = "automation-terraform-esolver-minimal-${time_static.example.unix}"
   location = indykite_application_space.appspace.id
 
   url               = "https://api.example.com/data"
@@ -389,7 +389,7 @@ resource "indykite_external_data_resolver" "resolver_minimal" {
 
 # Knowledge query with minimal config
 resource "indykite_knowledge_query" "query_minimal" {
-  name     = "terraform-knowledge-query-minimal-${time_static.example.unix}"
+  name     = "automation-terraform-knowledge-query-minimal-${time_static.example.unix}"
   location = indykite_application_space.appspace.id
   query = jsonencode({
     "nodes" : [
@@ -415,7 +415,7 @@ resource "indykite_knowledge_query" "query_minimal" {
 
 # Trust score profile with minimal dimensions
 resource "indykite_trust_score_profile" "score_minimal" {
-  name                = "terraform-trust-score-minimal-${time_static.example.unix}"
+  name                = "automation-terraform-trust-score-minimal-${time_static.example.unix}"
   location            = local.location_id
   node_classification = "Organization"
   dimension {
@@ -430,7 +430,7 @@ resource "indykite_trust_score_profile" "score_minimal" {
 
 # Entity matching pipeline with minimal config
 resource "indykite_entity_matching_pipeline" "pipeline_minimal" {
-  name     = "terraform-entitymatching-minimal-${time_static.example.unix}"
+  name     = "automation-terraform-entitymatching-minimal-${time_static.example.unix}"
   location = local.location_id
 
   source_node_filter = ["Organization"]
@@ -446,7 +446,7 @@ resource "indykite_entity_matching_pipeline" "pipeline_minimal" {
 
 # Trust score profile with all dimensions
 resource "indykite_trust_score_profile" "score_all_dimensions" {
-  name                = "terraform-trust-score-all-dims-${time_static.example.unix}"
+  name                = "automation-terraform-trust-score-all-dims-${time_static.example.unix}"
   display_name        = "All dimensions profile"
   description         = "Profile testing all available dimensions"
   location            = local.location_id
@@ -483,7 +483,7 @@ resource "indykite_trust_score_profile" "score_all_dimensions" {
 
 # External data resolver with multiple headers
 resource "indykite_external_data_resolver" "resolver_multi_headers" {
-  name         = "terraform-resolver-multi-headers-${time_static.example.unix}"
+  name         = "automation-terraform-resolver-multi-headers-${time_static.example.unix}"
   display_name = "Resolver with multiple headers"
   description  = "Testing multiple header configurations"
   location     = indykite_application_space.appspace.id
@@ -512,7 +512,7 @@ resource "indykite_external_data_resolver" "resolver_multi_headers" {
 
 # External data resolver with POST and payload
 resource "indykite_external_data_resolver" "resolver_post_payload" {
-  name     = "terraform-resolver-post-payload-${time_static.example.unix}"
+  name     = "automation-terraform-resolver-post-payload-${time_static.example.unix}"
   location = indykite_application_space.appspace.id
 
   url               = "https://api.example.com/query"
@@ -532,7 +532,7 @@ resource "indykite_external_data_resolver" "resolver_post_payload" {
 
 # Authorization policy with draft status
 resource "indykite_authorization_policy" "policy_draft" {
-  name         = "terraform-pipeline-policy-draft-${time_static.example.unix}"
+  name         = "automation-terraform-policy-draft-${time_static.example.unix}"
   display_name = "Draft policy for testing"
   json = jsonencode({
     meta = {
@@ -585,7 +585,7 @@ data "indykite_application_agent" "lookup_agent" {
 
 # Entity matching pipeline with multiple source and target filters
 resource "indykite_entity_matching_pipeline" "pipeline_multi_filters" {
-  name         = "terraform-entitymatching-multi-${time_static.example.unix}"
+  name         = "automation-terraform-entitymatching-multi-${time_static.example.unix}"
   display_name = "Multi-filter pipeline"
   description  = "Pipeline with multiple source and target filters"
   location     = local.location_id
