@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.30.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.29.0...v0.30.0) (2026-02-18)
+
+
+### Features
+
+* add automation prefix + dependencies ([e4e9a8f](https://github.com/indykite/terraform-provider-indykite/commit/e4e9a8f598e7ed8b861fa73ea847e2a42c8b74b6))
+
+
+### Miscellaneous Chores
+
+* update dependencies ([d1ed3da](https://github.com/indykite/terraform-provider-indykite/commit/d1ed3da3881420bdb3b948c370ef011050fbbc34))
+
 ## [0.29.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.28.0...v0.29.0) (2025-12-09)
 
 
