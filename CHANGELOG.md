@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.31.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.30.0...v0.31.0) (2026-04-07)
+
+
+### Features
+
+* update dependencies and fix data source ([81eb6c5](https://github.com/indykite/terraform-provider-indykite/commit/81eb6c5d0af541b0fef7c8af808a7ef2f8c9503a))
+
+
+### Miscellaneous Chores
+
+* **deps:** update module google.golang.org/grpc to v1.79.3 [SECURITY] ([c020d29](https://github.com/indykite/terraform-provider-indykite/commit/c020d29c5f909214e1c1cf5000fe4fe7fe3b2f85))
+
 ## [0.30.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.29.0...v0.30.0) (2026-02-18)
 
 
