@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: pre-commit
-        uses: indykite/.github/.github/actions/pre-commit@master
+        uses: indykite/ops-common/.github/actions/pre-commit@a61741a56496a215ffc1b64503a5fa598c049245 # master
         with:
           github_token: ${{ secrets.INDYKITEONE_PAT }}
           pre_commit_skip: >-
@@ -32,6 +32,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: trivy
-        uses: indykite/.github/.github/actions/trivy@master
+        uses: indykite/ops-common/.github/actions/trivy@a61741a56496a215ffc1b64503a5fa598c049245 # master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
