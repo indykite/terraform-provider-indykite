@@ -46,7 +46,7 @@ func NewRestClient(_ context.Context) (*RestClient, error) {
 	credsFile := os.Getenv("INDYKITE_SERVICE_ACCOUNT_CREDENTIALS_FILE")
 
 	if credentials == "" && credsFile != "" {
-		// #nosec G304 -- credsFile is from environment variable, intentional file read
+		// #nosec G304,G703 -- credsFile is from environment variable, intentional file read
 		data, err := os.ReadFile(credsFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read credentials file: %w", err)

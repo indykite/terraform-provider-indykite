@@ -113,7 +113,7 @@ type UpdateApplicationSpaceRequest struct {
 
 // ListApplicationSpacesResponse represents the response from listing application spaces.
 type ListApplicationSpacesResponse struct {
-	AppSpaces []ApplicationSpaceResponse `json:"appSpaces"`
+	AppSpaces []ApplicationSpaceResponse `json:"projects"`
 }
 
 // Application Agent structures
