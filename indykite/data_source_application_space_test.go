@@ -82,26 +82,19 @@ var _ = Describe("DataSource Application Space", func() {
 
 		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch {
-			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/projects") &&
-				r.URL.Query().Get("organization_id") == customerID:
-				// List application spaces by customer
-				w.WriteHeader(http.StatusOK)
-				if nameFound {
-					// Return the app space for successful name lookup
-					_ = json.NewEncoder(w).Encode(indykite.ListApplicationSpacesResponse{
-						AppSpaces: []indykite.ApplicationSpaceResponse{appSpaceResp},
-					})
-				} else {
-					// Return empty list (name not found)
-					_ = json.NewEncoder(w).Encode(indykite.ListApplicationSpacesResponse{
-						AppSpaces: []indykite.ApplicationSpaceResponse{},
-					})
-				}
 			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/projects/"+appSpaceID):
 				// Read by ID - this also triggers nameFound for next test
 				nameFound = true
 				w.WriteHeader(http.StatusOK)
 				_ = json.NewEncoder(w).Encode(appSpaceResp)
+			case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/projects/acme"):
+				// Read by name
+				if nameFound {
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(appSpaceResp)
+				} else {
+					w.WriteHeader(http.StatusNotFound)
+				}
 			default:
 				w.WriteHeader(http.StatusNotFound)
 			}
@@ -144,7 +137,7 @@ var _ = Describe("DataSource Application Space", func() {
 						customer_id = "` + customerID + `"
 						name = "acme"
 					}`,
-					ExpectError: regexp.MustCompile("application space with name 'acme' not found"),
+					ExpectError: regexp.MustCompile("HTTP 404"),
 				},
 
 				// Success test cases
