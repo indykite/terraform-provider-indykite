@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.31.0...v0.31.1) (2026-04-08)
+
+
+### Bug Fixes
+
+* fix read app_space data source by name ([017c004](https://github.com/indykite/terraform-provider-indykite/commit/017c004bb982c317dbeeb313d60bd4d44edb2f5b))
+
 ## [0.31.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.30.0...v0.31.0) (2026-04-07)
 
 
