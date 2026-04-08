@@ -566,6 +566,13 @@ data "indykite_application_space" "lookup_appspace" {
   depends_on   = [indykite_application_space.appspace]
 }
 
+# Look up the application space by name
+data "indykite_application_space" "lookup_appspace_by_name" {
+  customer_id = data.indykite_customer.customer.id
+  name        = local.app_space_name
+  depends_on  = [indykite_application_space.appspace]
+}
+
 # Look up the application we created
 data "indykite_application" "lookup_application" {
   application_id = indykite_application.application.id

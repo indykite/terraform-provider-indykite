@@ -16,7 +16,6 @@ package indykite
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -79,38 +78,6 @@ func dataSourceAppSpaceList() *schema.Resource {
 	}
 }
 
-// lookupApplicationSpaceByName finds an application space by name within a customer.
-func lookupApplicationSpaceByName(
-	ctx context.Context,
-	clientCtx *ClientContext,
-	data *schema.ResourceData,
-	name string,
-) (*ApplicationSpaceResponse, diag.Diagnostic) {
-	customerID := data.Get(customerIDKey).(string)
-	var listResp ListApplicationSpacesResponse
-	err := clientCtx.GetClient().Get(ctx, "/projects?organization_id="+customerID, &listResp)
-	if err != nil {
-		return nil, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  fmt.Sprintf("failed to list application spaces: %v", err),
-		}
-	}
-
-	// Find app space by name
-	for i := range listResp.AppSpaces {
-		if listResp.AppSpaces[i].Name == name {
-			return &listResp.AppSpaces[i], diag.Diagnostic{}
-		}
-	}
-
-	return nil, diag.Diagnostic{
-		Severity: diag.Error,
-		Summary: fmt.Sprintf(
-			"application space with name '%s' not found in customer '%s'",
-			name, customerID),
-	}
-}
-
 func dataAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
 	var d diag.Diagnostics
 	clientCtx := getClientContext(&d, meta)
@@ -130,17 +97,13 @@ func dataAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, met
 		resp = &ApplicationSpaceResponse{}
 		err = clientCtx.GetClient().Get(ctx, "/projects/"+id.(string), resp)
 	} else if name, exists := data.GetOk(nameKey); exists {
-		// Look up by name within customer
-		var diagErr diag.Diagnostic
-		resp, diagErr = lookupApplicationSpaceByName(ctx, clientCtx, data, name.(string))
-		// Only return if there's an actual error (non-zero severity with summary)
-		if diagErr.Summary != "" {
-			return append(d, diagErr)
-		}
+		// Direct lookup by name (API accepts name as the {id} path parameter)
+		resp = &ApplicationSpaceResponse{}
+		err = clientCtx.GetClient().Get(ctx, "/projects/"+name.(string), resp)
 	}
 
-	if readHasFailed(&d, err, data) {
-		return d
+	if err != nil {
+		return append(d, buildPluginError(err.Error()))
 	}
 
 	return dataAppSpaceFlatten(data, resp)
