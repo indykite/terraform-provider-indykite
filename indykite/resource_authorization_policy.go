@@ -172,20 +172,15 @@ func resAuthorizationPolicyUpdate(ctx context.Context, data *schema.ResourceData
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
 	defer cancel()
 
+	policy := data.Get(authzJSONConfigKey).(string)
+	statusValue := data.Get(authzStatusKey).(string)
+	apiStatus := AuthorizationPolicyStatusToAPI[statusValue]
+
 	req := UpdateAuthorizationPolicyRequest{
 		DisplayName: updateOptionalString(data, displayNameKey),
 		Description: updateOptionalString(data, descriptionKey),
-	}
-
-	if data.HasChange(authzJSONConfigKey) {
-		policy := data.Get(authzJSONConfigKey).(string)
-		req.Policy = &policy
-	}
-
-	if data.HasChange(authzStatusKey) {
-		statusValue := data.Get(authzStatusKey).(string)
-		apiStatus := AuthorizationPolicyStatusToAPI[statusValue]
-		req.Status = &apiStatus
+		Policy:      &policy,
+		Status:      &apiStatus,
 	}
 
 	if data.HasChange(authzTagsKey) {

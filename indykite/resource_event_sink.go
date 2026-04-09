@@ -435,10 +435,7 @@ func resEventSinkUpdate(ctx context.Context, data *schema.ResourceData, meta any
 	req := UpdateEventSinkRequest{
 		DisplayName: updateOptionalString(data, displayNameKey),
 		Description: updateOptionalString(data, descriptionKey),
-	}
-
-	if data.HasChange(providersKey) || data.HasChange(routesKey) {
-		req.Config = buildEventSinkConfig(data)
+		Config:      buildEventSinkConfig(data),
 	}
 
 	var resp EventSinkResponse

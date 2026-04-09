@@ -166,17 +166,10 @@ func resIngestPipelineUpdate(ctx context.Context, data *schema.ResourceData, met
 	defer cancel()
 
 	req := UpdateIngestPipelineRequest{
-		DisplayName: updateOptionalString(data, displayNameKey),
-		Description: updateOptionalString(data, descriptionKey),
-	}
-
-	if data.HasChange(ingestPipelineSourcesTypeKey) {
-		req.Sources = rawArrayToTypedArray[string](data.Get(ingestPipelineSourcesTypeKey).([]any))
-	}
-
-	if data.HasChange(ingestPipelineAppAgentTokenTypeKey) {
-		appAgentToken := data.Get(ingestPipelineAppAgentTokenTypeKey).(string)
-		req.AppAgentToken = &appAgentToken
+		DisplayName:   updateOptionalString(data, displayNameKey),
+		Description:   updateOptionalString(data, descriptionKey),
+		Sources:       rawArrayToTypedArray[string](data.Get(ingestPipelineSourcesTypeKey).([]any)),
+		AppAgentToken: data.Get(ingestPipelineAppAgentTokenTypeKey).(string),
 	}
 
 	var resp IngestPipelineResponse

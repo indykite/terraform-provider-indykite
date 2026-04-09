@@ -185,13 +185,9 @@ func resEntityMatchingPipelineUpdate(ctx context.Context, data *schema.ResourceD
 	defer cancel()
 
 	req := UpdateEntityMatchingPipelineRequest{
-		DisplayName: updateOptionalString(data, displayNameKey),
-		Description: updateOptionalString(data, descriptionKey),
-	}
-
-	if data.HasChange(entityMatchingPipelineSimilarityScoreCutOffKey) {
-		score := float32(data.Get(entityMatchingPipelineSimilarityScoreCutOffKey).(float64))
-		req.SimilarityScoreCutoff = &score
+		DisplayName:           updateOptionalString(data, displayNameKey),
+		Description:           updateOptionalString(data, descriptionKey),
+		SimilarityScoreCutoff: float32(data.Get(entityMatchingPipelineSimilarityScoreCutOffKey).(float64)),
 	}
 
 	if data.HasChange(entityMatchingPipelineRerunInterval) {

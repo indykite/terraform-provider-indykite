@@ -187,22 +187,9 @@ func resKnowledgeQueryUpdate(ctx context.Context, data *schema.ResourceData, met
 	req := UpdateKnowledgeQueryRequest{
 		DisplayName: updateOptionalString(data, displayNameKey),
 		Description: updateOptionalString(data, descriptionKey),
-	}
-
-	if data.HasChange(knowledgeQueryJSONQueryConfigKey) {
-		query := data.Get(knowledgeQueryJSONQueryConfigKey).(string)
-		req.Query = &query
-	}
-
-	if data.HasChange(knowledgeQueryStatusKey) {
-		statusValue := data.Get(knowledgeQueryStatusKey).(string)
-		apiStatus := KnowledgeQueryStatusToAPI[statusValue]
-		req.Status = &apiStatus
-	}
-
-	if data.HasChange(knowledgeQueryPolicyID) {
-		policyID := data.Get(knowledgeQueryPolicyID).(string)
-		req.PolicyID = &policyID
+		Query:       data.Get(knowledgeQueryJSONQueryConfigKey).(string),
+		Status:      KnowledgeQueryStatusToAPI[data.Get(knowledgeQueryStatusKey).(string)],
+		PolicyID:    data.Get(knowledgeQueryPolicyID).(string),
 	}
 
 	var resp KnowledgeQueryResponse

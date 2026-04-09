@@ -217,19 +217,14 @@ func resTrustScoreProfileUpdate(ctx context.Context, data *schema.ResourceData, 
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
 	defer cancel()
 
+	scheduleValue := data.Get(trustScoreProfileSchedule).(string)
+	apiSchedule := TrustScoreProfileScheduleToAPI[scheduleValue]
+
 	req := UpdateTrustScoreProfileRequest{
 		DisplayName: updateOptionalString(data, displayNameKey),
 		Description: updateOptionalString(data, descriptionKey),
-	}
-
-	if data.HasChange(trustScoreProfileDimensionsKey) {
-		req.Dimensions = buildDimensions(data)
-	}
-
-	if data.HasChange(trustScoreProfileSchedule) {
-		scheduleValue := data.Get(trustScoreProfileSchedule).(string)
-		apiSchedule := TrustScoreProfileScheduleToAPI[scheduleValue]
-		req.Schedule = &apiSchedule
+		Dimensions:  buildDimensions(data),
+		Schedule:    apiSchedule,
 	}
 
 	var resp TrustScoreProfileResponse

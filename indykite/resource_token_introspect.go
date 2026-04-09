@@ -327,11 +327,13 @@ func resTokenIntrospectUpdate(ctx context.Context, data *schema.ResourceData, me
 		Description: updateOptionalString(data, descriptionKey),
 	}
 
+	req.IKGNodeType = data.Get(tokenIntrospectIKGNodeTypeKey).(string)
+	req.PerformUpsert = data.Get(tokenIntrospectPerformUpsertKey).(bool)
+
 	// Add changed fields
 	if data.HasChange(tokenIntrospectJWTKey) || data.HasChange(tokenIntrospectOpaqueKey) ||
 		data.HasChange(tokenIntrospectOfflineKey) || data.HasChange(tokenIntrospectOnlineKey) ||
-		data.HasChange(tokenIntrospectClaimsMappingKey) || data.HasChange(tokenIntrospectSubClaimKey) ||
-		data.HasChange(tokenIntrospectIKGNodeTypeKey) || data.HasChange(tokenIntrospectPerformUpsertKey) {
+		data.HasChange(tokenIntrospectClaimsMappingKey) || data.HasChange(tokenIntrospectSubClaimKey) {
 		tokenReq := buildTokenIntrospectRequest(data)
 		req.JWT = tokenReq.JWT
 		req.Opaque = tokenReq.Opaque
@@ -339,15 +341,6 @@ func resTokenIntrospectUpdate(ctx context.Context, data *schema.ResourceData, me
 		req.Online = tokenReq.Online
 		req.ClaimsMapping = tokenReq.ClaimsMapping
 		req.SubClaim = tokenReq.SubClaim
-
-		if data.HasChange(tokenIntrospectIKGNodeTypeKey) {
-			nodeType := data.Get(tokenIntrospectIKGNodeTypeKey).(string)
-			req.IKGNodeType = &nodeType
-		}
-		if data.HasChange(tokenIntrospectPerformUpsertKey) {
-			performUpsert := data.Get(tokenIntrospectPerformUpsertKey).(bool)
-			req.PerformUpsert = &performUpsert
-		}
 	}
 
 	var resp TokenIntrospectResponse
