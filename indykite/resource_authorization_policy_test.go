@@ -67,6 +67,30 @@ var _ = Describe("Resource Authorization Policy config", func() {
 		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch {
 			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/authorization-policies"):
+				var reqBody map[string]any
+				if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+					w.WriteHeader(http.StatusBadRequest)
+					_ = json.NewEncoder(w).Encode(map[string]string{"message": "invalid request body"})
+					return
+				}
+
+				// Validate that policy and status are present
+				var errs []string
+				if _, ok := reqBody["policy"]; !ok {
+					errs = append(errs, "missing field policy")
+				}
+				if _, ok := reqBody["status"]; !ok {
+					errs = append(errs, "missing field status")
+				}
+				if len(errs) > 0 {
+					w.WriteHeader(http.StatusUnprocessableEntity)
+					_ = json.NewEncoder(w).Encode(map[string]any{
+						"message": "Unprocessable Entity",
+						"errors":  errs,
+					})
+					return
+				}
+
 				resp := indykite.AuthorizationPolicyResponse{
 					ID:          sampleID,
 					Name:        "wonka-authorization-policy-config",
@@ -115,6 +139,30 @@ var _ = Describe("Resource Authorization Policy config", func() {
 				_ = json.NewEncoder(w).Encode(resp)
 
 			case r.Method == http.MethodPut && strings.Contains(r.URL.Path, sampleID):
+				var reqBody map[string]any
+				if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+					w.WriteHeader(http.StatusBadRequest)
+					_ = json.NewEncoder(w).Encode(map[string]string{"message": "invalid request body"})
+					return
+				}
+
+				// Validate that policy and status are always present in PUT requests
+				var errs []string
+				if _, ok := reqBody["policy"]; !ok {
+					errs = append(errs, "missing field policy")
+				}
+				if _, ok := reqBody["status"]; !ok {
+					errs = append(errs, "missing field status")
+				}
+				if len(errs) > 0 {
+					w.WriteHeader(http.StatusUnprocessableEntity)
+					_ = json.NewEncoder(w).Encode(map[string]any{
+						"message": "Unprocessable Entity",
+						"errors":  errs,
+					})
+					return
+				}
+
 				updated = true
 				resp := indykite.AuthorizationPolicyResponse{
 					ID:          sampleID,
@@ -388,6 +436,30 @@ var _ = Describe("Resource Authorization Policy Import by Name", func() {
 		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch {
 			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/authorization-policies"):
+				var reqBody map[string]any
+				if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+					w.WriteHeader(http.StatusBadRequest)
+					_ = json.NewEncoder(w).Encode(map[string]string{"message": "invalid request body"})
+					return
+				}
+
+				// Validate that policy and status are present
+				var errs []string
+				if _, ok := reqBody["policy"]; !ok {
+					errs = append(errs, "missing field policy")
+				}
+				if _, ok := reqBody["status"]; !ok {
+					errs = append(errs, "missing field status")
+				}
+				if len(errs) > 0 {
+					w.WriteHeader(http.StatusUnprocessableEntity)
+					_ = json.NewEncoder(w).Encode(map[string]any{
+						"message": "Unprocessable Entity",
+						"errors":  errs,
+					})
+					return
+				}
+
 				resp := indykite.AuthorizationPolicyResponse{
 					ID:          policyID,
 					CustomerID:  customerID,

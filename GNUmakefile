@@ -30,6 +30,7 @@ test:
 integration:
 	cd ./tests/provider && terraform plan && terraform apply -input=false -auto-approve
 	cd ./tests/terraform && go test --tags=integration ./...
+	cd ./tests/provider && cp test.tf test.tf.bak && sed -i 's/description\(\s*=\s*"\)/description\1Updated - /g' test.tf && terraform apply -input=false -auto-approve; mv test.tf.bak test.tf
 	cd ./tests/provider && terraform destroy -input=false -auto-approve && rm terraform.tfstate terraform.tfstate.backup
 
 upgrade_test_provider:

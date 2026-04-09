@@ -258,42 +258,22 @@ func resExternalDataResolverUpdate(ctx context.Context, data *schema.ResourceDat
 	defer cancel()
 
 	req := UpdateExternalDataResolverRequest{
-		DisplayName: updateOptionalString(data, displayNameKey),
-		Description: updateOptionalString(data, descriptionKey),
-	}
-
-	if data.HasChange(externalDataResolverURLKey) {
-		url := data.Get(externalDataResolverURLKey).(string)
-		req.URL = &url
-	}
-
-	if data.HasChange(externalDataResolverMethodKey) {
-		method := data.Get(externalDataResolverMethodKey).(string)
-		req.Method = &method
+		DisplayName:      updateOptionalString(data, displayNameKey),
+		Description:      updateOptionalString(data, descriptionKey),
+		URL:              data.Get(externalDataResolverURLKey).(string),
+		Method:           data.Get(externalDataResolverMethodKey).(string),
+		RequestType:      strings.ToUpper(data.Get(externalDataResolverRequestTypeKey).(string)),
+		ResponseType:     strings.ToUpper(data.Get(externalDataResolverResponseTypeKey).(string)),
+		ResponseSelector: data.Get(externalDataResolverResponseSelectorKey).(string),
 	}
 
 	if data.HasChange(externalDataResolverHeadersKey) {
 		req.Headers = buildHeaders(data)
 	}
 
-	if data.HasChange(externalDataResolverRequestTypeKey) {
-		requestType := strings.ToUpper(data.Get(externalDataResolverRequestTypeKey).(string))
-		req.RequestType = &requestType
-	}
-
 	if data.HasChange(externalDataResolverRequestPayloadKey) {
 		requestPayload := data.Get(externalDataResolverRequestPayloadKey).(string)
 		req.RequestPayload = &requestPayload
-	}
-
-	if data.HasChange(externalDataResolverResponseTypeKey) {
-		responseType := strings.ToUpper(data.Get(externalDataResolverResponseTypeKey).(string))
-		req.ResponseType = &responseType
-	}
-
-	if data.HasChange(externalDataResolverResponseSelectorKey) {
-		responseSelector := data.Get(externalDataResolverResponseSelectorKey).(string)
-		req.ResponseSelector = &responseSelector
 	}
 
 	var resp ExternalDataResolverResponse

@@ -303,8 +303,8 @@ type UpdateTokenIntrospectRequest struct {
 	Online        *TokenIntrospectOnline           `json:"online,omitempty"`
 	ClaimsMapping map[string]*TokenIntrospectClaim `json:"claims_mapping,omitempty"`
 	SubClaim      *TokenIntrospectClaim            `json:"sub_claim,omitempty"`
-	IKGNodeType   *string                          `json:"ikg_node_type,omitempty"`
-	PerformUpsert *bool                            `json:"perform_upsert,omitempty"`
+	IKGNodeType   string                           `json:"ikg_node_type"`
+	PerformUpsert bool                             `json:"perform_upsert"`
 }
 
 // Ingest Pipeline structures
@@ -337,8 +337,8 @@ type IngestPipelineResponse struct {
 type UpdateIngestPipelineRequest struct {
 	DisplayName   *string  `json:"display_name,omitempty"`
 	Description   *string  `json:"description,omitempty"`
-	AppAgentToken *string  `json:"app_agent_token,omitempty"`
-	Sources       []string `json:"sources,omitempty"`
+	AppAgentToken string   `json:"app_agent_token"`
+	Sources       []string `json:"sources"`
 }
 
 // External Data Resolver structures
@@ -388,13 +388,13 @@ type ExternalDataResolverResponse struct {
 type UpdateExternalDataResolverRequest struct {
 	DisplayName      *string        `json:"display_name,omitempty"`
 	Description      *string        `json:"description,omitempty"`
-	URL              *string        `json:"url,omitempty"`
-	Method           *string        `json:"method,omitempty"`
+	URL              string         `json:"url"`
+	Method           string         `json:"method"`
 	Headers          map[string]any `json:"headers,omitempty"`
-	RequestType      *string        `json:"request_content_type,omitempty"`
+	RequestType      string         `json:"request_content_type"`
 	RequestPayload   *string        `json:"request_payload,omitempty"`
-	ResponseType     *string        `json:"response_content_type,omitempty"`
-	ResponseSelector *string        `json:"response_selector,omitempty"`
+	ResponseType     string         `json:"response_content_type"`
+	ResponseSelector string         `json:"response_selector"`
 }
 
 // Entity Matching Pipeline structures
@@ -434,10 +434,10 @@ type EntityMatchingPipelineResponse struct {
 
 // UpdateEntityMatchingPipelineRequest represents the request to update an entity matching pipeline.
 type UpdateEntityMatchingPipelineRequest struct {
-	DisplayName           *string  `json:"display_name,omitempty"`
-	Description           *string  `json:"description,omitempty"`
-	SimilarityScoreCutoff *float32 `json:"similarity_score_cutoff,omitempty"`
-	RerunInterval         *string  `json:"rerun_interval,omitempty"`
+	DisplayName           *string `json:"display_name,omitempty"`
+	Description           *string `json:"description,omitempty"`
+	RerunInterval         *string `json:"rerun_interval,omitempty"`
+	SimilarityScoreCutoff float32 `json:"similarity_score_cutoff"`
 }
 
 // Knowledge Query structures
@@ -473,9 +473,9 @@ type KnowledgeQueryResponse struct {
 type UpdateKnowledgeQueryRequest struct {
 	DisplayName *string `json:"display_name,omitempty"`
 	Description *string `json:"description,omitempty"`
-	Query       *string `json:"query,omitempty"`
-	Status      *string `json:"status,omitempty"`
-	PolicyID    *string `json:"policy_id,omitempty"`
+	Query       string  `json:"query"`
+	Status      string  `json:"status"`
+	PolicyID    string  `json:"policy_id"`
 }
 
 // Trust Score Profile structures
@@ -517,8 +517,8 @@ type TrustScoreProfileResponse struct {
 type UpdateTrustScoreProfileRequest struct {
 	DisplayName *string                `json:"display_name,omitempty"`
 	Description *string                `json:"description,omitempty"`
-	Schedule    *string                `json:"schedule,omitempty"`
-	Dimensions  []*TrustScoreDimension `json:"dimensions,omitempty"`
+	Schedule    string                 `json:"schedule"`
+	Dimensions  []*TrustScoreDimension `json:"dimensions"`
 }
 
 // Config Node structures (generic for multiple resource types)
@@ -601,7 +601,7 @@ type EventSinkResponse struct {
 type UpdateEventSinkRequest struct {
 	DisplayName *string        `json:"display_name,omitempty"`
 	Description *string        `json:"description,omitempty"`
-	Config      map[string]any `json:"config,omitempty"`
+	Config      map[string]any `json:"config"`
 }
 
 // Service Account structures
