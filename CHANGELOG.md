@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.2](https://github.com/indykite/terraform-provider-indykite/compare/v0.31.1...v0.31.2) (2026-04-09)
+
+
+### Bug Fixes
+
+* fix update validations and add tests ([08ffe6e](https://github.com/indykite/terraform-provider-indykite/commit/08ffe6ee2522d28d49a1734c17754fce88ed2beb))
+
 ## [0.31.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.31.0...v0.31.1) (2026-04-08)
 
 
