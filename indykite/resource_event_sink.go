@@ -35,6 +35,7 @@ const (
 	kafkaKey            = "kafka"
 	azureEventGridKey   = "azure_event_grid"
 	azureServiceBusKey  = "azure_service_bus"
+	pubsubKey           = "pubsub"
 	brokersKey          = "brokers"
 	topicKey            = "topic"
 	keyKey              = "key"
@@ -48,6 +49,9 @@ const (
 	accessKey           = "access_key"
 	connectionStringKey = "connection_string"
 	queueKey            = "queue_or_topic_name"
+	credentialsJSONKey  = "credentials_json"
+	projectIDKey        = "project_id"
+	topicNameKey        = "topic_name"
 	providerDisplayKey  = "provider_display_name"
 	routeDisplayKey     = "route_display_name"
 	routeIDKey          = "route_id"
@@ -87,7 +91,7 @@ const (
 )
 
 func resourceEventSink() *schema.Resource {
-	providerOneOf := []string{kafkaKey, azureEventGridKey, azureServiceBusKey}
+	providerOneOf := []string{kafkaKey, azureEventGridKey, azureServiceBusKey, pubsubKey}
 
 	return &schema.Resource{
 		Description: `
@@ -275,6 +279,50 @@ func providerSchema() map[string]*schema.Schema {
 						Type:        schema.TypeString,
 						Computed:    true,
 						Description: "Last error message from the Azure Service Bus sink",
+					},
+				},
+			},
+		},
+		pubsubKey: {
+			Type:        schema.TypeList,
+			MaxItems:    1,
+			Optional:    true,
+			Description: "PubSubSinkConfig (Google Cloud Pub/Sub)",
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					projectIDKey: {
+						Type:     schema.TypeString,
+						Required: true,
+						ValidateFunc: validation.All(
+							validation.StringLenBetween(6, 30),
+						),
+					},
+					topicNameKey: {
+						Type:     schema.TypeString,
+						Required: true,
+						ValidateFunc: validation.All(
+							validation.StringLenBetween(3, 255),
+						),
+					},
+					credentialsJSONKey: {
+						Type:      schema.TypeString,
+						Required:  true,
+						Sensitive: true,
+						ValidateFunc: validation.All(
+							validation.StringLenBetween(1, 10240),
+						),
+					},
+					providerDisplayKey: {
+						Type:     schema.TypeString,
+						Optional: true,
+						ValidateFunc: validation.All(
+							validation.StringLenBetween(2, 254),
+						),
+					},
+					lastErrorKey: {
+						Type:        schema.TypeString,
+						Computed:    true,
+						Description: "Last error message from the Pub/Sub sink",
 					},
 				},
 			},
@@ -500,6 +548,9 @@ func buildProviderConfig(item map[string]any) map[string]any {
 	if busList, ok := item[azureServiceBusKey].([]any); ok && len(busList) > 0 {
 		return buildAzureServiceBusMap(busList[0].(map[string]any))
 	}
+	if pubsubList, ok := item[pubsubKey].([]any); ok && len(pubsubList) > 0 {
+		return buildPubSubProviderMap(pubsubList[0].(map[string]any))
+	}
 	return nil
 }
 
@@ -536,6 +587,18 @@ func buildAzureServiceBusMap(busData map[string]any) map[string]any {
 			"connection_string":   busData[connectionStringKey],
 			"queue_or_topic_name": busData[queueKey],
 			"display_name":        busData[providerDisplayKey],
+		},
+	}
+}
+
+// buildPubSubProviderMap builds Google Cloud Pub/Sub configuration map.
+func buildPubSubProviderMap(pubsubData map[string]any) map[string]any {
+	return map[string]any{
+		"pubsub": map[string]any{
+			"project_id":       pubsubData[projectIDKey],
+			"topic_name":       pubsubData[topicNameKey],
+			"credentials_json": pubsubData[credentialsJSONKey],
+			"display_name":     pubsubData[providerDisplayKey],
 		},
 	}
 }
@@ -676,6 +739,34 @@ func buildAzureServiceBusConfig(busData map[string]any, data *schema.ResourceDat
 	}
 }
 
+func buildPubSubConfig(pubsubData map[string]any, data *schema.ResourceData) map[string]any {
+	// Preserve sensitive credentials from state
+	var oldCredentials any
+	if val, ok := data.Get(providersKey).([]any); ok && len(val) > 0 {
+		for _, y := range val {
+			if pubsubList, ok := y.(map[string]any)[pubsubKey].([]any); ok && len(pubsubList) > 0 {
+				ps := pubsubList[0].(map[string]any)
+				oldCredentials = ps[credentialsJSONKey]
+			}
+		}
+	}
+
+	// Helper to get value from either snake_case or camelCase
+	getValue := func(snakeCase, camelCase string) any {
+		if val, ok := pubsubData[snakeCase]; ok {
+			return val
+		}
+		return pubsubData[camelCase]
+	}
+
+	return map[string]any{
+		projectIDKey:       getValue("project_id", "projectId"),
+		topicNameKey:       getValue("topic_name", "topicName"),
+		credentialsJSONKey: oldCredentials,
+		providerDisplayKey: getValue("display_name", "displayName"),
+	}
+}
+
 func flattenEventSinkConfig(d *diag.Diagnostics, data *schema.ResourceData, config map[string]any) {
 	providersMap, _ := config["providers"].(map[string]any)
 	var results []map[string]any
@@ -718,6 +809,19 @@ func flattenEventSinkConfig(d *diag.Diagnostics, data *schema.ResourceData, conf
 			results = append(results, map[string]any{
 				providerNameKey:    key,
 				azureServiceBusKey: []any{busConfig},
+			})
+		}
+		if pubsubData, ok := providerData["pubsub"].(map[string]any); ok {
+			pubsubConfig := buildPubSubConfig(pubsubData, data)
+			results = append(results, map[string]any{
+				providerNameKey: key,
+				pubsubKey:       []any{pubsubConfig},
+			})
+		} else if pubsubData, ok := providerData["pubSub"].(map[string]any); ok {
+			pubsubConfig := buildPubSubConfig(pubsubData, data)
+			results = append(results, map[string]any{
+				providerNameKey: key,
+				pubsubKey:       []any{pubsubConfig},
 			})
 		}
 	}

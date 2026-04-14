@@ -257,6 +257,29 @@ resource "indykite_event_sink" "azure_grid" {
   }
 }
 
+# Example: Google Cloud Pub/Sub sink
+resource "indykite_event_sink" "gcp_pubsub" {
+  name         = "gcp-pubsub-sink"
+  display_name = "GCP Pub/Sub Sink"
+  description  = "Event sink for Google Cloud Pub/Sub"
+  location     = indykite_application_space.my_space.id
+  providers {
+    provider_name = "gcp-pubsub"
+    pubsub {
+      project_id            = "my-gcp-project"
+      topic_name            = "indykite-events"
+      credentials_json      = var.gcp_pubsub_credentials_json
+      provider_display_name = "GCP Pub/Sub"
+    }
+  }
+  routes {
+    provider_id = "gcp-pubsub"
+    keys_values_filter {
+      event_type = "indykite.audit.config.*"
+    }
+  }
+}
+
 # Example 4: Azure Service Bus sink
 resource "indykite_event_sink" "azure_bus" {
   name         = "azure-service-bus-sink"
@@ -369,6 +392,7 @@ Optional:
 - `azure_event_grid` (Block List, Max: 1) AzureEventGridSinkConfig (see [below for nested schema](#nestedblock--providers--azure_event_grid))
 - `azure_service_bus` (Block List, Max: 1) AzureServiceBusSinkConfig (see [below for nested schema](#nestedblock--providers--azure_service_bus))
 - `kafka` (Block List, Max: 1) KafkaSinkConfig (see [below for nested schema](#nestedblock--providers--kafka))
+- `pubsub` (Block List, Max: 1) PubSubSinkConfig (Google Cloud Pub/Sub) (see [below for nested schema](#nestedblock--providers--pubsub))
 
 <a id="nestedblock--providers--azure_event_grid"></a>
 ### Nested Schema for `providers.azure_event_grid`
@@ -423,6 +447,24 @@ Optional:
 Read-Only:
 
 - `last_error` (String) Last error message from the Kafka sink
+
+
+<a id="nestedblock--providers--pubsub"></a>
+### Nested Schema for `providers.pubsub`
+
+Required:
+
+- `credentials_json` (String, Sensitive)
+- `project_id` (String)
+- `topic_name` (String)
+
+Optional:
+
+- `provider_display_name` (String)
+
+Read-Only:
+
+- `last_error` (String) Last error message from the Pub/Sub sink
 
 
 

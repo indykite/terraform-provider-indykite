@@ -42,6 +42,7 @@ var _ = Describe("Resource EventSink", func() {
 		resourceName  = "indykite_event_sink.development"
 		resourceName2 = "indykite_event_sink.development2"
 		resourceName3 = "indykite_event_sink.development3"
+		resourceName4 = "indykite_event_sink.development4"
 	)
 	var (
 		mockServer *httptest.Server
@@ -73,6 +74,12 @@ var _ = Describe("Resource EventSink", func() {
 			}`
 		tfConfigDef3 :=
 			`resource "indykite_event_sink" "development3" {
+				location = "%s"
+				name = "%s"
+				%s
+			}`
+		tfConfigDef4 :=
+			`resource "indykite_event_sink" "development4" {
 				location = "%s"
 				name = "%s"
 				%s
@@ -178,6 +185,36 @@ var _ = Describe("Resource EventSink", func() {
 												"value": "HAS",
 											},
 										},
+									},
+								},
+							},
+						},
+						CreateTime: createTime,
+						UpdateTime: updateTime,
+					}
+				case "pubsub":
+					resp = indykite.EventSinkResponse{
+						ID:          sampleID,
+						Name:        "my-first-event-sink",
+						DisplayName: "Display name of Event Sink configuration",
+						CustomerID:  customerID,
+						AppSpaceID:  appSpaceID,
+						Config: map[string]any{
+							"providers": map[string]any{
+								"gcp-pubsub": map[string]any{
+									"pubsub": map[string]any{
+										"projectId":   "my-gcp-project",
+										"topicName":   "my-pubsub-topic",
+										"displayName": "pubsub-display-name",
+									},
+								},
+							},
+							"routes": []any{
+								map[string]any{
+									"providerId":     "gcp-pubsub",
+									"stopProcessing": false,
+									"keysValues": map[string]any{
+										"eventType": "indykite.audit.config.create",
 									},
 								},
 							},
@@ -316,6 +353,36 @@ var _ = Describe("Resource EventSink", func() {
 												"value": "HAS",
 											},
 										},
+									},
+								},
+							},
+						},
+						CreateTime: createTime,
+						UpdateTime: updateTime,
+					}
+				case "pubsub":
+					resp = indykite.EventSinkResponse{
+						ID:          sampleID,
+						Name:        "my-first-event-sink",
+						DisplayName: "Display name of Event Sink configuration",
+						CustomerID:  customerID,
+						AppSpaceID:  appSpaceID,
+						Config: map[string]any{
+							"providers": map[string]any{
+								"gcp-pubsub": map[string]any{
+									"pubsub": map[string]any{
+										"projectId":   "my-gcp-project",
+										"topicName":   "my-pubsub-topic",
+										"displayName": "pubsub-display-name",
+									},
+								},
+							},
+							"routes": []any{
+								map[string]any{
+									"providerId":     "gcp-pubsub",
+									"stopProcessing": false,
+									"keysValues": map[string]any{
+										"eventType": "indykite.audit.config.create",
 									},
 								},
 							},
@@ -584,6 +651,47 @@ var _ = Describe("Resource EventSink", func() {
 				},
 				{
 					ResourceName:  resourceName3,
+					ImportState:   true,
+					ImportStateId: sampleID,
+				},
+			},
+		})
+
+		// Reset config for Pub/Sub test
+		currentConfig = "pubsub"
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			Providers: map[string]*schema.Provider{
+				"indykite": provider,
+			},
+			Steps: []resource.TestStep{
+				{
+					// Google Cloud Pub/Sub
+					Config: fmt.Sprintf(tfConfigDef4, appSpaceID, "my-first-event-sink",
+						`display_name = "Display name of Event Sink configuration"
+						providers  {
+							provider_name = "gcp-pubsub"
+							pubsub {
+								project_id = "my-gcp-project"
+								topic_name = "my-pubsub-topic"
+								credentials_json = "{\"type\":\"service_account\"}"
+								provider_display_name = "pubsub-display-name"
+							}
+						}
+						routes {
+							provider_id = "gcp-pubsub"
+                        stop_processing = false
+							keys_values_filter {
+								event_type = "indykite.audit.config.create"
+							}
+						}`,
+					),
+					Check: resource.ComposeTestCheckFunc(
+						testEventSinkResourceDataExists(resourceName4),
+					),
+				},
+				{
+					ResourceName:  resourceName4,
 					ImportState:   true,
 					ImportStateId: sampleID,
 				},
