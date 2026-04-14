@@ -232,6 +232,15 @@ resource "indykite_event_sink" "create-event" {
       queue_or_topic_name = "your-queue"
     }
   }
+  providers {
+    provider_name = "gcp-pubsub"
+    pubsub {
+      project_id            = "test-gcp-project"
+      topic_name            = "test-pubsub-topic"
+      credentials_json      = "{\"type\":\"service_account\",\"project_id\":\"test-project\",\"private_key_id\":\"key123\",\"private_key\":\"something-like-private-key\",\"client_email\":\"test@test.iam.gserviceaccount.com\"}" # checkov:skip=CKV_SECRET_6:acceptance test
+      provider_display_name = "GCP Pub/Sub"
+    }
+  }
   routes {
     provider_id     = "kafka-provider-01"
     stop_processing = false
@@ -269,6 +278,15 @@ resource "indykite_event_sink" "create-event" {
       }
       event_type = "indykite.audit.capture.*"
     }
+  }
+  routes {
+    provider_id     = "gcp-pubsub"
+    stop_processing = false
+    keys_values_filter {
+      event_type = "indykite.audit.config.create"
+    }
+    route_display_name = "pubsub-route"
+    route_id           = "pubsub-route-id"
   }
   lifecycle {
     create_before_destroy = true
