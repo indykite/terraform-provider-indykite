@@ -162,6 +162,29 @@ resource "indykite_event_sink" "azure_grid" {
   }
 }
 
+# Example: Google Cloud Pub/Sub sink
+resource "indykite_event_sink" "gcp_pubsub" {
+  name         = "gcp-pubsub-sink"
+  display_name = "GCP Pub/Sub Sink"
+  description  = "Event sink for Google Cloud Pub/Sub"
+  location     = indykite_application_space.my_space.id
+  providers {
+    provider_name = "gcp-pubsub"
+    pubsub {
+      project_id            = "my-gcp-project"
+      topic_name            = "indykite-events"
+      credentials_json      = var.gcp_pubsub_credentials_json
+      provider_display_name = "GCP Pub/Sub"
+    }
+  }
+  routes {
+    provider_id = "gcp-pubsub"
+    keys_values_filter {
+      event_type = "indykite.audit.config.*"
+    }
+  }
+}
+
 # Example 4: Azure Service Bus sink
 resource "indykite_event_sink" "azure_bus" {
   name         = "azure-service-bus-sink"
