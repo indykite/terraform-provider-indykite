@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.32.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.31.2...v0.32.0) (2026-04-14)
+
+
+### Features
+
+* add pubsub in event sinks ([0703c87](https://github.com/indykite/terraform-provider-indykite/commit/0703c878db9396a3f905f1c0dd064b81606791fc))
+
+
+### Bug Fixes
+
+* remove pubsub from tests ([5fe35e4](https://github.com/indykite/terraform-provider-indykite/commit/5fe35e4cb2585570c8623b39f6813e8ccdddd385))
+
+
+### Miscellaneous Chores
+
+* **deps:** update all non-major dependencies ([7004ee6](https://github.com/indykite/terraform-provider-indykite/commit/7004ee6b0ace36845dac96644e0317cff39499ec))
+
 ## [0.31.2](https://github.com/indykite/terraform-provider-indykite/compare/v0.31.1...v0.31.2) (2026-04-09)
 
 
