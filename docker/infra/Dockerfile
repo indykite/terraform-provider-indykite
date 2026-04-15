@@ -1,5 +1,5 @@
 # checkov:skip=CKV_DOCKER_2:ensure that HEALTHCHECK instructions have been added
-FROM golang:1.26.2-alpine@sha256:c2a1f7b2095d046ae14b286b18413a05bb82c9bca9b25fe7ff5efef0f0826166
+FROM golang:1.26.2-alpine@sha256:c2a1f7b2095d046ae14b286b18413a05bb82c9bca9b25fe7ff5efef0f0826166 AS base
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
@@ -30,15 +30,19 @@ RUN apk add --update --no-cache \
         -G "$APPGROUP" \
         --disabled-password \
         --gecos "" \
-        --home "$APPUSER_HOME" \
-    # Install gscloud for posting the results in the bucket
-    && curl -sSL https://sdk.cloud.google.com | bash \
+        --home "$APPUSER_HOME"
+
+# ─── Image without baked-in tests (for pipeline use) ────────────────────────
+FROM base AS terraform-tests
+
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
+
+# Install gscloud for posting the results in the bucket
+RUN curl -sSL https://sdk.cloud.google.com | bash \
     && apk info -v \
     && terraform -version
 
-
-COPY startscript.sh "${APPUSER_HOME}/startscript.sh"
-RUN chmod +x "${APPUSER_HOME}/startscript.sh"
+COPY --chown=10001:10001 docker/infra/pipeline/startscript.sh "${APPUSER_HOME}/startscript.sh"
 
 # Switch to user
 USER "$APPUSER"
@@ -46,9 +50,28 @@ USER "$APPUSER"
 # Checkout github repository
 ENV CI=true
 
-
 RUN mkdir "${APPUSER_HOME}/github"
 WORKDIR "${APPUSER_HOME}/github"
+
+# trivy:ignore:AVD-DS-0026 - TODO: Add HEALTHCHECK instruction in your Dockerfile
+# HEALTHCHECK
+CMD ["../startscript.sh"]
+
+# ─── Image with baked-in tests (for private cloud use) ──────────────────────
+FROM base AS terraform-tests-for-private-cloud
+
+RUN terraform -version
+
+COPY --chown=10001:10001 docker/infra/private_cloud/startscript.sh "${APPUSER_HOME}/startscript.sh"
+COPY --chown=10001:10001 tests/ ${APPUSER_HOME}/tests
+
+# Switch to user
+USER "$APPUSER"
+
+# Checkout github repository
+ENV CI=true
+
+WORKDIR "${APPUSER_HOME}/tests"
 
 # trivy:ignore:AVD-DS-0026 - TODO: Add HEALTHCHECK instruction in your Dockerfile
 # HEALTHCHECK

@@ -5,13 +5,19 @@ variable "LOCATION_ID" {
   description = "AppSpace for entitymatching"
 }
 
+variable "CUSTOMER_NAME" {
+  type        = string
+  description = "Customer name to use for tests"
+  default     = "terraform-pipeline"
+}
+
 locals {
   app_space_name = "automation-terraform-appspace-${time_static.example.unix}"
   location_id    = var.LOCATION_ID
 }
 
 data "indykite_customer" "customer" {
-  name = "terraform-pipeline"
+  name = var.CUSTOMER_NAME
 }
 
 resource "indykite_application_space" "appspace" {
