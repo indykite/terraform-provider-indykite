@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.33.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.32.0...v0.33.0) (2026-04-16)
+
+
+### Features
+
+* add pubsub tests ([886e1e1](https://github.com/indykite/terraform-provider-indykite/commit/886e1e1fb45b8de2ec3581dc21b22231c41fce6e))
+
+
+### Bug Fixes
+
+* fix issue with read agent credentials after create ([9242964](https://github.com/indykite/terraform-provider-indykite/commit/9242964e23f1f129bd3d1c6e28db21c72813d7be))
+
 ## [0.32.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.31.2...v0.32.0) (2026-04-14)
 
 
