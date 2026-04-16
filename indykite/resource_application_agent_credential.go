@@ -165,7 +165,9 @@ func resAppAgentCredRead(ctx context.Context, data *schema.ResourceData, meta an
 	setData(&d, data, appAgentIDKey, resp.ApplicationAgentID)
 	setData(&d, data, displayNameKey, resp.DisplayName)
 	setData(&d, data, kidKey, resp.Kid)
-	setData(&d, data, agentConfigKey, resp.AgentConfig)
+	if resp.AgentConfig != "" {
+		setData(&d, data, agentConfigKey, resp.AgentConfig)
+	}
 	setData(&d, data, createTimeKey, resp.CreateTime)
 
 	if !resp.ExpireTime.IsZero() {
