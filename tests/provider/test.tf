@@ -474,12 +474,11 @@ resource "indykite_application_agent_credential" "agent_config_test" {
   expire_time  = "2027-06-10T23:59:59Z"
   lifecycle {
     create_before_destroy = true
+    postcondition {
+      condition     = self.agent_config != ""
+      error_message = "agent_config must not be empty after credential creation"
+    }
   }
-}
-
-resource "local_sensitive_file" "credential_file" {
-  content  = indykite_application_agent_credential.agent_config_test.agent_config
-  filename = "${path.module}/configs/agent_config_test.json"
 }
 
 output "agent_config_not_empty" {

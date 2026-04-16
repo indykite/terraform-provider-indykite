@@ -137,9 +137,21 @@ func resAppAgentCredCreate(ctx context.Context, data *schema.ResourceData, meta 
 	}
 	data.SetId(resp.ID)
 	setData(&d, data, appAgentIDKey, resp.ApplicationAgentID)
-	setData(&d, data, agentConfigKey, resp.AgentConfig)
 
-	return resAppAgentCredRead(ctx, data, meta)
+	// Save agent_config from the create response — the API only returns
+	// the secret at creation time; the GET endpoint never includes it.
+	agentConfig := resp.AgentConfig
+
+	readDiags := resAppAgentCredRead(ctx, data, meta)
+	d = append(d, readDiags...)
+
+	// Restore the write-once secret so it persists in state, but only if
+	// Read succeeded — no point setting it on an invalid resource.
+	if agentConfig != "" && !readDiags.HasError() {
+		setData(&d, data, agentConfigKey, agentConfig)
+	}
+
+	return d
 }
 
 func resAppAgentCredRead(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
