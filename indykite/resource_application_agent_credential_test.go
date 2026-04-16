@@ -99,6 +99,7 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 				_ = json.NewEncoder(w).Encode(resp)
 
 			case r.Method == http.MethodGet:
+				// Real API does not return agent_config on GET - it's a write-once secret
 				var resp indykite.ApplicationAgentCredentialResponse
 				if strings.Contains(r.URL.Path, appAgentCredID) {
 					resp = indykite.ApplicationAgentCredentialResponse{
@@ -110,7 +111,6 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 						Kid:                "EfUEiFnOzA5PCp8SSksp7iXv7cHRehCsIGo6NAQ9H7w",
 						CreateTime:         createTime,
 						CreateBy:           "creator-id",
-						AgentConfig:        `{"appAgentId":"` + appAgentID + `","endpoint":"https://example.com"}`,
 					}
 				} else {
 					resp = indykite.ApplicationAgentCredentialResponse{
@@ -123,7 +123,6 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 						Kid:                "BgQgo-U3kF7kf2dXLKFPNcl3haR8k1VD2nTTvp0GBhI",
 						CreateTime:         createTime,
 						CreateBy:           "creator-id",
-						AgentConfig:        `{"appAgentId":"` + appAgentID + `","endpoint":"https://example.com"}`,
 					}
 				}
 				w.WriteHeader(http.StatusOK)

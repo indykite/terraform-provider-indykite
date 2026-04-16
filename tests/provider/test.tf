@@ -459,6 +459,29 @@ resource "indykite_entity_matching_pipeline" "pipeline_minimal" {
 }
 
 # -----------------------------------------------------------------------------
+# Test: Credential agent_config is not empty after creation
+# -----------------------------------------------------------------------------
+
+resource "indykite_application_agent_credential" "agent_config_test" {
+  app_agent_id = indykite_application_agent.agent.id
+  display_name = "Credential agent_config test ${time_static.example.unix}"
+  expire_time  = "2027-06-10T23:59:59Z"
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "local_sensitive_file" "credential_file" {
+  content  = indykite_application_agent_credential.agent_config_test.agent_config
+  filename = "${path.module}/configs/agent_config_test.json"
+}
+
+output "agent_config_not_empty" {
+  value     = indykite_application_agent_credential.agent_config_test.agent_config != ""
+  sensitive = true
+}
+
+# -----------------------------------------------------------------------------
 # Test: Different trust score dimensions and schedules
 # -----------------------------------------------------------------------------
 
