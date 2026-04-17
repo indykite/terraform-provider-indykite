@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.33.0...v0.33.1) (2026-04-17)
+
+
+### Bug Fixes
+
+* fix issue with read agent credentials after create ([2687e5a](https://github.com/indykite/terraform-provider-indykite/commit/2687e5a5bfd2ccc5e5e1680831544f178de2775b))
+
 ## [0.33.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.32.0...v0.33.0) (2026-04-16)
 
 
