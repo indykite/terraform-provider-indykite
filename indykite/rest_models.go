@@ -15,6 +15,7 @@
 package indykite
 
 import (
+	"encoding/json"
 	"time"
 )
 
@@ -168,18 +169,18 @@ type CreateApplicationAgentCredentialRequest struct {
 
 // ApplicationAgentCredentialResponse represents an application agent credential resource.
 type ApplicationAgentCredentialResponse struct {
-	ID                 string    `json:"id"`
-	Kid                string    `json:"kid"`
-	DisplayName        string    `json:"display_name,omitempty"`
-	CustomerID         string    `json:"customer_id"`
-	AppSpaceID         string    `json:"app_space_id"`
-	ApplicationID      string    `json:"application_id"`
-	ApplicationAgentID string    `json:"application_agent_id"`
-	CreateTime         time.Time `json:"create_time"`
-	ExpireTime         time.Time `json:"expire_time,omitempty"`
-	AgentConfig        string    `json:"agent_config,omitempty"`
-	DefaultTenantID    string    `json:"default_tenant_id,omitempty"`
-	CreateBy           string    `json:"create_by,omitempty"` // For backward compatibility with SDK
+	CreateTime         time.Time       `json:"create_time"`
+	ExpireTime         time.Time       `json:"expire_time,omitempty"`
+	ID                 string          `json:"id"`
+	Kid                string          `json:"kid"`
+	DisplayName        string          `json:"display_name,omitempty"`
+	CustomerID         string          `json:"customer_id"`
+	AppSpaceID         string          `json:"app_space_id"`
+	ApplicationID      string          `json:"application_id"`
+	ApplicationAgentID string          `json:"application_agent_id"`
+	DefaultTenantID    string          `json:"default_tenant_id,omitempty"`
+	CreateBy           string          `json:"create_by,omitempty"`
+	AgentConfig        json.RawMessage `json:"application_agent_config,omitempty"`
 }
 
 // Authorization Policy structures

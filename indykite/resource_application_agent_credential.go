@@ -140,7 +140,7 @@ func resAppAgentCredCreate(ctx context.Context, data *schema.ResourceData, meta 
 
 	// Save agent_config from the create response — the API only returns
 	// the secret at creation time; the GET endpoint never includes it.
-	agentConfig := resp.AgentConfig
+	agentConfig := string(resp.AgentConfig)
 
 	readDiags := resAppAgentCredRead(ctx, data, meta)
 	d = append(d, readDiags...)
@@ -177,8 +177,8 @@ func resAppAgentCredRead(ctx context.Context, data *schema.ResourceData, meta an
 	setData(&d, data, appAgentIDKey, resp.ApplicationAgentID)
 	setData(&d, data, displayNameKey, resp.DisplayName)
 	setData(&d, data, kidKey, resp.Kid)
-	if resp.AgentConfig != "" {
-		setData(&d, data, agentConfigKey, resp.AgentConfig)
+	if len(resp.AgentConfig) > 0 {
+		setData(&d, data, agentConfigKey, string(resp.AgentConfig))
 	}
 	setData(&d, data, createTimeKey, resp.CreateTime)
 
