@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -728,7 +729,7 @@ var _ = Describe("Resource EventSink", func() {
 		createTime := time.Now()
 		updateTime := time.Now()
 
-		mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch {
 			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/event-sinks"):
 				resp := indykite.EventSinkResponse{
@@ -813,7 +814,6 @@ var _ = Describe("Resource EventSink", func() {
 				w.WriteHeader(http.StatusNotFound)
 			}
 		}))
-		defer mockServer.Close()
 
 		cfgFunc := provider.ConfigureContextFunc
 		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
@@ -837,6 +837,341 @@ var _ = Describe("Resource EventSink", func() {
 					ResourceName:  resourceName,
 					ImportState:   true,
 					ImportStateId: "wonka-sink?location=" + appSpaceID,
+				},
+			},
+		})
+	})
+
+	It("Test include_cdc_events round-trip on create/update", func() {
+		tfConfigDef :=
+			`resource "indykite_event_sink" "development" {
+				location = "%s"
+				name = "my-first-event-sink"
+				%s
+				providers {
+					provider_name = "kafka2"
+					kafka {
+						brokers = ["my.kafka.server.example.com:9092"]
+						topic = "my-kafka-topic"
+						username = "my-username"
+						password = "some-super-secret-password"
+					}
+				}
+				routes {
+					provider_id = "kafka-provider"
+					stop_processing = false
+					keys_values_filter {
+						event_type = "indykite.audit.config.create"
+					}
+				}
+			}`
+
+		createTime := time.Now()
+		updateTime := time.Now()
+
+		// Track what was received on create/update and what to serve back.
+		var lastCreateBody map[string]any
+		var lastUpdateBody map[string]any
+		currentIncludeCDC := false
+
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/event-sinks"):
+				body, _ := io.ReadAll(r.Body)
+				_ = json.Unmarshal(body, &lastCreateBody)
+				if v, ok := lastCreateBody["include_cdc_events"].(bool); ok {
+					currentIncludeCDC = v
+				}
+				resp := indykite.EventSinkResponse{
+					ID:         sampleID,
+					Name:       "my-first-event-sink",
+					CustomerID: customerID,
+					AppSpaceID: appSpaceID,
+					Config: map[string]any{
+						"providers": map[string]any{
+							"kafka2": map[string]any{
+								"kafka": map[string]any{
+									"brokers":  []string{"my.kafka.server.example.com:9092"},
+									"topic":    "my-kafka-topic",
+									"username": "my-username",
+								},
+							},
+						},
+						"routes": []any{
+							map[string]any{
+								"providerId":     "kafka-provider",
+								"stopProcessing": false,
+								"keysValues": map[string]any{
+									"eventType": "indykite.audit.config.create",
+								},
+							},
+						},
+						"include_cdc_events": currentIncludeCDC,
+					},
+					CreateTime: createTime,
+					UpdateTime: updateTime,
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodPut && strings.Contains(r.URL.Path, sampleID):
+				body, _ := io.ReadAll(r.Body)
+				_ = json.Unmarshal(body, &lastUpdateBody)
+				// include_cdc_events is nested inside "config" on update requests.
+				if cfg, ok := lastUpdateBody["config"].(map[string]any); ok {
+					if v, ok := cfg["include_cdc_events"].(bool); ok {
+						currentIncludeCDC = v
+					}
+				}
+				resp := indykite.EventSinkResponse{
+					ID:         sampleID,
+					Name:       "my-first-event-sink",
+					CustomerID: customerID,
+					AppSpaceID: appSpaceID,
+					Config: map[string]any{
+						"providers": map[string]any{
+							"kafka2": map[string]any{
+								"kafka": map[string]any{
+									"brokers":  []string{"my.kafka.server.example.com:9092"},
+									"topic":    "my-kafka-topic",
+									"username": "my-username",
+								},
+							},
+						},
+						"routes": []any{
+							map[string]any{
+								"providerId":     "kafka-provider",
+								"stopProcessing": false,
+								"keysValues": map[string]any{
+									"eventType": "indykite.audit.config.create",
+								},
+							},
+						},
+						"include_cdc_events": currentIncludeCDC,
+					},
+					CreateTime: createTime,
+					UpdateTime: time.Now(),
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, sampleID):
+				resp := indykite.EventSinkResponse{
+					ID:         sampleID,
+					Name:       "my-first-event-sink",
+					CustomerID: customerID,
+					AppSpaceID: appSpaceID,
+					Config: map[string]any{
+						"providers": map[string]any{
+							"kafka2": map[string]any{
+								"kafka": map[string]any{
+									"brokers":  []string{"my.kafka.server.example.com:9092"},
+									"topic":    "my-kafka-topic",
+									"username": "my-username",
+								},
+							},
+						},
+						"routes": []any{
+							map[string]any{
+								"providerId":     "kafka-provider",
+								"stopProcessing": false,
+								"keysValues": map[string]any{
+									"eventType": "indykite.audit.config.create",
+								},
+							},
+						},
+						"include_cdc_events": currentIncludeCDC,
+					},
+					CreateTime: createTime,
+					UpdateTime: updateTime,
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodDelete:
+				w.WriteHeader(http.StatusNoContent)
+
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			Providers: map[string]*schema.Provider{
+				"indykite": provider,
+			},
+			Steps: []resource.TestStep{
+				{
+					// Create with CDC enabled.
+					Config: fmt.Sprintf(tfConfigDef, appSpaceID, `include_cdc_events = true`),
+					Check: resource.ComposeTestCheckFunc(
+						testEventSinkResourceDataExists(resourceName),
+						resource.TestCheckResourceAttr(resourceName, "include_cdc_events", "true"),
+						func(_ *terraform.State) error {
+							if v, _ := lastCreateBody["include_cdc_events"].(bool); !v {
+								return errors.New("expected create body to send include_cdc_events=true")
+							}
+							return nil
+						},
+					),
+				},
+				{
+					// Toggle CDC off via update.
+					Config: fmt.Sprintf(tfConfigDef, appSpaceID, `include_cdc_events = false`),
+					Check: resource.ComposeTestCheckFunc(
+						testEventSinkResourceDataExists(resourceName),
+						resource.TestCheckResourceAttr(resourceName, "include_cdc_events", "false"),
+						func(_ *terraform.State) error {
+							cfg, _ := lastUpdateBody["config"].(map[string]any)
+							if cfg == nil {
+								return errors.New("update body missing config block")
+							}
+							v, present := cfg["include_cdc_events"]
+							if !present {
+								return errors.New("update body missing include_cdc_events")
+							}
+							if b, _ := v.(bool); b {
+								return errors.New("expected update body include_cdc_events=false")
+							}
+							return nil
+						},
+					),
+				},
+			},
+		})
+	})
+
+	It("Test include_cdc_events defaults to false when omitted", func() {
+		tfConfigDef :=
+			`resource "indykite_event_sink" "development" {
+				location = "%s"
+				name = "my-first-event-sink"
+				providers {
+					provider_name = "kafka2"
+					kafka {
+						brokers = ["my.kafka.server.example.com:9092"]
+						topic = "my-kafka-topic"
+						username = "my-username"
+						password = "some-super-secret-password"
+					}
+				}
+				routes {
+					provider_id = "kafka-provider"
+					stop_processing = false
+					keys_values_filter {
+						event_type = "indykite.audit.config.create"
+					}
+				}
+			}`
+
+		createTime := time.Now()
+		updateTime := time.Now()
+		var lastCreateBody map[string]any
+
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/event-sinks"):
+				body, _ := io.ReadAll(r.Body)
+				_ = json.Unmarshal(body, &lastCreateBody)
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(indykite.EventSinkResponse{
+					ID:         sampleID,
+					Name:       "my-first-event-sink",
+					CustomerID: customerID,
+					AppSpaceID: appSpaceID,
+					Config: map[string]any{
+						"providers": map[string]any{
+							"kafka2": map[string]any{
+								"kafka": map[string]any{
+									"brokers":  []string{"my.kafka.server.example.com:9092"},
+									"topic":    "my-kafka-topic",
+									"username": "my-username",
+								},
+							},
+						},
+						"routes": []any{
+							map[string]any{
+								"providerId":     "kafka-provider",
+								"stopProcessing": false,
+								"keysValues":     map[string]any{"eventType": "indykite.audit.config.create"},
+							},
+						},
+					},
+					CreateTime: createTime,
+					UpdateTime: updateTime,
+				})
+
+			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, sampleID):
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(indykite.EventSinkResponse{
+					ID:         sampleID,
+					Name:       "my-first-event-sink",
+					CustomerID: customerID,
+					AppSpaceID: appSpaceID,
+					Config: map[string]any{
+						"providers": map[string]any{
+							"kafka2": map[string]any{
+								"kafka": map[string]any{
+									"brokers":  []string{"my.kafka.server.example.com:9092"},
+									"topic":    "my-kafka-topic",
+									"username": "my-username",
+								},
+							},
+						},
+						"routes": []any{
+							map[string]any{
+								"providerId":     "kafka-provider",
+								"stopProcessing": false,
+								"keysValues":     map[string]any{"eventType": "indykite.audit.config.create"},
+							},
+						},
+					},
+					CreateTime: createTime,
+					UpdateTime: updateTime,
+				})
+
+			case r.Method == http.MethodDelete:
+				w.WriteHeader(http.StatusNoContent)
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			Providers: map[string]*schema.Provider{
+				"indykite": provider,
+			},
+			Steps: []resource.TestStep{
+				{
+					Config: fmt.Sprintf(tfConfigDef, appSpaceID),
+					Check: resource.ComposeTestCheckFunc(
+						testEventSinkResourceDataExists(resourceName),
+						resource.TestCheckResourceAttr(resourceName, "include_cdc_events", "false"),
+						func(_ *terraform.State) error {
+							v, present := lastCreateBody["include_cdc_events"]
+							if !present {
+								return errors.New("create body missing include_cdc_events")
+							}
+							if b, _ := v.(bool); b {
+								return errors.New("expected include_cdc_events=false by default")
+							}
+							return nil
+						},
+					),
 				},
 			},
 		})

@@ -370,6 +370,7 @@ resource "indykite_event_sink" "multi_route" {
 
 - `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
+- `include_cdc_events` (Boolean) When true, CDC (Change Data Capture) events will be emitted to this event sink. When false or unset, CDC events will not be emitted. Defaults to false for backward compatibility.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
