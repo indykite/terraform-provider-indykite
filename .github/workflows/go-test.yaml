@@ -32,8 +32,19 @@ jobs:
         with:
           go-version-file: go.mod
 
+      # Pre-install Terraform so the plugin SDK doesn't try to download it and
+      # hit HashiCorp's expired PGP signing key.
+      - name: setup/terraform
+        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0.0
+        with:
+          terraform_wrapper: false
+
       - name: Run Unit tests.
         run: |
+          TF_ACC_TERRAFORM_PATH="$(command -v terraform)"
+          export TF_ACC_TERRAFORM_PATH
+          echo "Using Terraform at: ${TF_ACC_TERRAFORM_PATH}"
+          "${TF_ACC_TERRAFORM_PATH}" version
           make test
 
       - name: codecov/upload-coverage

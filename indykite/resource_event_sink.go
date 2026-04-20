@@ -55,6 +55,7 @@ const (
 	providerDisplayKey  = "provider_display_name"
 	routeDisplayKey     = "route_display_name"
 	routeIDKey          = "route_id"
+	includeCdcEventsKey = "include_cdc_events"
 	lastErrorKey        = "last_error"
 	supportedFilters    = `
 ## Supported filters
@@ -135,6 +136,14 @@ func resourceEventSink() *schema.Resource {
 				Type:     schema.TypeList,
 				Elem:     &schema.Resource{Schema: routeSchema()},
 				Required: true,
+			},
+			includeCdcEventsKey: {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+				Description: "When true, CDC (Change Data Capture) events will be emitted to this event sink. " +
+					"When false or unset, CDC events will not be emitted. " +
+					"Defaults to false for backward compatibility.",
 			},
 		},
 		CustomizeDiff: validateProviderOneOf(providerOneOf),
@@ -413,12 +422,13 @@ func resEventSinkCreate(ctx context.Context, data *schema.ResourceData, meta any
 	routes := data.Get(routesKey).([]any)
 
 	req := CreateEventSinkRequest{
-		ProjectID:   data.Get(locationKey).(string),
-		Name:        data.Get(nameKey).(string),
-		DisplayName: stringValue(optionalString(data, displayNameKey)),
-		Description: stringValue(optionalString(data, descriptionKey)),
-		Providers:   buildProvidersMap(providers),
-		Routes:      buildRoutesList(routes),
+		ProjectID:        data.Get(locationKey).(string),
+		Name:             data.Get(nameKey).(string),
+		DisplayName:      stringValue(optionalString(data, displayNameKey)),
+		Description:      stringValue(optionalString(data, descriptionKey)),
+		Providers:        buildProvidersMap(providers),
+		Routes:           buildRoutesList(routes),
+		IncludeCDCEvents: data.Get(includeCdcEventsKey).(bool),
 	}
 
 	var resp EventSinkResponse
@@ -515,8 +525,9 @@ func buildEventSinkConfig(data *schema.ResourceData) map[string]any {
 	routes := data.Get(routesKey).([]any)
 
 	return map[string]any{
-		"providers": buildProvidersMap(providers),
-		"routes":    buildRoutesList(routes),
+		"providers":          buildProvidersMap(providers),
+		"routes":             buildRoutesList(routes),
+		"include_cdc_events": data.Get(includeCdcEventsKey).(bool),
 	}
 }
 
@@ -883,6 +894,12 @@ func flattenEventSinkConfig(d *diag.Diagnostics, data *schema.ResourceData, conf
 		routes[i] = routeMap
 	}
 	setData(d, data, routesKey, routes)
+
+	if v, ok := config["include_cdc_events"]; ok {
+		setData(d, data, includeCdcEventsKey, v)
+	} else if v, ok := config["includeCdcEvents"]; ok {
+		setData(d, data, includeCdcEventsKey, v)
+	}
 }
 
 func validateProviderOneOf(providerTypes []string) schema.CustomizeDiffFunc {

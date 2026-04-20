@@ -576,12 +576,13 @@ type ListCustomersResponse struct {
 
 // CreateEventSinkRequest represents the request to create an event sink.
 type CreateEventSinkRequest struct {
-	ProjectID   string         `json:"project_id"`
-	Name        string         `json:"name"`
-	DisplayName string         `json:"display_name,omitempty"`
-	Description string         `json:"description,omitempty"`
-	Providers   map[string]any `json:"providers"`
-	Routes      []any          `json:"routes"`
+	ProjectID        string         `json:"project_id"`
+	Name             string         `json:"name"`
+	DisplayName      string         `json:"display_name,omitempty"`
+	Description      string         `json:"description,omitempty"`
+	Providers        map[string]any `json:"providers"`
+	Routes           []any          `json:"routes"`
+	IncludeCDCEvents bool           `json:"include_cdc_events"`
 }
 
 // EventSinkResponse represents an event sink resource.
