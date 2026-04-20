@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.34.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.33.2...v0.34.0) (2026-04-20)
+
+
+### Features
+
+* add cdc to event sinks ([b7cf7d3](https://github.com/indykite/terraform-provider-indykite/commit/b7cf7d35d3c7d531612e08140ab7feb02fd337a4))
+
+
+### Bug Fixes
+
+* fix openpgp issue for docs ([da2ea79](https://github.com/indykite/terraform-provider-indykite/commit/da2ea797a863d5e826f85e0c3e4e109974e5ac7e))
+
 ## [0.33.2](https://github.com/indykite/terraform-provider-indykite/compare/v0.33.1...v0.33.2) (2026-04-17)
 
 
