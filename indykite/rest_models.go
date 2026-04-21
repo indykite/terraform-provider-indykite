@@ -606,6 +606,49 @@ type UpdateEventSinkRequest struct {
 	Config      map[string]any `json:"config"`
 }
 
+// MCP Server structures
+
+// CreateMCPServerRequest represents the request to create an MCP Server configuration.
+type CreateMCPServerRequest struct {
+	ProjectID         string   `json:"project_id"`
+	Name              string   `json:"name"`
+	DisplayName       string   `json:"display_name,omitempty"`
+	Description       string   `json:"description,omitempty"`
+	AppAgentID        string   `json:"app_agent_id"`
+	TokenIntrospectID string   `json:"token_introspect_id"`
+	ScopesSupported   []string `json:"scopes_supported"`
+	Enabled           bool     `json:"enabled"`
+}
+
+// MCPServerResponse represents an MCP Server configuration resource.
+type MCPServerResponse struct {
+	CreateTime        time.Time `json:"create_time"`
+	UpdateTime        time.Time `json:"update_time"`
+	ID                string    `json:"id"`
+	Name              string    `json:"name"`
+	DisplayName       string    `json:"display_name,omitempty"`
+	Description       string    `json:"description,omitempty"`
+	CustomerID        string    `json:"organization_id"`
+	AppSpaceID        string    `json:"project_id,omitempty"`
+	AppAgentID        string    `json:"app_agent_id"`
+	TokenIntrospectID string    `json:"token_introspect_id"`
+	CreatedBy         string    `json:"created_by,omitempty"`
+	UpdatedBy         string    `json:"updated_by,omitempty"`
+	Etag              string    `json:"etag,omitempty"`
+	ScopesSupported   []string  `json:"scopes_supported"`
+	Enabled           bool      `json:"enabled"`
+}
+
+// UpdateMCPServerRequest represents the request to update an MCP Server configuration.
+type UpdateMCPServerRequest struct {
+	DisplayName       *string  `json:"display_name,omitempty"`
+	Description       *string  `json:"description,omitempty"`
+	AppAgentID        string   `json:"app_agent_id"`
+	TokenIntrospectID string   `json:"token_introspect_id"`
+	ScopesSupported   []string `json:"scopes_supported"`
+	Enabled           bool     `json:"enabled"`
+}
+
 // Service Account structures
 
 // CreateServiceAccountRequest represents the request to create a service account.
