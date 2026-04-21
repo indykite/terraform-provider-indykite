@@ -70,6 +70,7 @@ func Provider() *schema.Provider {
 			"indykite_event_sink":                   resourceEventSink(),
 			"indykite_service_account":              resourceServiceAccount(),
 			"indykite_service_account_credential":   resourceServiceAccountCredential(),
+			"indykite_mcp_server":                   resourceMCPServer(),
 		},
 	}
 

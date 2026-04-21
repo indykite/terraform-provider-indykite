@@ -201,10 +201,11 @@ resource "indykite_knowledge_query" "create-query" {
 
 
 resource "indykite_event_sink" "create-event" {
-  name         = "automation-terraform-event-sink-${time_static.example.unix}"
-  display_name = "Automation Terraform event sink  ${time_static.example.unix}"
-  description  = "Event sink for terraform"
-  location     = indykite_application_space.appspace.id
+  name               = "automation-terraform-event-sink-${time_static.example.unix}"
+  display_name       = "Automation Terraform event sink  ${time_static.example.unix}"
+  description        = "Event sink for terraform"
+  location           = indykite_application_space.appspace.id
+  include_cdc_events = true
   providers {
     provider_name = "kafka-provider-01"
     kafka {
