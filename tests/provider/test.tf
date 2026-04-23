@@ -488,6 +488,35 @@ output "agent_config_not_empty" {
 }
 
 # -----------------------------------------------------------------------------
+# Test: Authorization policy location is preserved after read
+# -----------------------------------------------------------------------------
+
+resource "indykite_authorization_policy" "policy_location_test" {
+  name         = "automation-terraform-policy-location-test-${time_static.example.unix}"
+  display_name = "Policy location test ${time_static.example.unix}"
+  json = jsonencode({
+    meta      = { policyVersion = "1.0-indykite" },
+    subject   = { type = "Person" },
+    actions   = ["CAN_DRIVE"],
+    resource  = { type = "Car" },
+    condition = { cypher = "MATCH (subject:Person)-[:OWNS]->(resource:Car)" }
+  })
+  location = indykite_application_space.appspace.id
+  status   = "active"
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = self.location == indykite_application_space.appspace.id
+      error_message = "location must equal the appspace id after creation (guards against Read overwriting it with organization_id)"
+    }
+  }
+}
+
+output "policy_location_matches_appspace" {
+  value = indykite_authorization_policy.policy_location_test.location == indykite_application_space.appspace.id
+}
+
+# -----------------------------------------------------------------------------
 # Test: Different trust score dimensions and schedules
 # -----------------------------------------------------------------------------
 
