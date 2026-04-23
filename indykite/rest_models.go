@@ -205,7 +205,7 @@ type AuthorizationPolicyResponse struct {
 	DisplayName string    `json:"display_name,omitempty"`
 	Description string    `json:"description,omitempty"`
 	CustomerID  string    `json:"organization_id"`
-	AppSpaceID  string    `json:"app_space_id,omitempty"`
+	AppSpaceID  string    `json:"project_id,omitempty"`
 	Policy      string    `json:"policy"`
 	Status      string    `json:"status"`
 	Etag        string    `json:"etag,omitempty"`
