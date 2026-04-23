@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.35.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.34.0...v0.35.0) (2026-04-23)
+
+
+### Features
+
+* add mcp server config ([4a95724](https://github.com/indykite/terraform-provider-indykite/commit/4a95724c4b574d726cb06d4c6152fe16f05f8713))
+
+
+### Bug Fixes
+
+* authorization policies location issue ([76d9218](https://github.com/indykite/terraform-provider-indykite/commit/76d9218accb35d78dd1e05f352de773608c082b2))
+
 ## [0.34.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.33.2...v0.34.0) (2026-04-20)
 
 
