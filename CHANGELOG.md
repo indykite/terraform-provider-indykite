@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.35.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.35.0...v0.35.1) (2026-04-29)
+
+
+### Miscellaneous Chores
+
+* **deps:** update all non-major dependencies ([#300](https://github.com/indykite/terraform-provider-indykite/issues/300)) ([df0cd03](https://github.com/indykite/terraform-provider-indykite/commit/df0cd038ab548b93daea2a8a874c0da077929e61))
+* **deps:** update dorny/paths-filter action to v4 ([#301](https://github.com/indykite/terraform-provider-indykite/issues/301)) ([0a075cb](https://github.com/indykite/terraform-provider-indykite/commit/0a075cb6b34ca9b9904298d1a7c9dec2ffe7e66d))
+
 ## [0.35.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.34.0...v0.35.0) (2026-04-23)
 
 
