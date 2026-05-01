@@ -22,9 +22,8 @@
 #   brew install pre-commit yamlfmt yamllint actionlint markdownlint-cli2 shellcheck shfmt checkov trivy go gci golangci-lint hadolint tfplugindocs tflint
 #
 # Update hooks and their dependencies regularly via:
-#   (remote) pre-commit autoupdate --jobs $(getconf _NPROCESSORS_ONLN)
+#   (remote) pre-commit autoupdate --freeze --jobs $(getconf _NPROCESSORS_ONLN)
 #   (local) brew update && brew upgrade -g
-# TODO: do NOT use '--freeze' until https://github.com/renovatebot/renovate/issues/22567 is completed
 #
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
@@ -43,7 +42,7 @@ repos:
         name: pre-commit/check-useless-excludes
 
   - repo: ssh://git@github.com/indykite/ops-common
-    rev: "df2a5d2660eb6f24d7d6c5edffab3c7931ae31c3" # using a branch name (or HEAD) is not supported
+    rev: "d2da41f568695614cae26599ca872605dca958be" # using a branch name (or HEAD) is not supported
     hooks:
       # POST-CHECKOUT
       # install explicitly with: pre-commit install -t post-checkout
@@ -66,7 +65,7 @@ repos:
   #
   # Renovate
   - repo: https://github.com/renovatebot/pre-commit-hooks # ci:ignore:OK to validate locally only, otherwise it adds 850MB+ to unpacked cache
-    rev: "43.141.2"
+    rev: "cbf190d5e31b9e0845b3fb1c0af190927b46e5e3" # frozen: 43.141.2
     hooks:
       - id: renovate-config-validator
         args: [--strict]
@@ -74,7 +73,7 @@ repos:
   #
   # Commit Message linting
   - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook # ci:ignore:executed under a separate GitHub action
-    rev: v9.24.0
+    rev: 1d7031e6d0bbfce76e5a625b0cec24fb22e517a0 # frozen: v9.25.0
     hooks:
       # NON-DEFAULT stage, install explicitly with: pre-commit install -t commit-msg
       - id: commitlint
@@ -141,7 +140,7 @@ repos:
 
   #
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v6.0.0
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c # frozen: v6.0.0
     hooks:
       # Git style
       - id: check-added-large-files
@@ -186,7 +185,7 @@ repos:
   #
   # Detect hardcoded secrets
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.30.1
+    rev: 2ca41cc1372d1e939a6a879f18cdc19fc1cac1ce # frozen: v8.30.0
     hooks:
       - id: gitleaks
         name: gitleaks
@@ -235,7 +234,7 @@ repos:
         pass_filenames: false
 
   - repo: https://github.com/hadolint/hadolint # language: system
-    rev: v2.14.0
+    rev: 4e697ba704fd23b2409b947a319c19c3ee54d24f # frozen: v2.14.0
     hooks:
       - id: hadolint
         name: hadolint/dockerfile
@@ -243,7 +242,7 @@ repos:
   #
   # Terraform & Terragrunt
   - repo: https://github.com/antonbabenko/pre-commit-terraform
-    rev: v1.105.0
+    rev: d0e12caebb2ab0ee8bf98181c8bfe9702bca103d # frozen: v1.105.0
     hooks:
       # - id: tfupdate      # done via 'validate -upgrade' below
       - id: terraform_fmt
