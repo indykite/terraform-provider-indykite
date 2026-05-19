@@ -33,7 +33,7 @@ RUN apk add --update --no-cache \
         --home "$APPUSER_HOME"
 
 # ─── Image without baked-in tests (for pipeline use) ────────────────────────
-FROM base AS terraform-tests
+FROM base AS terraform-plugin-tests-ci
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
@@ -42,7 +42,7 @@ RUN curl -sSL https://sdk.cloud.google.com | bash \
     && apk info -v \
     && terraform -version
 
-COPY --chown=10001:10001 docker/infra/pipeline/startscript.sh "${APPUSER_HOME}/startscript.sh"
+COPY --chown=10001:10001 docker/infra/ci/startscript.sh "${APPUSER_HOME}/startscript.sh"
 
 # Switch to user
 USER "$APPUSER"
@@ -53,16 +53,16 @@ ENV CI=true
 RUN mkdir "${APPUSER_HOME}/github"
 WORKDIR "${APPUSER_HOME}/github"
 
-# trivy:ignore:AVD-DS-0026 - TODO: Add HEALTHCHECK instruction in your Dockerfile
-# HEALTHCHECK
+# HEALTHCHECK is not here, as this just execute command and terminates
+# checkov:skip=CKV_DOCKER_2:ensure that HEALTHCHECK instructions have been added
 CMD ["../startscript.sh"]
 
-# ─── Image with baked-in tests (for private cloud use) ──────────────────────
-FROM base AS terraform-tests-for-private-cloud
+# ─── Image with baked-in tests (for non-SaaS use) ──────────────────────
+FROM base AS terraform-plugin-tests
 
 RUN terraform -version
 
-COPY --chown=10001:10001 docker/infra/private_cloud/startscript.sh "${APPUSER_HOME}/startscript.sh"
+COPY --chown=10001:10001 docker/infra/full/startscript.sh "${APPUSER_HOME}/startscript.sh"
 COPY --chown=10001:10001 tests/ ${APPUSER_HOME}/tests
 
 # Switch to user
@@ -73,6 +73,6 @@ ENV CI=true
 
 WORKDIR "${APPUSER_HOME}/tests"
 
-# trivy:ignore:AVD-DS-0026 - TODO: Add HEALTHCHECK instruction in your Dockerfile
-# HEALTHCHECK
+# HEALTHCHECK is not here, as this just execute command and terminates
+# checkov:skip=CKV_DOCKER_2:ensure that HEALTHCHECK instructions have been added
 CMD ["../startscript.sh"]

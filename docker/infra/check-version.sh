@@ -1,132 +1,96 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Pre-commit hook: auto-bump infra image versions based on what changed.
-#
-# Image/file mapping (mirrors .github/workflows/docker-build-tf-plugin-tests.yaml):
-#   pipeline image      → docker/infra/Dockerfile, docker/infra/pipeline/startscript.sh
-#                         → docker/infra/pipeline/.version
-#   private cloud image → docker/infra/Dockerfile, docker/infra/private_cloud/startscript.sh, tests/**
-#                         → docker/infra/private_cloud/.version
-#
-# Bump rules (per image, highest-level bump wins):
-#   Dockerfile change    → minor bump (X.Y+1.0) for BOTH images
-#   startscript change   → patch bump (X.Y.Z+1) for the owning image
-#   tests/** change      → patch bump for the private-cloud image only
-#
-# If the user already staged a change to a .version file, that image is left
-# alone — this preserves the override path for manual major/minor bumps.
+#   - change under docker/infra/  -> bump MINOR of both ci/.version and full/.version
+#   - change under tests         -> bump PATCH of full/.version
+# When a required bump is missing, the hook writes the new version(s) and fails
+# the commit so you can stage and re-commit with the bump included.
 
-set -o errexit -o nounset -o pipefail
+set -euo pipefail
 
-# Bump a version file. $1 = file path, $2 = "minor" | "patch".
-# Preserves an optional leading `v`. Git-adds the modified file.
-bump_version() {
-    local file=$1
-    local kind=$2
-    local current
-    current=$(tr -d '[:space:]' <"${file}")
+VERSION_FILE_FULL="docker/infra/full/.version"
+VERSION_FILE_CI="docker/infra/ci/.version"
 
-    local ver=${current}
-    local prefix=""
-    if [[ "${ver}" == v* ]]; then
-        prefix="v"
-        ver=${ver#v}
-    fi
+# Limit detection to staged changes — pre-commit's normal scope.
+# Exclude the .version files from the infra check, otherwise bumping a version
+# file would itself look like a docker/infra change on the next commit.
+STAGED_TESTS=$(git diff --name-only --cached -- 'tests/' || true)
+STAGED_INFRA=$(git diff --name-only --cached -- 'docker/infra/' \
+    ':(exclude)docker/infra/full/.version' \
+    ':(exclude)docker/infra/ci/.version' || true)
 
-    if [[ ! "${ver}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        echo "ERROR: ${file} does not contain an X.Y.Z version (got: '${current}')" >&2
-        return 1
-    fi
-
-    local major minor patch
-    IFS='.' read -r major minor patch <<<"${ver}"
-
-    case "${kind}" in
-    minor)
-        minor=$((minor + 1))
-        patch=0
-        ;;
-    patch)
-        patch=$((patch + 1))
-        ;;
-    *)
-        echo "ERROR: unknown bump kind '${kind}'" >&2
-        return 1
-        ;;
-    esac
-
-    local new="${prefix}${major}.${minor}.${patch}"
-    echo "${new}" >"${file}"
-    git add "${file}"
-    echo "  ${file}: ${current} → ${new} (${kind})"
-}
-
-staged_files=$(git diff --cached --name-only)
-
-pipeline_bump=""
-private_cloud_bump=""
-pipeline_version_staged=false
-private_cloud_version_staged=false
-
-# Rank: "minor" > "patch" > "". Upgrade but never downgrade.
-upgrade_bump() {
-    local current=$1
-    local new=$2
-    if [[ "${current}" == "minor" ]]; then
-        echo "${current}"
-    elif [[ "${new}" == "minor" ]]; then
-        echo "${new}"
-    elif [[ -n "${new}" ]]; then
-        echo "${new}"
-    else
-        echo "${current}"
-    fi
-}
-
-while IFS= read -r file; do
-    [[ -z "${file}" ]] && continue
-    case "${file}" in
-    docker/infra/Dockerfile)
-        pipeline_bump=$(upgrade_bump "${pipeline_bump}" "minor")
-        private_cloud_bump=$(upgrade_bump "${private_cloud_bump}" "minor")
-        ;;
-    docker/infra/pipeline/startscript.sh)
-        pipeline_bump=$(upgrade_bump "${pipeline_bump}" "patch")
-        ;;
-    docker/infra/private_cloud/startscript.sh)
-        private_cloud_bump=$(upgrade_bump "${private_cloud_bump}" "patch")
-        ;;
-    tests/*)
-        private_cloud_bump=$(upgrade_bump "${private_cloud_bump}" "patch")
-        ;;
-    docker/infra/pipeline/.version)
-        pipeline_version_staged=true
-        ;;
-    docker/infra/private_cloud/.version)
-        private_cloud_version_staged=true
-        ;;
-    *)
-        : # other staged files do not affect image versions
-        ;;
-    esac
-done <<<"${staged_files}"
-
-bumped=0
-
-if [[ -n "${pipeline_bump}" && "${pipeline_version_staged}" == "false" ]]; then
-    [[ "${bumped}" -eq 0 ]] && echo "check-version: bumping infra image versions:"
-    bump_version docker/infra/pipeline/.version "${pipeline_bump}"
-    bumped=1
+if [[ -z "${STAGED_TESTS}" && -z "${STAGED_INFRA}" ]]; then
+    exit 0
 fi
 
-if [[ -n "${private_cloud_bump}" && "${private_cloud_version_staged}" == "false" ]]; then
-    [[ "${bumped}" -eq 0 ]] && echo "check-version: bumping infra image versions:"
-    bump_version docker/infra/private_cloud/.version "${private_cloud_bump}"
-    bumped=1
+if [[ ! -f "${VERSION_FILE_FULL}" ]]; then
+    echo "❌ ${VERSION_FILE_FULL} not found — cannot bump version."
+    exit 1
 fi
-
-if [[ "${bumped}" -eq 1 ]]; then
-    echo "check-version: .version file(s) updated and staged — re-run the commit to include them."
+if [[ ! -f "${VERSION_FILE_CI}" ]]; then
+    echo "❌ ${VERSION_FILE_CI} not found — cannot bump version."
     exit 1
 fi
 
+# bump_version <file> <minor|patch> — rewrites <file> with the bumped version.
+bump_version() {
+    local file="$1" part="$2" current major minor patch
+    current=$(tr -d '[:space:]' <"${file}")
+    # Expect format like v<MAJOR>.<MINOR>.<PATCH>
+    if [[ ! "${current}" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+        echo "❌ Unexpected version format in ${file}: '${current}' (expected vMAJOR.MINOR.PATCH)"
+        exit 1
+    fi
+    major="${BASH_REMATCH[1]}"
+    minor="${BASH_REMATCH[2]}"
+    patch="${BASH_REMATCH[3]}"
+    if [[ "${part}" == "minor" ]]; then
+        minor=$((minor + 1))
+        patch=0
+    else
+        patch=$((patch + 1))
+    fi
+    printf 'v%s.%s.%s\n' "${major}" "${minor}" "${patch}" >"${file}"
+}
+
+# staged_path <file> — prints <file> if it's already staged (bumped this commit), else nothing.
+staged_path() {
+    git diff --name-only --cached -- "$1" || true
+}
+
+bumped=0
+
+if [[ -n "${STAGED_INFRA}" ]]; then
+    # infra change -> minor bump on BOTH files (takes precedence over a tests/ bump)
+    full_staged="$(staged_path "${VERSION_FILE_FULL}")"
+    ci_staged="$(staged_path "${VERSION_FILE_CI}")"
+    if [[ -z "${full_staged}" ]]; then
+        bump_version "${VERSION_FILE_FULL}" minor
+        bumped=1
+    fi
+    if [[ -z "${ci_staged}" ]]; then
+        bump_version "${VERSION_FILE_CI}" minor
+        bumped=1
+    fi
+elif [[ -n "${STAGED_TESTS}" ]]; then
+    # tests change -> patch bump on full only
+    full_staged="$(staged_path "${VERSION_FILE_FULL}")"
+    if [[ -z "${full_staged}" ]]; then
+        bump_version "${VERSION_FILE_FULL}" patch
+        bumped=1
+    fi
+fi
+
+if [[ "${bumped}" -eq 1 ]]; then
+    cat <<EOF
+❌ Changes detected under tests/ and/or docker/infra/.
+   The version file(s) below have been bumped by this hook:
+     - ${VERSION_FILE_FULL}
+     - ${VERSION_FILE_CI}
+   Stage the change(s) and commit again, e.g.:
+     git add ${VERSION_FILE_FULL} ${VERSION_FILE_CI}
+EOF
+    exit 1
+fi
+
+echo "✅ Version file(s) already updated in this commit; changes accepted."
 exit 0

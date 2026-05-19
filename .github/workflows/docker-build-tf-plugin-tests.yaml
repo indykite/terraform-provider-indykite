@@ -1,180 +1,190 @@
 ---
-name: Docker Build
+name: Docker Build Test Image
 on: # yamllint disable-line rule:truthy
   pull_request:
-    branches:
-      - master
     paths:
-      - docker/infra/Dockerfile
-      - docker/infra/pipeline/startscript.sh
-      - docker/infra/pipeline/.version
-      - docker/infra/private_cloud/startscript.sh
-      - docker/infra/private_cloud/.version
+      - docker/infra/**
       - tests/**
   # Master push only applies the `:latest` tag to the already-built versioned image.
   push:
     branches:
       - master
     paths:
-      - docker/infra/pipeline/.version
-      - docker/infra/private_cloud/.version
+      - docker/infra/**
+      - tests/**
   # to have an ability to run the workflow manually
   workflow_dispatch: # yamllint disable-line rule:empty-values
 #
 permissions:
   contents: read
-  id-token: write
+  id-token: write # mint OIDC token for keyless GCP auth via Workload Identity Federation (setup-buildx step)
+  pull-requests: read # dorny/paths-filter reads the PR's changed files via the GitHub API on pull_request events
 #
 jobs:
   detect-changes:
     name: Detect changed paths
     runs-on: ubuntu-latest
     outputs:
-      build_pipeline: ${{ steps.set-outputs.outputs.build_pipeline }}
-      build_private_cloud: ${{ steps.set-outputs.outputs.build_private_cloud }}
-      retag_pipeline_latest: ${{ steps.set-outputs.outputs.retag_pipeline_latest }}
-      retag_private_cloud_latest: ${{ steps.set-outputs.outputs.retag_private_cloud_latest }}
-      pipeline_version: ${{ steps.versions.outputs.pipeline_version }}
-      private_cloud_version: ${{ steps.versions.outputs.private_cloud_version }}
+      build_ci: ${{ steps.set-outputs.outputs.build_ci }}
+      build_full: ${{ steps.set-outputs.outputs.build_full }}
+      retag_ci: ${{ steps.set-outputs.outputs.retag_ci }}
+      retag_full: ${{ steps.set-outputs.outputs.retag_full }}
+      version_ci: ${{ steps.versions.outputs.version_ci }}
+      version_full: ${{ steps.versions.outputs.version_full }}
     steps:
+      - name: actions/checkout/fetch-depth
+        id: fetch-depth
+        shell: bash
+        run: |
+          case "${{ github.event_name }}" in
+            pull_request)
+              # Enough history to diff every commit in the PR against its base.
+              echo "fetch-depth=$((${{ github.event.pull_request.commits }} + 1))" >> "$GITHUB_OUTPUT"
+              ;;
+            push)
+              # One-commit diff against the previous master tip for the retag filters.
+              echo "fetch-depth=2" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              # workflow_dispatch rebuilds both images unconditionally; no diff needed.
+              echo "fetch-depth=1" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
       - name: actions/checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2 - https://github.com/actions/checkout/releases
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
+          fetch-depth: ${{ steps.fetch-depth.outputs.fetch-depth }}
 
       - name: dorny/paths-filter
         id: filter
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         with:
           filters: |
-            pipeline:
-              - 'docker/infra/Dockerfile'
-              - 'docker/infra/pipeline/startscript.sh'
-            private_cloud:
-              - 'docker/infra/Dockerfile'
-              - 'docker/infra/private_cloud/startscript.sh'
+            ci:
+              - 'docker/infra/**'
+            full:
+              - 'docker/infra/**'
               - 'tests/**'
-            pipeline_version:
-              - 'docker/infra/pipeline/.version'
-            private_cloud_version:
-              - 'docker/infra/private_cloud/.version'
+            version_ci:
+              - 'docker/infra/ci/.version'
+            version_full:
+              - 'docker/infra/full/.version'
 
       - name: Read versions
         id: versions
         run: |
-          PIPELINE_VERSION=$(cat docker/infra/pipeline/.version)
-          PRIVATE_CLOUD_VERSION=$(cat docker/infra/private_cloud/.version)
-          if [ -z "$PIPELINE_VERSION" ]; then
-            echo "::error::docker/infra/pipeline/.version is missing or empty"
+          version_ci=$(cat docker/infra/ci/.version)
+          version_full=$(cat docker/infra/full/.version)
+          if [ -z "$version_ci" ]; then
+            echo "::error::docker/infra/ci/.version is missing or empty"
             exit 1
           fi
-          if [ -z "$PRIVATE_CLOUD_VERSION" ]; then
-            echo "::error::docker/infra/private_cloud/.version is missing or empty"
+          if [ -z "$version_full" ]; then
+            echo "::error::docker/infra/full/.version is missing or empty"
             exit 1
           fi
-          echo "pipeline_version=$PIPELINE_VERSION" >> "$GITHUB_OUTPUT"
-          echo "private_cloud_version=$PRIVATE_CLOUD_VERSION" >> "$GITHUB_OUTPUT"
+          echo "version_ci=$version_ci" >> "$GITHUB_OUTPUT"
+          echo "version_full=$version_full" >> "$GITHUB_OUTPUT"
 
       - name: Set build/retag outputs
         id: set-outputs
         run: |
-          BUILD_PIPELINE=false
-          BUILD_PRIVATE_CLOUD=false
-          RETAG_PIPELINE=false
-          RETAG_PRIVATE_CLOUD=false
+          BUILD_CI=false
+          BUILD_FULL=false
+          RETAG_CI=false
+          RETAG_FULL=false
 
           case "${{ github.event_name }}" in
             workflow_dispatch)
               # Manual runs rebuild both images but do not re-tag `latest`.
-              BUILD_PIPELINE=true
-              BUILD_PRIVATE_CLOUD=true
+              BUILD_CI=true
+              BUILD_FULL=true
               ;;
             pull_request)
-              [[ "${{ steps.filter.outputs.pipeline }}" == "true" ]] && BUILD_PIPELINE=true
-              [[ "${{ steps.filter.outputs.private_cloud }}" == "true" ]] && BUILD_PRIVATE_CLOUD=true
+              BUILD_CI="${{ steps.filter.outputs.ci }}"
+              BUILD_FULL="${{ steps.filter.outputs.full }}"
               ;;
             push)
               # On merge to master: only re-tag the versioned image built during the PR as `latest`.
-              [[ "${{ steps.filter.outputs.pipeline_version }}" == "true" ]] && RETAG_PIPELINE=true
-              [[ "${{ steps.filter.outputs.private_cloud_version }}" == "true" ]] && RETAG_PRIVATE_CLOUD=true
+              RETAG_CI="${{ steps.filter.outputs.version_ci }}"
+              RETAG_FULL="${{ steps.filter.outputs.version_full }}"
               ;;
           esac
 
           {
-            echo "build_pipeline=$BUILD_PIPELINE"
-            echo "build_private_cloud=$BUILD_PRIVATE_CLOUD"
-            echo "retag_pipeline_latest=$RETAG_PIPELINE"
-            echo "retag_private_cloud_latest=$RETAG_PRIVATE_CLOUD"
+            echo "build_ci=$BUILD_CI"
+            echo "build_full=$BUILD_FULL"
+            echo "retag_ci=$RETAG_CI"
+            echo "retag_full=$RETAG_FULL"
           } >> "$GITHUB_OUTPUT"
 
   build:
     name: Build and publish infra images
     needs: detect-changes
     if: >-
-      needs.detect-changes.outputs.build_pipeline == 'true' ||
-      needs.detect-changes.outputs.build_private_cloud == 'true' ||
-      needs.detect-changes.outputs.retag_pipeline_latest == 'true' ||
-      needs.detect-changes.outputs.retag_private_cloud_latest == 'true'
+      needs.detect-changes.outputs.build_ci == 'true' ||
+      needs.detect-changes.outputs.build_full == 'true' ||
+      needs.detect-changes.outputs.retag_ci == 'true' ||
+      needs.detect-changes.outputs.retag_full == 'true'
     env:
       ARTIFACT_REGISTRY_URL: europe-west1-docker.pkg.dev
       GCP_PROJECT_ID_MGMT: ${{ secrets.GCP_PROJECT_ID_MGMT }}
+      IMAGE_NAME_CI: terraform-plugin-tests-ci
+      IMAGE_NAME_FULL: terraform-plugin-tests
     runs-on: ubuntu-latest
     steps:
       - name: actions/checkout
-        if: >-
-          needs.detect-changes.outputs.build_pipeline == 'true' ||
-          needs.detect-changes.outputs.build_private_cloud == 'true'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2 - https://github.com/actions/checkout/releases
 
       - name: docker/setup-buildx
         id: buildx
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0 - https://github.com/docker/setup-buildx-action/releases
 
-      - name: gcloud/auth
+      - name: Setup GCP Auth
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0 - https://github.com/google-github-actions/auth/releases
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER_MGMT }}
           service_account: github@${{ env.GCP_PROJECT_ID_MGMT }}.iam.gserviceaccount.com
 
-      - name: docker/login
+      - name: login to docker hub
         run: gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY_URL }} -q
 
-      # --- pipeline image (no baked-in tests) — warms BuildKit cache for the second build ---
-      - name: Build terraform-plugin-tests (pipeline)
-        if: needs.detect-changes.outputs.build_pipeline == 'true'
+      - name: Build terraform-plugin-tests
+        # --- full image (tests baked in) — warms BuildKit cache for the second build ---
+        if: needs.detect-changes.outputs.build_full == 'true'
         run: |-
-          image_base="${ARTIFACT_REGISTRY_URL}/${GCP_PROJECT_ID_MGMT}/indykite/terraform-plugin-tests"
+          image_base="${ARTIFACT_REGISTRY_URL}/${GCP_PROJECT_ID_MGMT}/indykite/${{ env.IMAGE_NAME_FULL }}"
           docker buildx build --push \
             -f docker/infra/Dockerfile \
-            --target terraform-tests \
-            --tag "${image_base}:${{ needs.detect-changes.outputs.pipeline_version }}" \
-            --platform linux/amd64,linux/arm64,linux/arm/v7 .
+            --target ${{ env.IMAGE_NAME_FULL }} \
+            --tag "${image_base}:${{ needs.detect-changes.outputs.version_full }}" \
+            --platform linux/amd64,linux/arm64 .
 
-      # --- private cloud image (tests baked in), reuses layers from above ---
-      - name: Build terraform-plugin-tests-for-private-cloud
-        if: needs.detect-changes.outputs.build_private_cloud == 'true'
+      # --- ci image (no baked-in tests), reuses layers from above ---
+      - name: Build terraform-plugin-testsci (pipeline)
+        if: needs.detect-changes.outputs.build_ci == 'true'
         run: |-
-          image_base="${ARTIFACT_REGISTRY_URL}/${GCP_PROJECT_ID_MGMT}/indykite/terraform-plugin-tests-for-private-cloud"
+          image_base="${ARTIFACT_REGISTRY_URL}/${GCP_PROJECT_ID_MGMT}/indykite/${{ env.IMAGE_NAME_CI }}"
           docker buildx build --push \
             -f docker/infra/Dockerfile \
-            --target terraform-tests-for-private-cloud \
-            --tag "${image_base}:${{ needs.detect-changes.outputs.private_cloud_version }}" \
-            --platform linux/amd64,linux/arm64,linux/arm/v7 .
+            --target ${{ env.IMAGE_NAME_CI }} \
+            --tag "${image_base}:${{ needs.detect-changes.outputs.version_ci }}" \
+            --platform linux/amd64,linux/arm64 .
 
       # --- tag `latest` on master push (after PR merge). Manifest-level retag preserves multi-arch. ---
-      - name: Tag latest — terraform-plugin-tests (pipeline)
-        if: needs.detect-changes.outputs.retag_pipeline_latest == 'true'
+      - name: Tag latest — terraform-plugin-tests
+        if: needs.detect-changes.outputs.retag_full == 'true'
         run: |-
-          image_base="${ARTIFACT_REGISTRY_URL}/${GCP_PROJECT_ID_MGMT}/indykite/terraform-plugin-tests"
+          image_base="${{ vars.ARTIFACT_REGISTRY_URL }}/${{ secrets.GCP_PROJECT_ID_MGMT }}/indykite/${{ env.IMAGE_NAME_FULL }}"
           docker buildx imagetools create \
             --tag "${image_base}:latest" \
-            "${image_base}:${{ needs.detect-changes.outputs.pipeline_version }}"
+            "${image_base}:${{ needs.detect-changes.outputs.version_full }}"
 
-      - name: Tag latest — terraform-plugin-tests-for-private-cloud
-        if: needs.detect-changes.outputs.retag_private_cloud_latest == 'true'
+      - name: Tag latest — terraform-plugin-tests-ci (pipeline)
+        if: needs.detect-changes.outputs.retag_ci == 'true'
         run: |-
-          image_base="${ARTIFACT_REGISTRY_URL}/${GCP_PROJECT_ID_MGMT}/indykite/terraform-plugin-tests-for-private-cloud"
+          image_base="${{ vars.ARTIFACT_REGISTRY_URL }}/${{ secrets.GCP_PROJECT_ID_MGMT }}/indykite/${{ env.IMAGE_NAME_CI }}"
           docker buildx imagetools create \
             --tag "${image_base}:latest" \
-            "${image_base}:${{ needs.detect-changes.outputs.private_cloud_version }}"
+            "${image_base}:${{ needs.detect-changes.outputs.version_ci }}"
