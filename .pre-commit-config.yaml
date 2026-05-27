@@ -185,7 +185,7 @@ repos:
   #
   # Detect hardcoded secrets
   - repo: https://github.com/gitleaks/gitleaks
-    rev: 2ca41cc1372d1e939a6a879f18cdc19fc1cac1ce # frozen: v8.30.0
+    rev: 6eaad039603a4de39fddd1cf5f727391efe9974e # frozen: v8.30.0
     hooks:
       - id: gitleaks
         name: gitleaks
@@ -234,7 +234,7 @@ repos:
         pass_filenames: false
 
   - repo: https://github.com/hadolint/hadolint # language: system
-    rev: 4e697ba704fd23b2409b947a319c19c3ee54d24f # frozen: v2.14.0
+    rev: 57e1618d78fd469a92c1e584e8c9313024656623 # frozen: v2.14.0
     hooks:
       - id: hadolint
         name: hadolint/dockerfile

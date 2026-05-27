@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: action/release-please
-        uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4.4.1 - https://github.com/googleapis/release-please-action/releases
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0 - https://github.com/googleapis/release-please-action/releases
         id: release
         with:
           # secrets.GITHUB_TOKEN cannot be used due to:
@@ -52,7 +52,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: actions/slack-notification
-        uses: slackapi/slack-github-action@03ea5433c137af7c0495bc0cad1af10403fc800c # v3.0.2 - https://github.com/slackapi/slack-github-action/releases
+        uses: slackapi/slack-github-action@45a88b9581bfab2566dc881e2cd66d334e621e2c # v3.0.3 - https://github.com/slackapi/slack-github-action/releases
         if: steps.release.outputs.releases_created || steps.release.outputs.prs_created
         with:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
