@@ -35,7 +35,7 @@ jobs:
       # Pre-install Terraform so the plugin SDK doesn't try to download it and
       # hit HashiCorp's expired PGP signing key.
       - name: setup/terraform
-        uses: hashicorp/setup-terraform@5e8dbf3c6d9deaf4193ca7a8fb23f2ac83bb6c85 # v4.0.0
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_wrapper: false
 
@@ -48,7 +48,7 @@ jobs:
           make test
 
       - name: codecov/upload-coverage
-        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0 - https://github.com/codecov/codecov-action/releases
+        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1 - https://github.com/codecov/codecov-action/releases
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.out

@@ -212,7 +212,7 @@ func updateOptionalString(data *schema.ResourceData, key string) *string {
 }
 
 func setData(d *diag.Diagnostics, data *schema.ResourceData, attr string, value any) {
-	if valOf := reflect.ValueOf(value); value == nil || (valOf.Kind() == reflect.Ptr && valOf.IsNil()) {
+	if valOf := reflect.ValueOf(value); value == nil || (valOf.Kind() == reflect.Pointer && valOf.IsNil()) {
 		if err := data.Set(attr, nil); err != nil {
 			*d = append(*d, diag.Diagnostic{
 				Severity:      diag.Error,
