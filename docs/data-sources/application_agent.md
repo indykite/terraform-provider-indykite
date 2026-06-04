@@ -46,7 +46,7 @@ data "indykite_application_agent" "agent_by_name_ref" {
 
 ### Required
 
-- `api_permissions` (List of String) List of API permissions for the agent: Authorization, Capture, ContXIQ, EntityMatching, IKGRead and TrustedDataAccess.
+- `api_permissions` (List of String) List of API permissions for the agent: Authorization, Capture, ContXIQ, EntityMatching, IKGRead and ReadDataSchema.
 
 ### Optional
 
