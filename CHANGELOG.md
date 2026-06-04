@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.36.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.35.1...v0.36.0) (2026-06-04)
+
+
+### Features
+
+* update dependencies ([e51f180](https://github.com/indykite/terraform-provider-indykite/commit/e51f180bb1dfa1f0066fe4bc03d49cf6283d44ea))
+
+
+### Bug Fixes
+
+* update old permission ([06b2d05](https://github.com/indykite/terraform-provider-indykite/commit/06b2d053983d08290e5a33f3ea7ea4248eb69d69))
+
+
+### Miscellaneous Chores
+
+* **deps:** update all non-major dependencies ([#308](https://github.com/indykite/terraform-provider-indykite/issues/308)) ([347cf5c](https://github.com/indykite/terraform-provider-indykite/commit/347cf5cad0af08e7166d78fec58c265f7c320457))
+* **deps:** update golang:1.26.2-alpine Docker digest to f853308 ([#292](https://github.com/indykite/terraform-provider-indykite/issues/292)) ([42beb27](https://github.com/indykite/terraform-provider-indykite/commit/42beb27314cc7d74b4f713a9c90f77b2b73a6c4e))
+
 ## [0.35.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.35.0...v0.35.1) (2026-04-29)
 
 
