@@ -85,7 +85,7 @@ resource "indykite_application_agent" "protected_agent" {
 
 ### Required
 
-- `api_permissions` (List of String) List of API permissions for the agent: Authorization, Capture, ContXIQ, EntityMatching, IKGRead and TrustedDataAccess.
+- `api_permissions` (List of String) List of API permissions for the agent: Authorization, Capture, ContXIQ, EntityMatching, IKGRead and ReadDataSchema.
 - `application_id` (String) Identifier of Application
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 
