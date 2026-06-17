@@ -679,3 +679,54 @@ resource "indykite_entity_matching_pipeline" "pipeline_multi_filters" {
     create_before_destroy = true
   }
 }
+
+# -----------------------------------------------------------------------------
+# Test: Token introspect (dependency for the MCP server tests below)
+# -----------------------------------------------------------------------------
+
+resource "indykite_token_introspect" "mcp_token_introspect" {
+  name         = "automation-terraform-token-introspect-${time_static.example.unix}"
+  display_name = "Automation Terraform token introspect ${time_static.example.unix}"
+  description  = "Token introspect backing the MCP server tests"
+  location     = indykite_application_space.appspace.id
+  jwt_matcher {
+    issuer   = "https://auth.example.com"
+    audience = "automation-terraform-mcp"
+  }
+  online_validation {
+    cache_ttl = 600
+  }
+  claims_mapping = {
+    "email" = "user_email",
+    "name"  = "user_name"
+  }
+  ikg_node_type  = "Person"
+  perform_upsert = true
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Test: MCP server configuration
+# Note: only one MCP server is allowed per appspace (unique index on app_space_id),
+# so this test creates a single MCP server for the appspace.
+# -----------------------------------------------------------------------------
+
+resource "indykite_mcp_server" "create-mcp-server" {
+  name                = "automation-terraform-mcp-server-${time_static.example.unix}"
+  display_name        = "Automation Terraform MCP server ${time_static.example.unix}"
+  description         = "MCP server for terraform pipeline"
+  location            = indykite_application_space.appspace.id
+  app_agent_id        = indykite_application_agent.agent.id
+  token_introspect_id = indykite_token_introspect.mcp_token_introspect.id
+  scopes_supported    = ["read", "write"]
+  enabled             = true
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = self.app_space_id == indykite_application_space.appspace.id
+      error_message = "app_space_id must be populated from the appspace after creation"
+    }
+  }
+}

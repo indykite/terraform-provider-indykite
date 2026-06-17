@@ -261,10 +261,10 @@ type CreateTokenIntrospectRequest struct {
 	Name          string                           `json:"name"`
 	DisplayName   string                           `json:"display_name,omitempty"`
 	Description   string                           `json:"description,omitempty"`
-	JWT           *TokenIntrospectJWT              `json:"jwt,omitempty"`
-	Opaque        *TokenIntrospectOpaque           `json:"opaque,omitempty"`
-	Offline       *TokenIntrospectOffline          `json:"offline,omitempty"`
-	Online        *TokenIntrospectOnline           `json:"online,omitempty"`
+	JWT           *TokenIntrospectJWT              `json:"jwt_matcher,omitempty"`
+	Opaque        *TokenIntrospectOpaque           `json:"opaque_matcher,omitempty"`
+	Offline       *TokenIntrospectOffline          `json:"offline_validation,omitempty"`
+	Online        *TokenIntrospectOnline           `json:"online_validation,omitempty"`
 	ClaimsMapping map[string]*TokenIntrospectClaim `json:"claims_mapping,omitempty"`
 	SubClaim      *TokenIntrospectClaim            `json:"sub_claim,omitempty"`
 	IKGNodeType   string                           `json:"ikg_node_type"`
@@ -274,10 +274,10 @@ type CreateTokenIntrospectRequest struct {
 // TokenIntrospectResponse represents a token introspect configuration resource.
 type TokenIntrospectResponse struct {
 	ClaimsMapping map[string]*TokenIntrospectClaim `json:"claims_mapping,omitempty"`
-	JWT           *TokenIntrospectJWT              `json:"jwt,omitempty"`
-	Opaque        *TokenIntrospectOpaque           `json:"opaque,omitempty"`
-	Offline       *TokenIntrospectOffline          `json:"offline,omitempty"`
-	Online        *TokenIntrospectOnline           `json:"online,omitempty"`
+	JWT           *TokenIntrospectJWT              `json:"jwt_matcher,omitempty"`
+	Opaque        *TokenIntrospectOpaque           `json:"opaque_matcher,omitempty"`
+	Offline       *TokenIntrospectOffline          `json:"offline_validation,omitempty"`
+	Online        *TokenIntrospectOnline           `json:"online_validation,omitempty"`
 	SubClaim      *TokenIntrospectClaim            `json:"sub_claim,omitempty"`
 	CreateTime    time.Time                        `json:"create_time"`
 	UpdateTime    time.Time                        `json:"update_time"`
@@ -298,10 +298,10 @@ type TokenIntrospectResponse struct {
 type UpdateTokenIntrospectRequest struct {
 	DisplayName   *string                          `json:"display_name,omitempty"`
 	Description   *string                          `json:"description,omitempty"`
-	JWT           *TokenIntrospectJWT              `json:"jwt,omitempty"`
-	Opaque        *TokenIntrospectOpaque           `json:"opaque,omitempty"`
-	Offline       *TokenIntrospectOffline          `json:"offline,omitempty"`
-	Online        *TokenIntrospectOnline           `json:"online,omitempty"`
+	JWT           *TokenIntrospectJWT              `json:"jwt_matcher,omitempty"`
+	Opaque        *TokenIntrospectOpaque           `json:"opaque_matcher,omitempty"`
+	Offline       *TokenIntrospectOffline          `json:"offline_validation,omitempty"`
+	Online        *TokenIntrospectOnline           `json:"online_validation,omitempty"`
 	ClaimsMapping map[string]*TokenIntrospectClaim `json:"claims_mapping,omitempty"`
 	SubClaim      *TokenIntrospectClaim            `json:"sub_claim,omitempty"`
 	IKGNodeType   string                           `json:"ikg_node_type"`
