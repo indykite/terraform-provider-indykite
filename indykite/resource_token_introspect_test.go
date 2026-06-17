@@ -174,9 +174,9 @@ var _ = Describe("Resource TokenIntrospect", func() {
 				var reqBody map[string]any
 				_ = json.NewDecoder(r.Body).Decode(&reqBody)
 
-				if reqBody["opaque"] != nil {
+				if reqBody["opaque_matcher"] != nil {
 					currentResponse = "after_update1"
-				} else if reqBody["offline"] != nil {
+				} else if reqBody["offline_validation"] != nil {
 					currentResponse = "after_update2"
 				}
 
