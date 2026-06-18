@@ -330,18 +330,15 @@ func resTokenIntrospectUpdate(ctx context.Context, data *schema.ResourceData, me
 	req.IKGNodeType = data.Get(tokenIntrospectIKGNodeTypeKey).(string)
 	req.PerformUpsert = data.Get(tokenIntrospectPerformUpsertKey).(bool)
 
-	// Add changed fields
-	if data.HasChange(tokenIntrospectJWTKey) || data.HasChange(tokenIntrospectOpaqueKey) ||
-		data.HasChange(tokenIntrospectOfflineKey) || data.HasChange(tokenIntrospectOnlineKey) ||
-		data.HasChange(tokenIntrospectClaimsMappingKey) || data.HasChange(tokenIntrospectSubClaimKey) {
-		tokenReq := buildTokenIntrospectRequest(data)
-		req.JWT = tokenReq.JWT
-		req.Opaque = tokenReq.Opaque
-		req.Offline = tokenReq.Offline
-		req.Online = tokenReq.Online
-		req.ClaimsMapping = tokenReq.ClaimsMapping
-		req.SubClaim = tokenReq.SubClaim
-	}
+	// The backend validates the full object on update (PUT), so always send the
+	// matcher, validation and claim fields - not only when they changed.
+	tokenReq := buildTokenIntrospectRequest(data)
+	req.JWT = tokenReq.JWT
+	req.Opaque = tokenReq.Opaque
+	req.Offline = tokenReq.Offline
+	req.Online = tokenReq.Online
+	req.ClaimsMapping = tokenReq.ClaimsMapping
+	req.SubClaim = tokenReq.SubClaim
 
 	var resp TokenIntrospectResponse
 	err := clientCtx.GetClient().Put(ctx, "/token-introspects/"+data.Id(), req, &resp)

@@ -601,9 +601,11 @@ type EventSinkResponse struct {
 
 // UpdateEventSinkRequest represents the request to update an event sink.
 type UpdateEventSinkRequest struct {
-	DisplayName *string        `json:"display_name,omitempty"`
-	Description *string        `json:"description,omitempty"`
-	Config      map[string]any `json:"config"`
+	DisplayName      *string        `json:"display_name,omitempty"`
+	Description      *string        `json:"description,omitempty"`
+	Providers        map[string]any `json:"providers"`
+	Routes           []any          `json:"routes"`
+	IncludeCDCEvents bool           `json:"include_cdc_events"`
 }
 
 // MCP Server structures
