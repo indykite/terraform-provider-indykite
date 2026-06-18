@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.36.0...v0.37.0) (2026-06-18)
+
+
+### Features
+
+* update owners, dependencies and add test ([04358d9](https://github.com/indykite/terraform-provider-indykite/commit/04358d97745f227575dc44bfbaf191baf2c6038b))
+
 ## [0.36.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.35.1...v0.36.0) (2026-06-04)
 
 
