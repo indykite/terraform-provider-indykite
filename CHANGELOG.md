@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.37.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.37.0...v0.37.1) (2026-06-19)
+
+
+### Bug Fixes
+
+* fix tests update ([#322](https://github.com/indykite/terraform-provider-indykite/issues/322)) ([9cf3599](https://github.com/indykite/terraform-provider-indykite/commit/9cf3599a4148fc920609e5d35197b9132d78910f))
+
+
+### Miscellaneous Chores
+
+* **deps:** update actions/checkout action to v7 ([#321](https://github.com/indykite/terraform-provider-indykite/issues/321)) ([e9a0d14](https://github.com/indykite/terraform-provider-indykite/commit/e9a0d14413fc506d62990d477d949cdda7482239))
+* **deps:** update all non-major dependencies ([#317](https://github.com/indykite/terraform-provider-indykite/issues/317)) ([601b04b](https://github.com/indykite/terraform-provider-indykite/commit/601b04bf759928a1e2b3dd1d42985828ecd4c48a))
+
 ## [0.37.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.36.0...v0.37.0) (2026-06-18)
 
 
