@@ -490,10 +490,15 @@ func resEventSinkUpdate(ctx context.Context, data *schema.ResourceData, meta any
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
 	defer cancel()
 
+	providers := data.Get(providersKey).([]any)
+	routes := data.Get(routesKey).([]any)
+
 	req := UpdateEventSinkRequest{
-		DisplayName: updateOptionalString(data, displayNameKey),
-		Description: updateOptionalString(data, descriptionKey),
-		Config:      buildEventSinkConfig(data),
+		DisplayName:      updateOptionalString(data, displayNameKey),
+		Description:      updateOptionalString(data, descriptionKey),
+		Providers:        buildProvidersMap(providers),
+		Routes:           buildRoutesList(routes),
+		IncludeCDCEvents: data.Get(includeCdcEventsKey).(bool),
 	}
 
 	var resp EventSinkResponse
@@ -517,18 +522,6 @@ func resEventSinkDelete(ctx context.Context, data *schema.ResourceData, meta any
 	err := clientCtx.GetClient().Delete(ctx, "/event-sinks/"+data.Id())
 	HasFailed(&d, err)
 	return d
-}
-
-// buildEventSinkConfig converts Terraform schema data to Config map.
-func buildEventSinkConfig(data *schema.ResourceData) map[string]any {
-	providers := data.Get(providersKey).([]any)
-	routes := data.Get(routesKey).([]any)
-
-	return map[string]any{
-		"providers":          buildProvidersMap(providers),
-		"routes":             buildRoutesList(routes),
-		"include_cdc_events": data.Get(includeCdcEventsKey).(bool),
-	}
 }
 
 // buildProvidersMap builds the providers map from Terraform schema data.
@@ -780,126 +773,111 @@ func buildPubSubConfig(pubsubData map[string]any, data *schema.ResourceData) map
 
 func flattenEventSinkConfig(d *diag.Diagnostics, data *schema.ResourceData, config map[string]any) {
 	providersMap, _ := config["providers"].(map[string]any)
-	var results []map[string]any
-
-	for key, p := range providersMap {
-		providerData, _ := p.(map[string]any)
-
-		// Try both snake_case and camelCase for provider types
-		if kafkaData, ok := providerData["kafka"].(map[string]any); ok {
-			kafkaConfig := buildKafkaConfig(kafkaData, data)
-			results = append(results, map[string]any{
-				providerNameKey: key,
-				kafkaKey:        []any{kafkaConfig},
-			})
-		} else if gridData, ok := providerData["azure_event_grid"].(map[string]any); !ok {
-			if gridData, ok = providerData["azureEventGrid"].(map[string]any); ok {
-				gridConfig := buildAzureEventGridConfig(gridData, data)
-				results = append(results, map[string]any{
-					providerNameKey:   key,
-					azureEventGridKey: []any{gridConfig},
-				})
-			}
-		} else {
-			gridConfig := buildAzureEventGridConfig(gridData, data)
-			results = append(results, map[string]any{
-				providerNameKey:   key,
-				azureEventGridKey: []any{gridConfig},
-			})
-		}
-		if busData, ok := providerData["azure_service_bus"].(map[string]any); !ok {
-			if busData, ok = providerData["azureServiceBus"].(map[string]any); ok {
-				busConfig := buildAzureServiceBusConfig(busData, data)
-				results = append(results, map[string]any{
-					providerNameKey:    key,
-					azureServiceBusKey: []any{busConfig},
-				})
-			}
-		} else {
-			busConfig := buildAzureServiceBusConfig(busData, data)
-			results = append(results, map[string]any{
-				providerNameKey:    key,
-				azureServiceBusKey: []any{busConfig},
-			})
-		}
-		if pubsubData, ok := providerData["pubsub"].(map[string]any); ok {
-			pubsubConfig := buildPubSubConfig(pubsubData, data)
-			results = append(results, map[string]any{
-				providerNameKey: key,
-				pubsubKey:       []any{pubsubConfig},
-			})
-		} else if pubsubData, ok := providerData["pubSub"].(map[string]any); ok {
-			pubsubConfig := buildPubSubConfig(pubsubData, data)
-			results = append(results, map[string]any{
-				providerNameKey: key,
-				pubsubKey:       []any{pubsubConfig},
-			})
-		}
-	}
-	setData(d, data, providersKey, results)
+	setData(d, data, providersKey, flattenEventSinkProviders(data, providersMap))
 
 	routesList, _ := config["routes"].([]any)
-	routes := make([]any, len(routesList))
-	for i, r := range routesList {
-		routeData, _ := r.(map[string]any)
-
-		// Helper to get value from either snake_case or camelCase
-		getValue := func(snakeCase, camelCase string) any {
-			if val, ok := routeData[snakeCase]; ok {
-				return val
-			}
-			return routeData[camelCase]
-		}
-
-		routeMap := map[string]any{
-			providerIDKey:     getValue("provider_id", "providerId"),
-			stopProcessingKey: getValue("stop_processing", "stopProcessing"),
-			routeDisplayKey:   getValue("display_name", "displayName"),
-			routeIDKey:        routeData["id"],
-		}
-
-		// Try both snake_case and camelCase for keysValues
-		var kvData map[string]any
-		var ok bool
-		if kvData, ok = routeData["event_type_key_values_filter"].(map[string]any); !ok {
-			kvData, ok = routeData["keysValues"].(map[string]any)
-		}
-
-		if ok {
-			// Helper to get value from keysValues map
-			getKVValue := func(snakeCase, camelCase string) any {
-				if val, ok := kvData[snakeCase]; ok {
-					return val
-				}
-				return kvData[camelCase]
-			}
-
-			pairsList, _ := getKVValue("key_value_pairs", "keyValuePairs").([]any)
-			keyValuePairs := make([]any, len(pairsList))
-			for j, pair := range pairsList {
-				pairData, _ := pair.(map[string]any)
-				keyValuePairs[j] = map[string]any{
-					keyKey:   pairData["key"],
-					valueKey: pairData["value"],
-				}
-			}
-			routeMap[keysValuesKey] = []map[string]any{
-				{
-					keyValuePairsKey: keyValuePairs,
-					evTypeKey:        getKVValue("event_type", "eventType"),
-				},
-			}
-		}
-
-		routes[i] = routeMap
-	}
-	setData(d, data, routesKey, routes)
+	setData(d, data, routesKey, flattenEventSinkRoutes(routesList))
 
 	if v, ok := config["include_cdc_events"]; ok {
 		setData(d, data, includeCdcEventsKey, v)
 	} else if v, ok := config["includeCdcEvents"]; ok {
 		setData(d, data, includeCdcEventsKey, v)
 	}
+}
+
+// pickMap returns the first value, as a map, found under any of the given keys.
+// Used to tolerate both snake_case and camelCase keys in API responses.
+func pickMap(m map[string]any, keys ...string) (map[string]any, bool) {
+	for _, k := range keys {
+		if v, ok := m[k].(map[string]any); ok {
+			return v, true
+		}
+	}
+	return nil, false
+}
+
+// getEither returns m[snakeCase] if present, otherwise m[camelCase].
+func getEither(m map[string]any, snakeCase, camelCase string) any {
+	if val, ok := m[snakeCase]; ok {
+		return val
+	}
+	return m[camelCase]
+}
+
+// flattenEventSinkProviders converts the API providers map into Terraform schema blocks.
+func flattenEventSinkProviders(data *schema.ResourceData, providersMap map[string]any) []map[string]any {
+	var results []map[string]any
+	for key, p := range providersMap {
+		providerData, _ := p.(map[string]any)
+
+		if kafkaData, ok := pickMap(providerData, "kafka"); ok {
+			results = append(results, map[string]any{
+				providerNameKey: key,
+				kafkaKey:        []any{buildKafkaConfig(kafkaData, data)},
+			})
+		}
+		if gridData, ok := pickMap(providerData, "azure_event_grid", "azureEventGrid"); ok {
+			results = append(results, map[string]any{
+				providerNameKey:   key,
+				azureEventGridKey: []any{buildAzureEventGridConfig(gridData, data)},
+			})
+		}
+		if busData, ok := pickMap(providerData, "azure_service_bus", "azureServiceBus"); ok {
+			results = append(results, map[string]any{
+				providerNameKey:    key,
+				azureServiceBusKey: []any{buildAzureServiceBusConfig(busData, data)},
+			})
+		}
+		if pubsubData, ok := pickMap(providerData, "pubsub", "pubSub"); ok {
+			results = append(results, map[string]any{
+				providerNameKey: key,
+				pubsubKey:       []any{buildPubSubConfig(pubsubData, data)},
+			})
+		}
+	}
+	return results
+}
+
+// flattenEventSinkRoutes converts the API routes list into Terraform schema blocks.
+func flattenEventSinkRoutes(routesList []any) []any {
+	routes := make([]any, len(routesList))
+	for i, r := range routesList {
+		routeData, _ := r.(map[string]any)
+		routes[i] = flattenEventSinkRoute(routeData)
+	}
+	return routes
+}
+
+// flattenEventSinkRoute converts a single API route into a Terraform schema block.
+func flattenEventSinkRoute(routeData map[string]any) map[string]any {
+	routeMap := map[string]any{
+		providerIDKey:     getEither(routeData, "provider_id", "providerId"),
+		stopProcessingKey: getEither(routeData, "stop_processing", "stopProcessing"),
+		routeDisplayKey:   getEither(routeData, "display_name", "displayName"),
+		routeIDKey:        routeData["id"],
+	}
+
+	kvData, ok := pickMap(routeData, "event_type_key_values_filter", "keysValues")
+	if !ok {
+		return routeMap
+	}
+
+	pairsList, _ := getEither(kvData, "key_value_pairs", "keyValuePairs").([]any)
+	keyValuePairs := make([]any, len(pairsList))
+	for j, pair := range pairsList {
+		pairData, _ := pair.(map[string]any)
+		keyValuePairs[j] = map[string]any{
+			keyKey:   pairData["key"],
+			valueKey: pairData["value"],
+		}
+	}
+	routeMap[keysValuesKey] = []map[string]any{
+		{
+			keyValuePairsKey: keyValuePairs,
+			evTypeKey:        getEither(kvData, "event_type", "eventType"),
+		},
+	}
+	return routeMap
 }
 
 func validateProviderOneOf(providerTypes []string) schema.CustomizeDiffFunc {

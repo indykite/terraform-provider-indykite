@@ -93,6 +93,9 @@ var _ = Describe("Resource EventSink", func() {
 		currentConfig := "kafka"
 
 		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Server runs in its own goroutine; GinkgoRecover lets Gomega
+			// assertions in the handlers fail the spec instead of panicking silently.
+			defer GinkgoRecover()
 			switch {
 			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/event-sinks"):
 				// Create response based on current config
@@ -396,6 +399,16 @@ var _ = Describe("Resource EventSink", func() {
 				_ = json.NewEncoder(w).Encode(resp)
 
 			case r.Method == http.MethodPut && strings.Contains(r.URL.Path, sampleID):
+				// Assert the update payload uses the flat shape the backend expects
+				// (top-level providers/routes/include_cdc_events), not the legacy
+				// nested "config" envelope that the real API silently ignores.
+				var reqBody map[string]any
+				Expect(json.NewDecoder(r.Body).Decode(&reqBody)).To(Succeed())
+				Expect(reqBody).NotTo(HaveKey("config"))
+				Expect(reqBody).To(HaveKey("providers"))
+				Expect(reqBody).To(HaveKey("routes"))
+				Expect(reqBody).To(HaveKey("include_cdc_events"))
+
 				// Update - switch to kafka-updated
 				currentConfig = "kafka-updated"
 				resp := indykite.EventSinkResponse{
@@ -730,6 +743,9 @@ var _ = Describe("Resource EventSink", func() {
 		updateTime := time.Now()
 
 		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Server runs in its own goroutine; GinkgoRecover lets Gomega
+			// assertions in the handlers fail the spec instead of panicking silently.
+			defer GinkgoRecover()
 			switch {
 			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/event-sinks"):
 				resp := indykite.EventSinkResponse{
@@ -875,6 +891,9 @@ var _ = Describe("Resource EventSink", func() {
 		currentIncludeCDC := false
 
 		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Server runs in its own goroutine; GinkgoRecover lets Gomega
+			// assertions in the handlers fail the spec instead of panicking silently.
+			defer GinkgoRecover()
 			switch {
 			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/event-sinks"):
 				body, _ := io.ReadAll(r.Body)
@@ -917,11 +936,9 @@ var _ = Describe("Resource EventSink", func() {
 			case r.Method == http.MethodPut && strings.Contains(r.URL.Path, sampleID):
 				body, _ := io.ReadAll(r.Body)
 				_ = json.Unmarshal(body, &lastUpdateBody)
-				// include_cdc_events is nested inside "config" on update requests.
-				if cfg, ok := lastUpdateBody["config"].(map[string]any); ok {
-					if v, ok := cfg["include_cdc_events"].(bool); ok {
-						currentIncludeCDC = v
-					}
+				// providers/routes/include_cdc_events are sent at the top level on update requests.
+				if v, ok := lastUpdateBody["include_cdc_events"].(bool); ok {
+					currentIncludeCDC = v
 				}
 				resp := indykite.EventSinkResponse{
 					ID:         sampleID,
@@ -1029,16 +1046,18 @@ var _ = Describe("Resource EventSink", func() {
 						testEventSinkResourceDataExists(resourceName),
 						resource.TestCheckResourceAttr(resourceName, "include_cdc_events", "false"),
 						func(_ *terraform.State) error {
-							cfg, _ := lastUpdateBody["config"].(map[string]any)
-							if cfg == nil {
-								return errors.New("update body missing config block")
-							}
-							v, present := cfg["include_cdc_events"]
+							v, present := lastUpdateBody["include_cdc_events"]
 							if !present {
 								return errors.New("update body missing include_cdc_events")
 							}
 							if b, _ := v.(bool); b {
 								return errors.New("expected update body include_cdc_events=false")
+							}
+							if _, ok := lastUpdateBody["providers"].(map[string]any); !ok {
+								return errors.New("update body missing top-level providers")
+							}
+							if _, ok := lastUpdateBody["routes"].([]any); !ok {
+								return errors.New("update body missing top-level routes")
 							}
 							return nil
 						},
@@ -1076,6 +1095,9 @@ var _ = Describe("Resource EventSink", func() {
 		var lastCreateBody map[string]any
 
 		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Server runs in its own goroutine; GinkgoRecover lets Gomega
+			// assertions in the handlers fail the spec instead of panicking silently.
+			defer GinkgoRecover()
 			switch {
 			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/event-sinks"):
 				body, _ := io.ReadAll(r.Body)
