@@ -1,5 +1,5 @@
 ---
-name: Tests
+name: Tests/Unit
 on: # yamllint disable-line rule:truthy
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -20,7 +20,7 @@ permissions:
   contents: read # work with the contents of the repository
 #
 jobs:
-  test:
+  test-unit:
     name: Unit
     runs-on: ubuntu-latest
     steps:
