@@ -5,7 +5,7 @@ on: # yamllint disable-line rule:truthy
     types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - master
-  # to have an ability to run thee workflow manually
+  # to have an ability to run the workflow manually
   workflow_dispatch: # yamllint disable-line rule:empty-values
 #
 concurrency:
@@ -39,6 +39,10 @@ jobs:
       - name: Install Terraform
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
 
+      - name: Build local plugin
+        run: make build_test_plugin
+
       - name: Terraform Init and Apply
+        shell: bash
         run: |-
-          make build_test_local_plugin integration
+          "${GITHUB_WORKSPACE}/tests/test_integration.sh"

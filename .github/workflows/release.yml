@@ -6,7 +6,7 @@ on: # yamllint disable-line rule:truthy
   push:
     tags:
       - v*
-  # to have an ability to run thee workflow manually
+  # to have an ability to run the workflow manually
   workflow_dispatch: # yamllint disable-line rule:empty-values
 
 permissions:

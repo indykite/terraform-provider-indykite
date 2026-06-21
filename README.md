@@ -54,6 +54,17 @@ A complete script example is available [test.tf](tests/provider/test.tf).
 
 ## Provider development
 
+### Local overrides
+
+The Makefile automatically loads an optional `.env.local.mk` file from the repository root.
+Use it for machine-specific local overrides such as:
+
+- `GO_CPU_TEST`
+- `TERRAFORM_BIN`
+- `TF_ACC_TERRAFORM_PATH`
+
+The file is ignored by git, so it stays local to your machine.
+
 ### GitHub workflows
 
 `tfplugindocs` GitHub workflow automatically re-generates the provider documentation once commit is pushed to `master`.

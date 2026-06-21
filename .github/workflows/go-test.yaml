@@ -7,7 +7,7 @@ on: # yamllint disable-line rule:truthy
   # Run on default branch for cache generation & to report coverage on master branch to Codecov
   push:
     branches: ["dev", "develop", "main", "master"]
-  # to have an ability to run thee workflow manually
+  # to have an ability to run the workflow manually
   workflow_dispatch: # yamllint disable-line rule:empty-values
 #
 concurrency:
@@ -40,12 +40,9 @@ jobs:
           terraform_wrapper: false
 
       - name: Run Unit tests.
+        shell: bash
         run: |
-          TF_ACC_TERRAFORM_PATH="$(command -v terraform)"
-          export TF_ACC_TERRAFORM_PATH
-          echo "Using Terraform at: ${TF_ACC_TERRAFORM_PATH}"
-          "${TF_ACC_TERRAFORM_PATH}" version
-          make test
+          "${GITHUB_WORKSPACE}/tests/test_unit.sh"
 
       - name: codecov/upload-coverage
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0 - https://github.com/codecov/codecov-action/releases

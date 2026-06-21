@@ -6,6 +6,7 @@
 *.dylib
 
 terraform-provider-indykite
+schema.json
 
 # Test binary, built with `go test -c`
 *.test
@@ -32,6 +33,7 @@ dist
 .idea
 .claude
 /local/
+.env.local.mk
 
 # Mac OS
 .DS_Store
