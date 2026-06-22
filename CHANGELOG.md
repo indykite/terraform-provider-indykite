@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.2](https://github.com/indykite/terraform-provider-indykite/compare/v0.37.1...v0.37.2) (2026-06-22)
+
+
+### Miscellaneous Chores
+
+* **deps:** update all non-major dependencies to v1.108.0 ([#324](https://github.com/indykite/terraform-provider-indykite/issues/324)) ([93df2f7](https://github.com/indykite/terraform-provider-indykite/commit/93df2f7008c77f6e9e7d5c281dce68d6628bf95c))
+
 ## [0.37.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.37.0...v0.37.1) (2026-06-19)
 
 
