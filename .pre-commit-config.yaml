@@ -65,7 +65,7 @@ repos:
   #
   # Renovate
   - repo: https://github.com/renovatebot/pre-commit-hooks # ci:ignore:OK to validate locally only, otherwise it adds 850MB+ to unpacked cache
-    rev: "cbf190d5e31b9e0845b3fb1c0af190927b46e5e3" # frozen: 43.141.2
+    rev: "75445dad1c58e61d66d57b4adf82951704812025" # frozen: 43.234.0
     hooks:
       - id: renovate-config-validator
         args: [--strict]
@@ -126,8 +126,6 @@ repos:
         pass_filenames: false
         types_or: [go, go-mod, go-sum, gotmpl]
         always_run: false
-        # FIXME:
-        stages: [manual]
 
       - id: tfplugindocs
         name: tfplugindocs
@@ -242,7 +240,7 @@ repos:
   #
   # Terraform & Terragrunt
   - repo: https://github.com/antonbabenko/pre-commit-terraform
-    rev: 60814e259af5e9b712edbd18af333d2650624735 # frozen: v1.107.0
+    rev: 05fd71a57a467ccf5598f7e836d3af4cf9225abb # frozen: v1.108.0
     hooks:
       # - id: tfupdate      # done via 'validate -upgrade' below
       - id: terraform_fmt
@@ -287,3 +285,12 @@ repos:
         entry: markdownlint-cli2
         types: [markdown]
         exclude: ^(CHANGELOG|.github\/ISSUE_TEMPLATE\/(bug|feature_request)|docs\/.*).md$
+
+  #
+  # Makefile
+  #
+  - repo: https://github.com/checkmake/checkmake.git
+    rev: 59931d556f8f5cf4fbacf2c8390a8122ef7a881d # frozen: v0.3.2
+    hooks:
+      - id: checkmake
+        name: checkmake

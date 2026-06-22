@@ -8,7 +8,7 @@ on: # yamllint disable-line rule:truthy
       - "indykite/**"
       - "templates/**"
       - "CHANGELOG.md"
-  # to have an ability to run thee workflow manually
+  # to have an ability to run the workflow manually
   workflow_dispatch: # yamllint disable-line rule:empty-values
 
 concurrency:
