@@ -70,6 +70,29 @@ var _ = Describe("Utilities", func() {
 		Entry("Display name is same as name", "display_name", "abc", "abc", "", BeTrue()),
 		Entry("Display name is different than name", "display_name", "abc", "jkl", "", BeFalse()),
 	)
+
+	DescribeTable("ExpireTimeDiffSuppress",
+		func(old, newVal string, expected OmegaMatcher) {
+			Expect(indykite.ExpireTimeDiffSuppress("expire_time", old, newVal, nil)).To(expected)
+		},
+		// Same instant expressed with a different timezone offset must be suppressed,
+		// because the API normalizes the value to UTC (this is the drift being fixed).
+		Entry("Same instant, UTC vs offset",
+			"2026-12-31T13:34:56Z", "2026-12-31T12:34:56-01:00", BeTrue()),
+		Entry("Same instant, extra nanoseconds",
+			"2026-12-31T13:34:56Z", "2026-12-31T13:34:56.000Z", BeTrue()),
+		Entry("Identical values", "2026-12-31T13:34:56Z", "2026-12-31T13:34:56Z", BeTrue()),
+		// Genuinely different instants must NOT be suppressed so ForceNew still triggers.
+		Entry("Different instant, one hour later",
+			"2026-12-31T13:34:56Z", "2026-12-31T14:34:56Z", BeFalse()),
+		Entry("Different instant, different day",
+			"2026-12-31T13:34:56Z", "2026-11-30T12:34:56-01:00", BeFalse()),
+		// Empty (adding or removing an expiry) does not parse and must NOT be suppressed.
+		Entry("Adding expiry from empty", "", "2026-12-31T12:34:56-01:00", BeFalse()),
+		Entry("Removing expiry", "2026-12-31T13:34:56Z", "", BeFalse()),
+		// Unparseable value falls back to showing the diff.
+		Entry("Unparseable new value", "2026-12-31T13:34:56Z", "not-a-time", BeFalse()),
+	)
 })
 
 var _ = Describe("HasFailed", func() {

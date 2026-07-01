@@ -261,8 +261,150 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 			},
 		})
 	})
+
+	It("Retries create while the app agent is not yet propagated", func() {
+		// Keep the test fast: shorten the retry delay for the duration of this spec.
+		defer indykite.SetCredCreateRetryDelay(time.Millisecond)()
+
+		tfConfig := `resource "indykite_application_agent_credential" "development" {
+				app_agent_id = "` + appAgentID + `"
+				public_key_jwk = <<-EOT
+				{
+					"kty": "EC",
+					"use": "sig",
+					"crv": "P-256",
+					"kid": "xuyd5-9bT0L09mi810mycfREAxBG3KnpctlGQCYtCdM",
+					"x": "o7LnIMhCPXFV91sE5EKQh8QZ9U6csUqgSENaKt3T0I4",
+					"y": "o1Wwws1ZeoSwh_yN8_jeFOWHwK2n_6ow15SxIHyAnpE",
+					"alg": "ES256"
+				}
+				EOT
+				expire_time = "` + time.Now().Add(time.Hour).UTC().Format(time.RFC3339) + `"
+			}`
+
+		createTime := time.Now()
+		// The first two POSTs return 404 to mimic an app agent that has not
+		// propagated yet; the third succeeds.
+		const failUntilAttempt = 2
+		postAttempts := 0
+
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/application-agent-credentials"):
+				postAttempts++
+				if postAttempts <= failUntilAttempt {
+					w.WriteHeader(http.StatusNotFound)
+					_ = json.NewEncoder(w).Encode(map[string]string{"message": "application agent not found"})
+					return
+				}
+				resp := indykite.ApplicationAgentCredentialResponse{
+					ID:                 appAgentCredID,
+					CustomerID:         customerID,
+					AppSpaceID:         appSpaceID,
+					ApplicationID:      applicationID,
+					ApplicationAgentID: appAgentID,
+					Kid:                "EfUEiFnOzA5PCp8SSksp7iXv7cHRehCsIGo6NAQ9H7w",
+					CreateTime:         createTime,
+					CreateBy:           "creator-id",
+					AgentConfig: json.RawMessage(
+						`{"appAgentId":"` + appAgentID + `","endpoint":"https://example.com"}`),
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodGet:
+				resp := indykite.ApplicationAgentCredentialResponse{
+					ID:                 appAgentCredID,
+					CustomerID:         customerID,
+					AppSpaceID:         appSpaceID,
+					ApplicationID:      applicationID,
+					ApplicationAgentID: appAgentID,
+					Kid:                "EfUEiFnOzA5PCp8SSksp7iXv7cHRehCsIGo6NAQ9H7w",
+					CreateTime:         createTime,
+					CreateBy:           "creator-id",
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodDelete:
+				w.WriteHeader(http.StatusNoContent)
+
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			Providers: map[string]*schema.Provider{
+				"indykite": provider,
+			},
+			Steps: []resource.TestStep{
+				{
+					Config: tfConfig,
+					Check: resource.ComposeTestCheckFunc(
+						testAppAgentCredResourceDataExists(resourceName, appAgentCredID, "jwk"),
+						func(*terraform.State) error {
+							if postAttempts != failUntilAttempt+1 {
+								return fmt.Errorf("expected %d POST attempts, got %d",
+									failUntilAttempt+1, postAttempts)
+							}
+							return nil
+						},
+					),
+				},
+			},
+		})
+	})
+
+	It("Fails create after exhausting propagation retries", func() {
+		defer indykite.SetCredCreateRetryDelay(time.Millisecond)()
+
+		tfConfig := `resource "indykite_application_agent_credential" "development" {
+				app_agent_id = "` + appAgentID + `"
+			}`
+
+		postAttempts := 0
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodPost {
+				postAttempts++
+			}
+			// Always report the app agent as not found.
+			w.WriteHeader(http.StatusNotFound)
+			_ = json.NewEncoder(w).Encode(map[string]string{"message": "application agent not found"})
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			Providers: map[string]*schema.Provider{
+				"indykite": provider,
+			},
+			Steps: []resource.TestStep{
+				{
+					Config:      tfConfig,
+					ExpectError: regexp.MustCompile(`was not found after \d+ attempts`),
+				},
+			},
+		})
+
+		// Initial attempt plus the bounded retries.
+		Expect(postAttempts).To(Equal(indykite.CredCreateMaxRetries() + 1))
+	})
 })
 
+//nolint:unparam // Test helper function designed to be reusable
 func testAppAgentCredResourceDataExists(
 	n string,
 	expectedID string,

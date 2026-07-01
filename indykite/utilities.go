@@ -158,6 +158,21 @@ func DisplayNameCredentialDiffSuppress(k, old, newVal string, d *schema.Resource
 	return false
 }
 
+// ExpireTimeDiffSuppress suppresses Terraform changes when the old and new expire_time values
+// represent the same instant in different timezone representations. The API normalizes the
+// timestamp to UTC, so a config value like "2026-12-31T12:34:56-01:00" comes back as
+// "2026-12-31T13:34:56Z" and would otherwise force resource replacement.
+func ExpireTimeDiffSuppress(_, old, newVal string, _ *schema.ResourceData) bool {
+	// RFC3339Nano parses both plain-second and fractional-second timestamps. (Plain
+	// time.RFC3339 also accepts fractional seconds on parse, but Nano makes intent explicit.)
+	o, err1 := time.Parse(time.RFC3339Nano, old)
+	n, err2 := time.Parse(time.RFC3339Nano, newVal)
+	if err1 != nil || err2 != nil {
+		return false
+	}
+	return o.Equal(n)
+}
+
 // SuppressYamlDiff verify that 2 YAML strings are the same in value and suppress Terraform changes.
 func SuppressYamlDiff(_, old, newVal string, _ *schema.ResourceData) bool {
 	var oldMap, newMap map[string]any

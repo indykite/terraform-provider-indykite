@@ -34,6 +34,16 @@ const (
 	agentConfigKey  = "agent_config"
 )
 
+// A freshly created application agent may not be immediately visible to the
+// credential endpoint. When a credential is created in the same apply as its
+// agent, retry the create on a not-found response to ride out that propagation
+// delay instead of failing the apply.
+const credCreateMaxRetries = 5
+
+// credCreateRetryDelay is a var (not const) so tests can shorten it via the seam
+// in export_test.go instead of waiting the full production delay.
+var credCreateRetryDelay = 2 * time.Second
+
 func resourceApplicationAgentCredential() *schema.Resource {
 	return &schema.Resource{
 		Description:   "App agent credentials is a JSON configuration file that contains a secret key or token. ",
@@ -89,16 +99,40 @@ func resourceApplicationAgentCredential() *schema.Resource {
 				Description:      "Provide your onw Public key in JWK format, otherwise new pair is generated",
 			},
 			expireTimeKey: {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ForceNew:     true,
-				ValidateFunc: validation.IsRFC3339Time,
-				Description:  "Optional date-time when credentials are going to expire",
+				Type:             schema.TypeString,
+				Optional:         true,
+				ForceNew:         true,
+				ValidateFunc:     validation.IsRFC3339Time,
+				DiffSuppressFunc: ExpireTimeDiffSuppress,
+				Description:      "Optional date-time when credentials are going to expire",
 			},
 			kidKey:         {Type: schema.TypeString, Computed: true},
 			agentConfigKey: {Type: schema.TypeString, Computed: true, Sensitive: true},
 			createTimeKey:  createTimeSchema(),
 		},
+	}
+}
+
+// postAppAgentCredentialWithRetry issues the credential create request, retrying on
+// not-found responses to ride out the delay before a freshly created application
+// agent becomes visible to the credential endpoint. The final (possibly not-found)
+// error is returned for the caller to classify.
+func postAppAgentCredentialWithRetry(
+	ctx context.Context,
+	client *RestClient,
+	req *CreateApplicationAgentCredentialRequest,
+) (ApplicationAgentCredentialResponse, error) {
+	var resp ApplicationAgentCredentialResponse
+	for attempt := 0; ; attempt++ {
+		err := client.Post(ctx, "/application-agent-credentials", req, &resp)
+		if err == nil || !IsNotFoundError(err) || attempt >= credCreateMaxRetries {
+			return resp, err
+		}
+		select {
+		case <-time.After(credCreateRetryDelay):
+		case <-ctx.Done():
+			return resp, ctx.Err()
+		}
 	}
 }
 
@@ -130,8 +164,16 @@ func resAppAgentCredCreate(ctx context.Context, data *schema.ResourceData, meta 
 		req.PublicKeyJWK = strings.TrimSpace(key.(string))
 	}
 
-	var resp ApplicationAgentCredentialResponse
-	err := clientCtx.GetClient().Post(ctx, "/application-agent-credentials", req, &resp)
+	resp, err := postAppAgentCredentialWithRetry(ctx, clientCtx.GetClient(), &req)
+	if IsNotFoundError(err) {
+		// Retries are exhausted and the referenced application agent is still not
+		// visible. Surface a hard error: the not-found warning HasFailed would emit
+		// leaves Terraform with an inconsistent (created-but-unset) result.
+		return append(d, diag.Errorf(
+			"application agent %q was not found after %d attempts; it may not have "+
+				"finished propagating on the backend",
+			req.ApplicationAgentID, credCreateMaxRetries+1)...)
+	}
 	if HasFailed(&d, err) {
 		return d
 	}
