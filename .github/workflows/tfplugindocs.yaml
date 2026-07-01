@@ -44,7 +44,7 @@ jobs:
 
       - name: Generate docs
         run: |
-          make install-tools tfdocs_generate
+          make install-tools-go-only tfdocs_generate
 
       # BUG: "github.action_path" is null in the next step
       - name: pre-commit CI config
