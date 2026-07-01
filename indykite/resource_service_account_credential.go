@@ -55,11 +55,12 @@ func resourceServiceAccountCredential() *schema.Resource {
 				Description:      "Optional human readable name of the credential.",
 			},
 			expireTimeKey: {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ForceNew:     true,
-				ValidateFunc: validation.IsRFC3339Time,
-				Description:  "Optional date-time when credentials are going to expire in RFC3339 format.",
+				Type:             schema.TypeString,
+				Optional:         true,
+				ForceNew:         true,
+				ValidateFunc:     validation.IsRFC3339Time,
+				DiffSuppressFunc: ExpireTimeDiffSuppress,
+				Description:      "Optional date-time when credentials are going to expire in RFC3339 format.",
 			},
 			kidKey: {
 				Type:        schema.TypeString,
