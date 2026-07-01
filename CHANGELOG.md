@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.37.2](https://github.com/indykite/terraform-provider-indykite/compare/v0.37.1...v0.37.2) (2026-07-01)
+
+
+### Bug Fixes
+
+* fix docs make install ([8dbaf93](https://github.com/indykite/terraform-provider-indykite/commit/8dbaf9370ac695ebd785a0d71f5e45141e41993d))
+* wait until app agent is available ([9d9090c](https://github.com/indykite/terraform-provider-indykite/commit/9d9090cddc3357e903897513d5f91cd17bad3c71))
+
+
+### Miscellaneous Chores
+
+* **deps:** update all non-major dependencies to v1.108.0 ([#324](https://github.com/indykite/terraform-provider-indykite/issues/324)) ([93df2f7](https://github.com/indykite/terraform-provider-indykite/commit/93df2f7008c77f6e9e7d5c281dce68d6628bf95c))
+
 ## [0.37.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.37.0...v0.37.1) (2026-06-19)
 
 
