@@ -34,15 +34,23 @@ const (
 	agentConfigKey  = "agent_config"
 )
 
-// A freshly created application agent may not be immediately visible to the
-// credential endpoint. When a credential is created in the same apply as its
-// agent, retry the create on a not-found response to ride out that propagation
-// delay instead of failing the apply.
+// A freshly created application agent may not be immediately usable by the
+// credential endpoint: after the agent is created the backend still performs
+// follow-up actions (node creation) with no way for us to observe completion,
+// and the agent may not be visible to the credential endpoint yet. So the
+// credential create always waits credCreateInitialWait up front, then retries
+// not-found responses via hashicorp/go-retryablehttp with exponential backoff
+// (waits doubling from credCreateRetryWaitMin up to credCreateRetryWaitMax),
+// giving roughly 2 + (2+4+8+16+30) ≈ 60 seconds of total wait before giving up.
 const credCreateMaxRetries = 5
 
-// credCreateRetryDelay is a var (not const) so tests can shorten it via the seam
-// in export_test.go instead of waiting the full production delay.
-var credCreateRetryDelay = 2 * time.Second
+// The wait bounds are vars (not consts) so tests can shorten them via the seam
+// in export_test.go instead of waiting the full production backoff.
+var (
+	credCreateInitialWait  = 2 * time.Second
+	credCreateRetryWaitMin = 2 * time.Second
+	credCreateRetryWaitMax = 30 * time.Second
+)
 
 func resourceApplicationAgentCredential() *schema.Resource {
 	return &schema.Resource{
@@ -115,25 +123,24 @@ func resourceApplicationAgentCredential() *schema.Resource {
 
 // postAppAgentCredentialWithRetry issues the credential create request, retrying on
 // not-found responses to ride out the delay before a freshly created application
-// agent becomes visible to the credential endpoint. The final (possibly not-found)
-// error is returned for the caller to classify.
+// agent becomes usable by the credential endpoint. It always pauses
+// credCreateInitialWait before the first attempt, because agent creation triggers
+// backend follow-up actions (node creation) whose completion cannot be observed.
+// The final (possibly not-found) error is returned for the caller to classify.
 func postAppAgentCredentialWithRetry(
 	ctx context.Context,
 	client *RestClient,
 	req *CreateApplicationAgentCredentialRequest,
 ) (ApplicationAgentCredentialResponse, error) {
 	var resp ApplicationAgentCredentialResponse
-	for attempt := 0; ; attempt++ {
-		err := client.Post(ctx, "/application-agent-credentials", req, &resp)
-		if err == nil || !IsNotFoundError(err) || attempt >= credCreateMaxRetries {
-			return resp, err
-		}
-		select {
-		case <-time.After(credCreateRetryDelay):
-		case <-ctx.Done():
-			return resp, ctx.Err()
-		}
+	select {
+	case <-time.After(credCreateInitialWait):
+	case <-ctx.Done():
+		return resp, ctx.Err()
 	}
+	err := client.PostWithRetryOnNotFound(ctx, "/application-agent-credentials", req, &resp,
+		credCreateMaxRetries, credCreateRetryWaitMin, credCreateRetryWaitMax)
+	return resp, err
 }
 
 func resAppAgentCredCreate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {

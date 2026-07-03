@@ -264,7 +264,7 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 
 	It("Retries create while the app agent is not yet propagated", func() {
 		// Keep the test fast: shorten the retry delay for the duration of this spec.
-		defer indykite.SetCredCreateRetryDelay(time.Millisecond)()
+		defer indykite.SetCredCreateWaits(time.Millisecond, time.Millisecond, time.Millisecond)()
 
 		tfConfig := `resource "indykite_application_agent_credential" "development" {
 				app_agent_id = "` + appAgentID + `"
@@ -364,7 +364,7 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 	})
 
 	It("Fails create after exhausting propagation retries", func() {
-		defer indykite.SetCredCreateRetryDelay(time.Millisecond)()
+		defer indykite.SetCredCreateWaits(time.Millisecond, time.Millisecond, time.Millisecond)()
 
 		tfConfig := `resource "indykite_application_agent_credential" "development" {
 				app_agent_id = "` + appAgentID + `"

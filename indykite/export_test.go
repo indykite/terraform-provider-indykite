@@ -16,13 +16,15 @@ package indykite
 
 import "time"
 
-// SetCredCreateRetryDelay overrides the application agent credential create retry
-// delay for tests and returns a function that restores the original value. This
-// keeps tests that exercise the propagation retry fast.
-func SetCredCreateRetryDelay(d time.Duration) func() {
-	orig := credCreateRetryDelay
-	credCreateRetryDelay = d
-	return func() { credCreateRetryDelay = orig }
+// SetCredCreateWaits overrides the application agent credential create initial
+// wait and retry backoff bounds for tests and returns a function that restores
+// the original values. This keeps tests that exercise the propagation retry fast.
+func SetCredCreateWaits(initial, waitMin, waitMax time.Duration) func() {
+	origInitial, origMin, origMax := credCreateInitialWait, credCreateRetryWaitMin, credCreateRetryWaitMax
+	credCreateInitialWait, credCreateRetryWaitMin, credCreateRetryWaitMax = initial, waitMin, waitMax
+	return func() {
+		credCreateInitialWait, credCreateRetryWaitMin, credCreateRetryWaitMax = origInitial, origMin, origMax
+	}
 }
 
 // CredCreateMaxRetries exposes the credential create retry bound to tests.
