@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.3](https://github.com/indykite/terraform-provider-indykite/compare/v0.37.2...v0.37.3) (2026-07-03)
+
+
+### Bug Fixes
+
+* add wait before app agent cred ([a6ecfc7](https://github.com/indykite/terraform-provider-indykite/commit/a6ecfc72ffb168f3613bf2fb18435383efcd2587))
+
 ## [0.37.2](https://github.com/indykite/terraform-provider-indykite/compare/v0.37.1...v0.37.2) (2026-07-01)
 
 
