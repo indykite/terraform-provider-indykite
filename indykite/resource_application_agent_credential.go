@@ -41,13 +41,19 @@ const (
 // credential create always waits credCreateInitialWait up front, then retries
 // not-found responses via hashicorp/go-retryablehttp with exponential backoff
 // (waits doubling from credCreateRetryWaitMin up to credCreateRetryWaitMax),
-// giving roughly 2 + (2+4+8+16+30) ≈ 60 seconds of total wait before giving up.
+// giving roughly 10 + (2+4+8+16+30) ≈ 70 seconds of total wait before giving up.
 const credCreateMaxRetries = 5
 
 // The wait bounds are vars (not consts) so tests can shorten them via the seam
 // in export_test.go instead of waiting the full production backoff.
+//
+// credCreateInitialWait is 10s as a temporary mitigation: the credential POST
+// can succeed before the backend finishes creating the agent's IKG permission
+// nodes, yielding a token without permissions, and the API exposes no status
+// to poll yet. Shrink it back once the backend reports agent readiness
+// (see the backend bug ticket for the IKG node race).
 var (
-	credCreateInitialWait  = 2 * time.Second
+	credCreateInitialWait  = 10 * time.Second
 	credCreateRetryWaitMin = 2 * time.Second
 	credCreateRetryWaitMax = 30 * time.Second
 )
