@@ -251,6 +251,8 @@ var _ = Describe("Resource Application Space", func() {
 			username = "testuser"
 			password = "testpass"
 			name = "testdb"
+			composite_db_name = "ikcomposite"
+			alias_mapping = "global=testdb1&east=testdb2&west=testdb3"
 		}`
 
 		createTime := time.Now()
@@ -270,10 +272,12 @@ var _ = Describe("Resource Application Space", func() {
 					IKGSize:       "4GB",
 					ReplicaRegion: "us-west1",
 					DBConnection: &indykite.DBConnection{
-						URL:      "postgresql://localhost:5432/test",
-						Username: "testuser",
-						Password: "testpass",
-						Name:     "testdb",
+						URL:             "postgresql://localhost:5432/test",
+						Username:        "testuser",
+						Password:        "testpass",
+						Name:            "testdb",
+						CompositeDBName: "ikcomposite",
+						AliasMapping:    "global=testdb1&east=testdb2&west=testdb3",
 					},
 					IKGStatus:  "APP_SPACE_IKG_STATUS_STATUS_ACTIVE",
 					CreateTime: createTime,
@@ -297,10 +301,12 @@ var _ = Describe("Resource Application Space", func() {
 						IKGSize:       "4GB",
 						ReplicaRegion: "us-west1",
 						DBConnection: &indykite.DBConnection{
-							URL:      "postgresql://localhost:5432/test",
-							Username: "testuser",
-							Password: "testpass",
-							Name:     "testdb",
+							URL:             "postgresql://localhost:5432/test",
+							Username:        "testuser",
+							Password:        "testpass",
+							Name:            "testdb",
+							CompositeDBName: "ikcomposite",
+							AliasMapping:    "global=testdb1&east=testdb2&west=testdb3",
 						},
 						IKGStatus:  "APP_SPACE_IKG_STATUS_STATUS_ACTIVE",
 						CreateTime: createTime,
@@ -317,10 +323,12 @@ var _ = Describe("Resource Application Space", func() {
 						IKGSize:       "4GB",
 						ReplicaRegion: "us-west1",
 						DBConnection: &indykite.DBConnection{
-							URL:      "postgresql://localhost:5432/test",
-							Username: "testuser",
-							Password: "testpass",
-							Name:     "testdb",
+							URL:             "postgresql://localhost:5432/test",
+							Username:        "testuser",
+							Password:        "testpass",
+							Name:            "testdb",
+							CompositeDBName: "ikcomposite",
+							AliasMapping:    "global=testdb1&east=testdb2&west=testdb3",
 						},
 						IKGStatus:  "APP_SPACE_IKG_STATUS_STATUS_ACTIVE",
 						CreateTime: createTime,
@@ -336,10 +344,12 @@ var _ = Describe("Resource Application Space", func() {
 						IKGSize:       "4GB",
 						ReplicaRegion: "us-west1",
 						DBConnection: &indykite.DBConnection{
-							URL:      "postgresql://localhost:5432/test",
-							Username: "testuser",
-							Password: "testpass",
-							Name:     "testdb",
+							URL:             "postgresql://localhost:5432/test",
+							Username:        "testuser",
+							Password:        "testpass",
+							Name:            "testdb",
+							CompositeDBName: "ikcomposite",
+							AliasMapping:    "global=testdb1&east=testdb2&west=testdb3",
 						},
 						IKGStatus:  "APP_SPACE_IKG_STATUS_STATUS_ACTIVE",
 						CreateTime: createTime,
@@ -371,10 +381,12 @@ var _ = Describe("Resource Application Space", func() {
 						IKGSize:       "4GB",
 						ReplicaRegion: "us-west1",
 						DBConnection: &indykite.DBConnection{
-							URL:      "postgresql://localhost:5432/test",
-							Username: "testuser",
-							Password: "testpass",
-							Name:     "testdb",
+							URL:             "postgresql://localhost:5432/test",
+							Username:        "testuser",
+							Password:        "testpass",
+							Name:            "testdb",
+							CompositeDBName: "ikcomposite",
+							AliasMapping:    "global=testdb1&east=testdb2&west=testdb3",
 						},
 						IKGStatus:  "APP_SPACE_IKG_STATUS_STATUS_ACTIVE",
 						CreateTime: createTime,
@@ -390,10 +402,12 @@ var _ = Describe("Resource Application Space", func() {
 						IKGSize:       "4GB",
 						ReplicaRegion: "us-west1",
 						DBConnection: &indykite.DBConnection{
-							URL:      "postgresql://localhost:5432/test",
-							Username: "testuser",
-							Password: "testpass",
-							Name:     "testdb",
+							URL:             "postgresql://localhost:5432/test",
+							Username:        "testuser",
+							Password:        "testpass",
+							Name:            "testdb",
+							CompositeDBName: "ikcomposite",
+							AliasMapping:    "global=testdb1&east=testdb2&west=testdb3",
 						},
 						IKGStatus:  "APP_SPACE_IKG_STATUS_STATUS_ACTIVE",
 						CreateTime: createTime,
@@ -427,6 +441,10 @@ var _ = Describe("Resource Application Space", func() {
 					Config: fmt.Sprintf(tfConfigDef, "", "Just some AppSpace description", dbConnConfig, ""),
 					Check: resource.ComposeTestCheckFunc(
 						testAppSpaceResourceDataExists(resourceName),
+						resource.TestCheckResourceAttr(
+							resourceName, "db_connection.0.composite_db_name", "ikcomposite"),
+						resource.TestCheckResourceAttr(
+							resourceName, "db_connection.0.alias_mapping", "global=testdb1&east=testdb2&west=testdb3"),
 					),
 				},
 				{
@@ -451,6 +469,46 @@ var _ = Describe("Resource Application Space", func() {
 					Destroy:     true,
 					ExpectError: regexp.MustCompile("Cannot destroy instance"),
 				},
+				{
+					// composite_db_name and alias_mapping must be configured together
+					Config: fmt.Sprintf(tfConfigDef, "", "Just some AppSpace description", `db_connection {
+						url = "postgresql://localhost:5432/test"
+						username = "testuser"
+						password = "testpass"
+						name = "testdb"
+						composite_db_name = "ikcomposite"
+					}`, turnOffDelProtection),
+					ExpectError: regexp.MustCompile(
+						`(?s)all of\s+` + "`" + `db_connection\.0\.alias_mapping,db_connection\.0\.composite_db_name` +
+							"`" + `\s+must be\s+specified`),
+				},
+				{
+					// each location may appear only once in alias_mapping
+					Config: fmt.Sprintf(tfConfigDef, "", "Just some AppSpace description", `db_connection {
+						url = "postgresql://localhost:5432/test"
+						username = "testuser"
+						password = "testpass"
+						name = "testdb"
+						composite_db_name = "ikcomposite"
+						alias_mapping = "east=testdb2&east=testdb3"
+					}`, turnOffDelProtection),
+					ExpectError: regexp.MustCompile(
+						`(?s)contains location "east" more than\s+once`),
+				},
+				{
+					// explicitly empty alias_mapping must not satisfy the pairing rule
+					Config: fmt.Sprintf(tfConfigDef, "", "Just some AppSpace description", `db_connection {
+						url = "postgresql://localhost:5432/test"
+						username = "testuser"
+						password = "testpass"
+						name = "testdb"
+						composite_db_name = "ikcomposite"
+						alias_mapping = ""
+					}`, turnOffDelProtection),
+					ExpectError: regexp.MustCompile(`(?s)"db_connection\.0\.alias_mapping" must not be\s+empty`),
+				},
+				// Keep a valid config as the last step: the test framework
+				// destroys with the final step's config, which must plan cleanly.
 				{
 					Config: fmt.Sprintf(tfConfigDef, "Some new display name", "", dbConnConfig, turnOffDelProtection),
 				},

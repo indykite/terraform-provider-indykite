@@ -64,3 +64,23 @@ resource "indykite_application_space" "appspace_with_db" {
     name     = "indykite"
   }
 }
+
+# Example 6: Customer-hosted composite database (one logical IKG federated
+# across multiple constituent databases). The composite database and its
+# constituents must already exist in Neo4j; alias_mapping maps the logical
+# locations used in capture requests to constituent database aliases.
+resource "indykite_application_space" "appspace_with_composite_db" {
+  customer_id  = data.indykite_customer.my_customer.id
+  name         = "appspace-with-composite-db"
+  display_name = "AppSpace with Composite DB"
+  description  = "Application space backed by a Neo4j composite database"
+  region       = "europe-west1"
+  db_connection {
+    url               = "neo4j://neo4j.example.com:7687"
+    username          = "neo4j"
+    password          = var.db_password
+    name              = "testdb1"
+    composite_db_name = "ikcomposite"
+    alias_mapping     = "global=testdb1&east=testdb2&west=testdb3"
+  }
+}

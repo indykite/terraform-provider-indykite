@@ -54,6 +54,50 @@ resource "indykite_application_space" "appspace" {
 #   deletion_protection = false
 # }
 
+# -----------------------------------------------------------------------------
+# Test: App space with a customer-hosted Neo4j composite database
+# (composite_db_name + alias_mapping route capture requests per location).
+# Commented out like appspaceb above: it needs a reachable customer-hosted
+# Neo4j where the composite database and its constituent databases/aliases
+# already exist (CREATE COMPOSITE DATABASE ...), otherwise provisioning never
+# reaches ikg_status ACTIVE and the pipeline times out.
+# -----------------------------------------------------------------------------
+
+# variable "NEO4J_PASSWORD" {
+#   type        = string
+#   description = "Password of the customer-hosted Neo4j with the composite DB"
+#   sensitive   = true
+# }
+
+# resource "indykite_application_space" "appspace_composite" {
+#   customer_id  = data.indykite_customer.customer.id
+#   name         = "automation-terraform-appspace-composite-${time_static.example.unix}"
+#   display_name = "Automation Terraform composite appspace ${time_static.example.unix}"
+#   description  = "Application space with composite DB for terraform pipeline"
+#   region       = "us-east1"
+#   ikg_size     = "4GB"
+#   db_connection {
+#     url               = "neo4j+s://xxxxxxxx.databases.neo4j.io"
+#     username          = "testuser"
+#     password          = var.NEO4J_PASSWORD
+#     name              = "testdb1"
+#     composite_db_name = "ikcomposite"
+#     alias_mapping     = "global=testdb1&east=testdb2&west=testdb3"
+#   }
+#   lifecycle {
+#     create_before_destroy = true
+#     postcondition {
+#       condition     = self.db_connection[0].composite_db_name == "ikcomposite"
+#       error_message = "composite_db_name must round-trip through create/read"
+#     }
+#     postcondition {
+#       condition     = self.db_connection[0].alias_mapping == "global=testdb1&east=testdb2&west=testdb3"
+#       error_message = "alias_mapping must round-trip through create/read"
+#     }
+#   }
+#   deletion_protection = false
+# }
+
 resource "indykite_application" "application" {
   app_space_id = indykite_application_space.appspace.id
   name         = "automation-terraform-application-${time_static.example.unix}"

@@ -60,6 +60,8 @@ Optional:
 
 Read-Only:
 
+- `alias_mapping` (String)
+- `composite_db_name` (String)
 - `name` (String)
 - `password` (String)
 - `url` (String)
