@@ -77,6 +77,8 @@ func getDBConnection(data *schema.ResourceData) *DBConnection {
 	username, _ := dbConnData[dbUsernameKey].(string)
 	password, _ := dbConnData[dbPasswordKey].(string)
 	name, _ := dbConnData[dbNameKey].(string)
+	compositeDBName, _ := dbConnData[dbCompositeDBNameKey].(string)
+	aliasMapping, _ := dbConnData[dbAliasMappingKey].(string)
 
 	// Only return a DBConnection if at least URL is provided
 	if url == "" {
@@ -84,10 +86,12 @@ func getDBConnection(data *schema.ResourceData) *DBConnection {
 	}
 
 	return &DBConnection{
-		URL:      url,
-		Username: username,
-		Password: password,
-		Name:     name,
+		URL:             url,
+		Username:        username,
+		Password:        password,
+		Name:            name,
+		CompositeDBName: compositeDBName,
+		AliasMapping:    aliasMapping,
 	}
 }
 
@@ -104,10 +108,12 @@ func setDBConnectionData(d *diag.Diagnostics, data *schema.ResourceData, dbConn 
 	}
 	dbConnData := []map[string]any{
 		{
-			dbURLKey:      dbConn.URL,
-			dbUsernameKey: dbConn.Username,
-			dbPasswordKey: oldPassword,
-			dbNameKey:     dbConn.Name,
+			dbURLKey:             dbConn.URL,
+			dbUsernameKey:        dbConn.Username,
+			dbPasswordKey:        oldPassword,
+			dbNameKey:            dbConn.Name,
+			dbCompositeDBNameKey: dbConn.CompositeDBName,
+			dbAliasMappingKey:    dbConn.AliasMapping,
 		},
 	}
 	setData(d, data, dbConnectionKey, dbConnData)

@@ -74,6 +74,11 @@ type DBConnection struct {
 	Username string `json:"username,omitempty"`
 	Password string `json:"password,omitempty"`
 	Name     string `json:"name,omitempty"`
+	// CompositeDBName is the Neo4j composite database name; empty means a regular single-DB IKG.
+	CompositeDBName string `json:"composite_db_name,omitempty"`
+	// AliasMapping is a URL-query-encoded map from logical location to constituent
+	// database alias, e.g. "global=db1&east=db2&west=db3".
+	AliasMapping string `json:"alias_mapping,omitempty"`
 }
 
 // CreateApplicationSpaceRequest represents the request to create an application space.

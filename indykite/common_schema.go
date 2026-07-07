@@ -15,6 +15,10 @@
 package indykite
 
 import (
+	"fmt"
+	"net/url"
+	"strings"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
@@ -44,6 +48,8 @@ const (
 	dbUsernameKey         = "username"
 	dbPasswordKey         = "password"
 	dbNameKey             = "name"
+	dbCompositeDBNameKey  = "composite_db_name"
+	dbAliasMappingKey     = "alias_mapping"
 )
 
 const (
@@ -258,9 +264,66 @@ func dbConnectionSchema() *schema.Schema {
 					Optional:    true,
 					Description: "Optional database name",
 				},
+				dbCompositeDBNameKey: {
+					Type:     schema.TypeString,
+					Optional: true,
+					Description: "Optional Neo4j composite database name. " +
+						"When set, the IKG is federated across the constituent databases " +
+						"listed in alias_mapping; omit it for a regular single-database IKG. " +
+						"Must be set together with alias_mapping.",
+					RequiredWith: []string{dbConnectionKey + ".0." + dbAliasMappingKey},
+					ValidateFunc: validation.StringIsNotEmpty,
+				},
+				dbAliasMappingKey: {
+					Type:     schema.TypeString,
+					Optional: true,
+					Description: "Optional URL-query-encoded mapping from logical location to " +
+						"constituent database alias, e.g. 'global=db1&east=db2&west=db3'. " +
+						"Locations used in capture requests must resolve through this mapping. " +
+						"Must be set together with composite_db_name.",
+					RequiredWith: []string{dbConnectionKey + ".0." + dbCompositeDBNameKey},
+					ValidateFunc: validateAliasMapping,
+				},
 			},
 		},
 	}
+}
+
+// validateAliasMapping checks the value is a URL-query-encoded location→alias map,
+// mirroring how the backend parses it (url.ParseQuery), with non-empty keys and values.
+func validateAliasMapping(i any, k string) ([]string, []error) {
+	v, ok := i.(string)
+	if !ok {
+		return nil, []error{fmt.Errorf("expected type of %q to be string", k)}
+	}
+	if v == "" {
+		return nil, []error{fmt.Errorf("%q must not be empty", k)}
+	}
+	values, err := url.ParseQuery(v)
+	if err != nil {
+		return nil, []error{fmt.Errorf(
+			"%q must be a URL-query-encoded map like 'location1=alias1&location2=alias2': %w", k, err)}
+	}
+	var errs []error
+	for location, aliases := range values {
+		if strings.TrimSpace(location) == "" {
+			errs = append(errs, fmt.Errorf("%q contains an entry with empty location", k))
+			continue
+		}
+		// url.ParseQuery collects repeated keys into a slice; a location→alias
+		// map must bind each location to exactly one alias.
+		if len(aliases) > 1 {
+			errs = append(errs, fmt.Errorf(
+				"%q contains location %q more than once; each location must map to exactly one alias", k, location))
+			continue
+		}
+		for _, alias := range aliases {
+			if strings.TrimSpace(alias) == "" {
+				errs = append(errs, fmt.Errorf("%q is missing an alias for location %q", k, location))
+			}
+		}
+	}
+	return nil, errs
 }
 
 func dbConnectionComputedSchema() *schema.Schema {
@@ -290,6 +353,18 @@ func dbConnectionComputedSchema() *schema.Schema {
 					Type:        schema.TypeString,
 					Computed:    true,
 					Description: "Optional database name",
+				},
+				dbCompositeDBNameKey: {
+					Type:     schema.TypeString,
+					Computed: true,
+					Description: "Optional Neo4j composite database name; " +
+						"empty means a regular single-database IKG.",
+				},
+				dbAliasMappingKey: {
+					Type:     schema.TypeString,
+					Computed: true,
+					Description: "Optional URL-query-encoded mapping from logical location to " +
+						"constituent database alias, e.g. 'global=db1&east=db2&west=db3'.",
 				},
 			},
 		},

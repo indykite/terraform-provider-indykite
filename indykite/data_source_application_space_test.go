@@ -70,10 +70,12 @@ var _ = Describe("DataSource Application Space", func() {
 			IKGSize:       "4GB",
 			ReplicaRegion: "us-west1",
 			DBConnection: &indykite.DBConnection{
-				URL:      "postgresql://localhost:5432/testdb",
-				Username: "testuser",
-				Password: "",
-				Name:     "testdb",
+				URL:             "postgresql://localhost:5432/testdb",
+				Username:        "testuser",
+				Password:        "",
+				Name:            "testdb",
+				CompositeDBName: "ikcomposite",
+				AliasMapping:    "global=testdb1&east=testdb2&west=testdb3",
 			},
 		}
 
@@ -300,11 +302,13 @@ func testAppSpaceDataExists(
 		// Add db_connection checks based on whether it exists in the response
 		if data.DBConnection != nil {
 			keys["db_connection.#"] = Equal("1")
-			keys["db_connection.0.%"] = Equal("4")
+			keys["db_connection.0.%"] = Equal("6")
 			keys["db_connection.0.url"] = Equal(data.DBConnection.URL)
 			keys["db_connection.0.username"] = Equal(data.DBConnection.Username)
 			keys["db_connection.0.password"] = Equal(data.DBConnection.Password)
 			keys["db_connection.0.name"] = Equal(data.DBConnection.Name)
+			keys["db_connection.0.composite_db_name"] = Equal(data.DBConnection.CompositeDBName)
+			keys["db_connection.0.alias_mapping"] = Equal(data.DBConnection.AliasMapping)
 		} else {
 			keys["db_connection.#"] = Equal("0")
 		}
