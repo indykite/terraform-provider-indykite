@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.38.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.37.3...v0.38.0) (2026-07-07)
+
+
+### Features
+
+* add composite db elements ([9501387](https://github.com/indykite/terraform-provider-indykite/commit/9501387d6202f2db5e867137bd343f4d079df120))
+* add more wait before app agent ([f645830](https://github.com/indykite/terraform-provider-indykite/commit/f6458307993e1e542e55ab248baa33a9b7ed4f13))
+* add more wait until app agent status ready ([d936f79](https://github.com/indykite/terraform-provider-indykite/commit/d936f790e8c2991d321da8bd0a409063c05a91cb))
+
 ## [0.37.3](https://github.com/indykite/terraform-provider-indykite/compare/v0.37.2...v0.37.3) (2026-07-03)
 
 
