@@ -16,10 +16,21 @@ package indykite
 
 import (
 	"context"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
+
+// agentCreateInitialWait is the one-time pause before the application agent
+// create request does anything. Temporary mitigation in the same spirit as
+// credCreateInitialWait: agent creation triggers backend follow-up work (IKG
+// node creation for the agent's permissions) whose completion cannot be
+// observed, and creating the agent too early after its application can hit
+// half-initialized backend state. Shrink it back once the backend reports
+// readiness (see the backend bug ticket for the IKG node race). It is a var
+// (not a const) so tests can shorten it via the seam in export_test.go.
+var agentCreateInitialWait = 20 * time.Second
 
 func resourceApplicationAgent() *schema.Resource {
 	return &schema.Resource{
@@ -58,6 +69,16 @@ func resAppAgentCreate(ctx context.Context, data *schema.ResourceData, meta any)
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutCreate))
 	defer cancel()
+
+	timer := time.NewTimer(agentCreateInitialWait)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+	case <-ctx.Done():
+		return append(d, diag.Errorf(
+			"interrupted while waiting %s before creating application agent: %v",
+			agentCreateInitialWait, ctx.Err())...)
+	}
 
 	apiPermissions := rawArrayToTypedArray[string](data.Get(apiPermissionsKey).([]any))
 	req := CreateApplicationAgentRequest{

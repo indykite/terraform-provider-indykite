@@ -176,7 +176,7 @@ jobs:
       - name: Tag latest — terraform-plugin-tests
         if: needs.detect-changes.outputs.retag_full == 'true'
         run: |-
-          image_base="${{ vars.ARTIFACT_REGISTRY_URL }}/${{ secrets.GCP_PROJECT_ID_MGMT }}/indykite/${{ env.IMAGE_NAME_FULL }}"
+          image_base="${ARTIFACT_REGISTRY_URL}/${GCP_PROJECT_ID_MGMT}/indykite/${{ env.IMAGE_NAME_FULL }}"
           docker buildx imagetools create \
             --tag "${image_base}:latest" \
             "${image_base}:${{ needs.detect-changes.outputs.version_full }}"
@@ -184,7 +184,7 @@ jobs:
       - name: Tag latest — terraform-plugin-tests-ci (pipeline)
         if: needs.detect-changes.outputs.retag_ci == 'true'
         run: |-
-          image_base="${{ vars.ARTIFACT_REGISTRY_URL }}/${{ secrets.GCP_PROJECT_ID_MGMT }}/indykite/${{ env.IMAGE_NAME_CI }}"
+          image_base="${ARTIFACT_REGISTRY_URL}/${GCP_PROJECT_ID_MGMT}/indykite/${{ env.IMAGE_NAME_CI }}"
           docker buildx imagetools create \
             --tag "${image_base}:latest" \
             "${image_base}:${{ needs.detect-changes.outputs.version_ci }}"

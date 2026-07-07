@@ -31,3 +31,13 @@ func SetCredCreateWaits(initial, waitMin, waitMax time.Duration) func() {
 func CredCreateMaxRetries() int {
 	return credCreateMaxRetries
 }
+
+// SetAgentCreateWait overrides the application agent create initial wait for
+// tests and returns a function that restores the original value.
+func SetAgentCreateWait(d time.Duration) func() {
+	orig := agentCreateInitialWait
+	agentCreateInitialWait = d
+	return func() {
+		agentCreateInitialWait = orig
+	}
+}
