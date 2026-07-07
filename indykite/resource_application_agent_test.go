@@ -46,6 +46,7 @@ var _ = Describe("Resource ApplicationAgent", func() {
 
 	BeforeEach(func() {
 		provider = indykite.Provider()
+		DeferCleanup(indykite.SetAgentCreateWait(time.Millisecond))
 	})
 
 	AfterEach(func() {
