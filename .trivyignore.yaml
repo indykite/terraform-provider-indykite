@@ -6,3 +6,10 @@ misconfigurations:
     paths:
       - "docker/infra/Dockerfile"
       - "docker/local/ForJarvisProtoLocal.Dockerfile"
+
+vulnerabilities:
+  - id: GO-2026-5932 # (UNKNOWN): golang.org/x/crypto/openpgp is unmaintained; no fixed version exists.
+    # Transitive-only dependency (via terraform-plugin-sdk chain), our code never imports or calls
+    # openpgp (verified with govulncheck). Remove once upstream drops the openpgp package.
+    paths:
+      - "go.mod"
