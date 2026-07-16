@@ -27,6 +27,7 @@ description: |-
   | **BatchDeleteRelationshipProperties** | indykite.audit.capture.delete.relationship.property |  |  |
   | **BatchDeleteNodeTags** | indykite.audit.capture.delete.node.tag | captureLabel | Car |
   |  |  | captureLabel | Green |
+  | **BatchDeleteNodePropertyMetadata** | indykite.audit.capture.delete.node.property.metadata |  |  |
   |  | **Configuration Events** |  |  |
   | Config | indykite.audit.config.create |  |  |
   |  | indykite.audit.config.read |  |  |
@@ -37,11 +38,23 @@ description: |-
   |  | **Token Events** |  |  |
   | TokenIntrospect | indykite.audit.credentials.token.introspected |  |  |
   |  | **Authorization Events** |  |  |
-  | Authorization | indykite.audit.authorization.isauthorized |  |  |
+  | Authorization | indykite.audit.authorization.evaluation |  |  |
+  |  | indykite.audit.authorization.evaluations |  |  |
+  |  | indykite.audit.authorization.searchsubject |  |  |
+  |  | indykite.audit.authorization.searchresource |  |  |
+  |  | indykite.audit.authorization.searchaction |  |  |
+  |  | indykite.audit.authorization.isauthorized |  |  |
   |  | indykite.audit.authorization.whatauthorized |  |  |
   |  | indykite.audit.authorization.whoauthorized |  |  |
   |  | **Ciq Events** |  |  |
   | Ciq | indykite.audit.ciq.execute |  |  |
+  |  | **CDC Events** (requires include_cdc_events = true) |  |  |
+  | CDC | indykite.audit.cdc.node.create |  |  |
+  |  | indykite.audit.cdc.node.update |  |  |
+  |  | indykite.audit.cdc.node.delete |  |  |
+  |  | indykite.audit.cdc.relationship.create |  |  |
+  |  | indykite.audit.cdc.relationship.update |  |  |
+  |  | indykite.audit.cdc.relationship.delete |  |  |
   |  |  |  |  |
 ---
 
@@ -73,6 +86,7 @@ Event Sink configuration is used to configure outbound events.
 | **BatchDeleteRelationshipProperties** | indykite.audit.capture.delete.relationship.property |  |  |
 | **BatchDeleteNodeTags** | indykite.audit.capture.delete.node.tag | captureLabel | Car |
 |  |  | captureLabel | Green |
+| **BatchDeleteNodePropertyMetadata** | indykite.audit.capture.delete.node.property.metadata |  |  |
 |  | **Configuration Events** |  |  |
 | Config | indykite.audit.config.create |  |  |
 |  | indykite.audit.config.read |  |  |
@@ -83,11 +97,23 @@ Event Sink configuration is used to configure outbound events.
 |  | **Token Events** |  |  |
 | TokenIntrospect | indykite.audit.credentials.token.introspected |  |  |
 |  | **Authorization Events** |  |  |
-| Authorization | indykite.audit.authorization.isauthorized |  |  |
+| Authorization | indykite.audit.authorization.evaluation |  |  |
+|  | indykite.audit.authorization.evaluations |  |  |
+|  | indykite.audit.authorization.searchsubject |  |  |
+|  | indykite.audit.authorization.searchresource |  |  |
+|  | indykite.audit.authorization.searchaction |  |  |
+|  | indykite.audit.authorization.isauthorized |  |  |
 |  | indykite.audit.authorization.whatauthorized |  |  |
 |  | indykite.audit.authorization.whoauthorized |  |  |
 |  | **Ciq Events** |  |  |
 | Ciq | indykite.audit.ciq.execute |  |  |
+|  | **CDC Events** (requires include_cdc_events = true) |  |  |
+| CDC | indykite.audit.cdc.node.create |  |  |
+|  | indykite.audit.cdc.node.update |  |  |
+|  | indykite.audit.cdc.node.delete |  |  |
+|  | indykite.audit.cdc.relationship.create |  |  |
+|  | indykite.audit.cdc.relationship.update |  |  |
+|  | indykite.audit.cdc.relationship.delete |  |  |
 |  |  |  |  |
 
 ## Example Usage
