@@ -13,7 +13,7 @@ on: # yamllint disable-line rule:truthy
       - docker/infra/**
       - tests/**
   # to have an ability to run the workflow manually
-  workflow_dispatch: # yamllint disable-line rule:empty-values
+  workflow_dispatch: {}
 #
 permissions:
   contents: read
@@ -32,29 +32,10 @@ jobs:
       version_ci: ${{ steps.versions.outputs.version_ci }}
       version_full: ${{ steps.versions.outputs.version_full }}
     steps:
-      - name: actions/checkout/fetch-depth
-        id: fetch-depth
-        shell: bash
-        run: |
-          case "${{ github.event_name }}" in
-            pull_request)
-              # Enough history to diff every commit in the PR against its base.
-              echo "fetch-depth=$((${{ github.event.pull_request.commits }} + 1))" >> "$GITHUB_OUTPUT"
-              ;;
-            push)
-              # One-commit diff against the previous master tip for the retag filters.
-              echo "fetch-depth=2" >> "$GITHUB_OUTPUT"
-              ;;
-            *)
-              # workflow_dispatch rebuilds both images unconditionally; no diff needed.
-              echo "fetch-depth=1" >> "$GITHUB_OUTPUT"
-              ;;
-          esac
       - name: actions/checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0 - https://github.com/actions/checkout/releases
+        uses: indykite/.github/.github/actions/git-checkout@master # actions/checkout with dynamic fetch-depth resolution
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: ${{ steps.fetch-depth.outputs.fetch-depth }}
 
       - name: dorny/paths-filter
         id: filter
@@ -128,55 +109,60 @@ jobs:
       needs.detect-changes.outputs.retag_ci == 'true' ||
       needs.detect-changes.outputs.retag_full == 'true'
     env:
-      ARTIFACT_REGISTRY_URL: europe-west1-docker.pkg.dev
-      GCP_PROJECT_ID_MGMT: ${{ secrets.GCP_PROJECT_ID_MGMT }}
       IMAGE_NAME_CI: terraform-plugin-tests-ci
       IMAGE_NAME_FULL: terraform-plugin-tests
     runs-on: ubuntu-latest
     steps:
       - name: actions/checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0 - https://github.com/actions/checkout/releases
-
-      - name: docker/setup-buildx
-        id: buildx
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0 - https://github.com/docker/setup-buildx-action/releases
-
-      - name: Setup GCP Auth
-        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0 - https://github.com/google-github-actions/auth/releases
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER_MGMT }}
-          service_account: github@${{ env.GCP_PROJECT_ID_MGMT }}.iam.gserviceaccount.com
-
-      - name: login to docker hub
-        run: gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY_URL }} -q
+        uses: indykite/.github/.github/actions/git-checkout@master # actions/checkout with dynamic fetch-depth resolution
 
       - name: Build terraform-plugin-tests
         # --- full image (tests baked in) — warms BuildKit cache for the second build ---
         if: needs.detect-changes.outputs.build_full == 'true'
-        run: |-
-          image_base="${ARTIFACT_REGISTRY_URL}/${GCP_PROJECT_ID_MGMT}/indykite/${{ env.IMAGE_NAME_FULL }}"
-          docker buildx build --push \
-            -f docker/infra/Dockerfile \
-            --target ${{ env.IMAGE_NAME_FULL }} \
-            --tag "${image_base}:${{ needs.detect-changes.outputs.version_full }}" \
-            --platform linux/amd64,linux/arm64 .
+        uses: indykite/.github/.github/actions/docker-build@master
+        with:
+          gcp-service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          workload-identity-provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER_MGMT }}
+          docker-repository-uri: ${{ secrets.GCP_GAR_DOCKER }}
+          docker-image-name: ${{ env.IMAGE_NAME_FULL }}
+          docker-image-tag: ${{ needs.detect-changes.outputs.version_full }}
+          dockerfile: docker/infra/Dockerfile
+          docker-target: ${{ env.IMAGE_NAME_FULL }}
+          platforms: linux/amd64,linux/arm64
+          trivy-scan: "1"
+          trivy-exit-code: "0"
 
       # --- ci image (no baked-in tests), reuses layers from above ---
       - name: Build terraform-plugin-testsci (pipeline)
         if: needs.detect-changes.outputs.build_ci == 'true'
-        run: |-
-          image_base="${ARTIFACT_REGISTRY_URL}/${GCP_PROJECT_ID_MGMT}/indykite/${{ env.IMAGE_NAME_CI }}"
-          docker buildx build --push \
-            -f docker/infra/Dockerfile \
-            --target ${{ env.IMAGE_NAME_CI }} \
-            --tag "${image_base}:${{ needs.detect-changes.outputs.version_ci }}" \
-            --platform linux/amd64,linux/arm64 .
+        uses: indykite/.github/.github/actions/docker-build@master
+        with:
+          gcp-service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          workload-identity-provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER_MGMT }}
+          docker-repository-uri: ${{ secrets.GCP_GAR_DOCKER }}
+          docker-image-name: ${{ env.IMAGE_NAME_CI }}
+          docker-image-tag: ${{ needs.detect-changes.outputs.version_ci }}
+          dockerfile: docker/infra/Dockerfile
+          docker-target: ${{ env.IMAGE_NAME_CI }}
+          platforms: linux/amd64,linux/arm64
+          trivy-scan: "1"
+          trivy-exit-code: "0"
+
+      - name: setup/docker
+        uses: indykite/.github/.github/actions/docker-setup@master
+        if: >-
+          needs.detect-changes.outputs.retag_ci == 'true' ||
+          needs.detect-changes.outputs.retag_full == 'true'
+        with:
+          gcp-service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          workload-identity-provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER_MGMT }}
+          docker-repository-hostname: ${{ vars.ARTIFACT_REGISTRY_URL }}
 
       # --- tag `latest` on master push (after PR merge). Manifest-level retag preserves multi-arch. ---
       - name: Tag latest — terraform-plugin-tests
         if: needs.detect-changes.outputs.retag_full == 'true'
         run: |-
-          image_base="${ARTIFACT_REGISTRY_URL}/${GCP_PROJECT_ID_MGMT}/indykite/${{ env.IMAGE_NAME_FULL }}"
+          image_base="${{ secrets.GCP_GAR_DOCKER }}/${{ env.IMAGE_NAME_FULL }}"
           docker buildx imagetools create \
             --tag "${image_base}:latest" \
             "${image_base}:${{ needs.detect-changes.outputs.version_full }}"
@@ -184,7 +170,7 @@ jobs:
       - name: Tag latest — terraform-plugin-tests-ci (pipeline)
         if: needs.detect-changes.outputs.retag_ci == 'true'
         run: |-
-          image_base="${ARTIFACT_REGISTRY_URL}/${GCP_PROJECT_ID_MGMT}/indykite/${{ env.IMAGE_NAME_CI }}"
+          image_base="${{ secrets.GCP_GAR_DOCKER }}/${{ env.IMAGE_NAME_CI }}"
           docker buildx imagetools create \
             --tag "${image_base}:latest" \
             "${image_base}:${{ needs.detect-changes.outputs.version_ci }}"
