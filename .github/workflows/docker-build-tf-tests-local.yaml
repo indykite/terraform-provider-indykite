@@ -7,24 +7,22 @@ on: # yamllint disable-line rule:truthy
     paths:
       - docker/**
   # to have an ability to run the workflow manually
-  workflow_dispatch: # yamllint disable-line rule:empty-values
+  workflow_dispatch: {}
 #
 permissions:
   contents: read
-  id-token: write
+  id-token: write # mint OIDC token for keyless GCP auth via Workload Identity Federation (setup-buildx step)
 #
 jobs:
   build:
     name: terraform-tests-for-local-jarvis
     env:
-      ARTIFACT_REGISTRY_URL: europe-west1-docker.pkg.dev
-      GCP_PROJECT_ID_MGMT: ${{ secrets.GCP_PROJECT_ID_MGMT }}
-      SSH_KEY: ${{ secrets.SSH_KEY }}
       IMAGE_NAME: terraform-tests-for-local-jarvis
+      SSH_KEY: ${{ secrets.SSH_KEY }}
     runs-on: ubuntu-latest
     steps:
       - name: actions/checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0 - https://github.com/actions/checkout/releases
+        uses: indykite/.github/.github/actions/git-checkout@master # actions/checkout with dynamic fetch-depth resolution
 
       - name: setup/env
         id: get_version
@@ -32,25 +30,18 @@ jobs:
           version=$(sed -nr 's/.*version="(.+)"/\1/p' ./docker/local/ForJarvisProtoLocal.Dockerfile)
           echo "version=${version}" >>"${GITHUB_OUTPUT}"
 
-      - name: docker/setup-buildx
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0 - https://github.com/docker/setup-buildx-action/releases
-        id: buildx
-
-      - name: gcloud/auth
-        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0 - https://github.com/google-github-actions/auth/releases
-        id: authentication
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER_MGMT }}
-          service_account: github@${{ env.GCP_PROJECT_ID_MGMT }}.iam.gserviceaccount.com
-
-      - name: docker/login
-        run: |
-          gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY_URL }} -q
-
       - name: docker/build & push
-        run: |-
-          cd docker/local
-          docker buildx build --push --squash --build-arg SSH_PRIVATE_KEY="${{ env.SSH_KEY }}" \
-          --tag ${{ env.ARTIFACT_REGISTRY_URL }}/${{ env.GCP_PROJECT_ID_MGMT }}/indykite/${{ env.IMAGE_NAME }}:latest \
-          --tag ${{ env.ARTIFACT_REGISTRY_URL }}/${{ env.GCP_PROJECT_ID_MGMT }}/indykite/${{ env.IMAGE_NAME }}:${{ steps.get_version.outputs.version }} \
-          --platform linux/amd64,linux/arm64,linux/arm/v7 -f ForJarvisProtoLocal.Dockerfile .
+        uses: indykite/.github/.github/actions/docker-build@master
+        with:
+          gcp-service-account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          workload-identity-provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER_MGMT }}
+          docker-repository-uri: ${{ secrets.GCP_GAR_DOCKER }}
+          docker-image-name: ${{ env.IMAGE_NAME }}
+          docker-image-tag: ${{ steps.get_version.outputs.version }}
+          docker-image-tag-latest: "1"
+          docker-context: docker/local
+          dockerfile: docker/local/ForJarvisProtoLocal.Dockerfile
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          build-args: '{"SSH_PRIVATE_KEY":"${{ env.SSH_KEY }}"}'
+          trivy-scan: "1"
+          trivy-exit-code: "0"
