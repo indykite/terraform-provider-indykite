@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.39.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.38.0...v0.39.0) (2026-07-22)
+
+
+### Features
+
+* update event types list ([1361029](https://github.com/indykite/terraform-provider-indykite/commit/13610293c0b0db086a155ec657cbcc41b10c4cf8))
+* update region and ikg size ([edef707](https://github.com/indykite/terraform-provider-indykite/commit/edef707487491a4e2811a769a51d30613ca7470e))
+
+
+### Bug Fixes
+
+* cleanup on failure ([b6e963e](https://github.com/indykite/terraform-provider-indykite/commit/b6e963e36cd3f3a64f5f1405eacbe007a62a4791))
+
 ## [0.38.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.37.3...v0.38.0) (2026-07-07)
 
 
