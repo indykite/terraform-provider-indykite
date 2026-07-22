@@ -109,7 +109,7 @@ resource "indykite_application_space" "appspace_with_composite_db" {
 - `customer_id` (String) Identifier of Customer
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 - `region` (String) Region where the application space is located.
-		Valid values are: europe-west1, us-east1.
+		Valid values are defined by the environment, see IndyKite documentation for available regions.
 
 ### Optional
 
@@ -118,11 +118,10 @@ resource "indykite_application_space" "appspace_with_composite_db" {
 - `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
 - `ikg_size` (String) IKG size that will be allocated, which corresponds also to number of CPU nodes (default 2GB).
-		Valid values are: 2GB (1 CPU), 4GB (1 CPU), 8GB (2 CPUs), 16GB (3 CPUs), 32GB (6 CPUs), 64GB (12 CPUs),
-		128GB (24 CPUs), 192GB (36 CPUs), 256GB (48 CPUs), 384GB (82 CPUs), and 512GB (96 CPUs).
+		Valid values are defined by the environment, see IndyKite documentation for available sizes.
 - `replica_region` (String) Replica region specifies where the replica IKG is created.
 		Replica must be a different region than the master, but also on the same geographical continent.
-		Valid values are: europe-west1, us-east1, us-west1.
+		Valid values are defined by the environment, see IndyKite documentation for available regions.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only

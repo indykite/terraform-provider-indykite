@@ -30,7 +30,7 @@ import (
 // half-initialized backend state. Shrink it back once the backend reports
 // readiness (see the backend bug ticket for the IKG node race). It is a var
 // (not a const) so tests can shorten it via the seam in export_test.go.
-var agentCreateInitialWait = 20 * time.Second
+var agentCreateInitialWait = 2 * time.Second
 
 func resourceApplicationAgent() *schema.Resource {
 	return &schema.Resource{
