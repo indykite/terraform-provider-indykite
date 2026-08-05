@@ -18,7 +18,6 @@ jobs:
     name: terraform-tests-for-local-jarvis
     env:
       IMAGE_NAME: terraform-tests-for-local-jarvis
-      SSH_KEY: ${{ secrets.SSH_KEY }}
     runs-on: ubuntu-latest
     steps:
       - name: actions/checkout
@@ -30,6 +29,9 @@ jobs:
           version=$(sed -nr 's/.*version="(.+)"/\1/p' ./docker/local/ForJarvisProtoLocal.Dockerfile)
           echo "version=${version}" >>"${GITHUB_OUTPUT}"
 
+      # The SSH deploy key is intentionally NOT passed at build time: the image must not
+      # contain key material. Consumers provide it at container start via
+      # 'docker run -e SSH_PRIVATE_KEY=...' (or by mounting ~/.ssh/id_ed25519).
       - name: docker/build & push
         uses: indykite/.github/.github/actions/docker-build@master
         with:
@@ -42,6 +44,5 @@ jobs:
           docker-context: docker/local
           dockerfile: docker/local/ForJarvisProtoLocal.Dockerfile
           platforms: linux/amd64,linux/arm64,linux/arm/v7
-          build-args: '{"SSH_PRIVATE_KEY":"${{ env.SSH_KEY }}"}'
           trivy-scan: "1"
           trivy-exit-code: "0"

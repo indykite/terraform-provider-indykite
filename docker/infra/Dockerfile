@@ -44,8 +44,8 @@ RUN curl -sSL https://sdk.cloud.google.com | bash \
 
 COPY --chown=10001:10001 docker/infra/ci/startscript.sh "${APPUSER_HOME}/startscript.sh"
 
-# Switch to user
-USER "$APPUSER"
+# Switch to user (numeric uid:gid of $APPUSER:$APPGROUP, resolvable by the host system)
+USER 10001:10001
 
 # Checkout github repository
 ENV CI=true
@@ -65,8 +65,8 @@ RUN terraform -version
 COPY --chown=10001:10001 docker/infra/full/startscript.sh "${APPUSER_HOME}/startscript.sh"
 COPY --chown=10001:10001 tests/ ${APPUSER_HOME}/tests
 
-# Switch to user
-USER "$APPUSER"
+# Switch to user (numeric uid:gid of $APPUSER:$APPGROUP, resolvable by the host system)
+USER 10001:10001
 
 # Checkout github repository
 ENV CI=true

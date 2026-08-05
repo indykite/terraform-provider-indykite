@@ -78,7 +78,7 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 						ApplicationAgentID: appAgentID,
 						Kid:                "EfUEiFnOzA5PCp8SSksp7iXv7cHRehCsIGo6NAQ9H7w",
 						CreateTime:         createTime,
-						CreateBy:           "creator-id",
+						CreatedBy:          "creator-id",
 						AgentConfig: json.RawMessage(
 							`{"appAgentId":"` + appAgentID + `","endpoint":"https://example.com"}`),
 					}
@@ -92,7 +92,7 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 						DisplayName:        "OPA credentials",
 						Kid:                "BgQgo-U3kF7kf2dXLKFPNcl3haR8k1VD2nTTvp0GBhI",
 						CreateTime:         createTime,
-						CreateBy:           "creator-id",
+						CreatedBy:          "creator-id",
 						AgentConfig: json.RawMessage(
 							`{"appAgentId":"` + appAgentID + `","endpoint":"https://example.com"}`),
 					}
@@ -112,7 +112,7 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 						ApplicationAgentID: appAgentID,
 						Kid:                "EfUEiFnOzA5PCp8SSksp7iXv7cHRehCsIGo6NAQ9H7w",
 						CreateTime:         createTime,
-						CreateBy:           "creator-id",
+						CreatedBy:          "creator-id",
 					}
 				} else {
 					resp = indykite.ApplicationAgentCredentialResponse{
@@ -124,7 +124,7 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 						DisplayName:        "OPA credentials",
 						Kid:                "BgQgo-U3kF7kf2dXLKFPNcl3haR8k1VD2nTTvp0GBhI",
 						CreateTime:         createTime,
-						CreateBy:           "creator-id",
+						CreatedBy:          "creator-id",
 					}
 				}
 				w.WriteHeader(http.StatusOK)
@@ -305,7 +305,7 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 					ApplicationAgentID: appAgentID,
 					Kid:                "EfUEiFnOzA5PCp8SSksp7iXv7cHRehCsIGo6NAQ9H7w",
 					CreateTime:         createTime,
-					CreateBy:           "creator-id",
+					CreatedBy:          "creator-id",
 					AgentConfig: json.RawMessage(
 						`{"appAgentId":"` + appAgentID + `","endpoint":"https://example.com"}`),
 				}
@@ -321,7 +321,7 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 					ApplicationAgentID: appAgentID,
 					Kid:                "EfUEiFnOzA5PCp8SSksp7iXv7cHRehCsIGo6NAQ9H7w",
 					CreateTime:         createTime,
-					CreateBy:           "creator-id",
+					CreatedBy:          "creator-id",
 				}
 				w.WriteHeader(http.StatusOK)
 				_ = json.NewEncoder(w).Encode(resp)

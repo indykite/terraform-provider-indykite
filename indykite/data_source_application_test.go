@@ -78,8 +78,8 @@ var _ = Describe("DataSource Application", func() {
 				r.URL.Query().Get("project_id") == appSpaceID:
 				// List applications by app space
 				w.WriteHeader(http.StatusOK)
-				_ = json.NewEncoder(w).Encode(indykite.ListApplicationsResponse{
-					Applications: []indykite.ApplicationResponse{applicationResp},
+				_ = json.NewEncoder(w).Encode(indykite.ListResponse[indykite.ApplicationResponse]{
+					Data: []indykite.ApplicationResponse{applicationResp},
 				})
 			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/applications/acme") &&
 				r.URL.Query().Get("location") == appSpaceID:
@@ -191,10 +191,10 @@ var _ = Describe("DataSource Application", func() {
 
 		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/applications") {
-				// List applications - return both wrapped in ListApplicationsResponse
+				// List applications - return both wrapped in the generic {"data": [...]} response
 				w.WriteHeader(http.StatusOK)
-				_ = json.NewEncoder(w).Encode(indykite.ListApplicationsResponse{
-					Applications: []indykite.ApplicationResponse{applicationResp, applicationResp2},
+				_ = json.NewEncoder(w).Encode(indykite.ListResponse[indykite.ApplicationResponse]{
+					Data: []indykite.ApplicationResponse{applicationResp, applicationResp2},
 				})
 			} else {
 				w.WriteHeader(http.StatusNotFound)

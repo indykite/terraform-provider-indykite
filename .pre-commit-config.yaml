@@ -73,7 +73,7 @@ repos:
   #
   # Commit Message linting
   - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook # ci:ignore:executed under a separate GitHub action
-    rev: 1d7031e6d0bbfce76e5a625b0cec24fb22e517a0 # frozen: v9.25.0
+    rev: 25d0a52aa8bc0fc242613346792dc8d726c13347 # frozen: v9.26.0
     hooks:
       # NON-DEFAULT stage, install explicitly with: pre-commit install -t commit-msg
       - id: commitlint
@@ -232,7 +232,7 @@ repos:
         pass_filenames: false
 
   - repo: https://github.com/hadolint/hadolint # language: system
-    rev: 57e1618d78fd469a92c1e584e8c9313024656623 # frozen: v2.14.0
+    rev: 2eece55955ced00200be9729e9728cb7dacca505 # frozen: v2.15.1
     hooks:
       - id: hadolint
         name: hadolint/dockerfile
@@ -240,7 +240,7 @@ repos:
   #
   # Terraform & Terragrunt
   - repo: https://github.com/antonbabenko/pre-commit-terraform
-    rev: 05fd71a57a467ccf5598f7e836d3af4cf9225abb # frozen: v1.108.0
+    rev: bf9dd9c695ddaf238af36f179049202358ec22b7 # frozen: v1.108.1
     hooks:
       # - id: tfupdate      # done via 'validate -upgrade' below
       - id: terraform_fmt

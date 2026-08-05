@@ -144,15 +144,15 @@ func dataAppSpaceListContext(ctx context.Context, data *schema.ResourceData, met
 	defer cancel()
 
 	customerID := data.Get(customerIDKey).(string)
-	var resp ListApplicationSpacesResponse
+	var resp ListResponse[ApplicationSpaceResponse]
 	err := clientCtx.GetClient().Get(ctx, "/projects?organization_id="+customerID, &resp)
 	if HasFailed(&d, err) {
 		return d
 	}
 
-	allAppSpaces := make([]map[string]any, 0, len(resp.AppSpaces))
-	for i := range resp.AppSpaces {
-		appSpace := &resp.AppSpaces[i]
+	allAppSpaces := make([]map[string]any, 0, len(resp.Data))
+	for i := range resp.Data {
+		appSpace := &resp.Data[i]
 		// Apply exact name match filter (MinItems: 1 ensures filter is always present)
 		matchFound := false
 		for _, filter := range match {

@@ -21,6 +21,11 @@ import (
 
 // Common structures
 
+// ListResponse is the generic wrapper returned by all Config API list endpoints.
+type ListResponse[T any] struct {
+	Data []T `json:"data"`
+}
+
 // BaseResponse contains common fields in all responses.
 type BaseResponse struct {
 	ID          string    `json:"id"`
@@ -59,11 +64,6 @@ type ApplicationResponse struct {
 type UpdateApplicationRequest struct {
 	DisplayName *string `json:"display_name,omitempty"`
 	Description *string `json:"description,omitempty"`
-}
-
-// ListApplicationsResponse represents the response from listing applications.
-type ListApplicationsResponse struct {
-	Applications []ApplicationResponse `json:"applications"`
 }
 
 // Application Space structures
@@ -117,11 +117,6 @@ type UpdateApplicationSpaceRequest struct {
 	DBConnection *DBConnection `json:"db_connection,omitempty"`
 }
 
-// ListApplicationSpacesResponse represents the response from listing application spaces.
-type ListApplicationSpacesResponse struct {
-	AppSpaces []ApplicationSpaceResponse `json:"projects"`
-}
-
 // Application Agent structures
 
 // CreateApplicationAgentRequest represents the request to create an application agent.
@@ -155,11 +150,6 @@ type UpdateApplicationAgentRequest struct {
 	APIPermissions []string `json:"api_permissions,omitempty"`
 }
 
-// ListApplicationAgentsResponse represents the response from listing application agents.
-type ListApplicationAgentsResponse struct {
-	Agents []ApplicationAgentResponse `json:"agents"`
-}
-
 // Application Agent Credential structures
 
 // CreateApplicationAgentCredentialRequest represents the request to create an application agent credential.
@@ -179,12 +169,12 @@ type ApplicationAgentCredentialResponse struct {
 	ID                 string          `json:"id"`
 	Kid                string          `json:"kid"`
 	DisplayName        string          `json:"display_name,omitempty"`
-	CustomerID         string          `json:"customer_id"`
-	AppSpaceID         string          `json:"app_space_id"`
+	CustomerID         string          `json:"organization_id"`
+	AppSpaceID         string          `json:"project_id"`
 	ApplicationID      string          `json:"application_id"`
 	ApplicationAgentID string          `json:"application_agent_id"`
 	DefaultTenantID    string          `json:"default_tenant_id,omitempty"`
-	CreateBy           string          `json:"create_by,omitempty"`
+	CreatedBy          string          `json:"created_by,omitempty"`
 	AgentConfig        json.RawMessage `json:"application_agent_config,omitempty"`
 }
 
@@ -224,11 +214,6 @@ type UpdateAuthorizationPolicyRequest struct {
 	Policy      *string  `json:"policy,omitempty"`
 	Status      *string  `json:"status,omitempty"`
 	Tags        []string `json:"tags,omitempty"`
-}
-
-// ListAuthorizationPoliciesResponse represents the response from listing authorization policies.
-type ListAuthorizationPoliciesResponse struct {
-	Policies []AuthorizationPolicyResponse `json:"policies"`
 }
 
 // Token Introspect structures
@@ -311,40 +296,6 @@ type UpdateTokenIntrospectRequest struct {
 	SubClaim      *TokenIntrospectClaim            `json:"sub_claim,omitempty"`
 	IKGNodeType   string                           `json:"ikg_node_type"`
 	PerformUpsert bool                             `json:"perform_upsert"`
-}
-
-// Ingest Pipeline structures
-
-// CreateIngestPipelineRequest represents the request to create an ingest pipeline.
-type CreateIngestPipelineRequest struct {
-	ProjectID     string   `json:"project_id"`
-	Name          string   `json:"name"`
-	DisplayName   string   `json:"display_name,omitempty"`
-	Description   string   `json:"description,omitempty"`
-	AppAgentToken string   `json:"app_agent_token"`
-	Sources       []string `json:"sources"`
-}
-
-// IngestPipelineResponse represents an ingest pipeline resource.
-type IngestPipelineResponse struct {
-	CreateTime  time.Time `json:"create_time"`
-	UpdateTime  time.Time `json:"update_time"`
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	DisplayName string    `json:"display_name,omitempty"`
-	Description string    `json:"description,omitempty"`
-	CustomerID  string    `json:"organization_id"`
-	AppSpaceID  string    `json:"project_id,omitempty"`
-	Etag        string    `json:"etag,omitempty"`
-	Sources     []string  `json:"sources"`
-}
-
-// UpdateIngestPipelineRequest represents the request to update an ingest pipeline.
-type UpdateIngestPipelineRequest struct {
-	DisplayName   *string  `json:"display_name,omitempty"`
-	Description   *string  `json:"description,omitempty"`
-	AppAgentToken string   `json:"app_agent_token"`
-	Sources       []string `json:"sources"`
 }
 
 // External Data Resolver structures
@@ -570,11 +521,6 @@ type CustomerResponse struct {
 	CreateTime  time.Time `json:"create_time"`
 	UpdateTime  time.Time `json:"update_time"`
 	Etag        string    `json:"etag,omitempty"`
-}
-
-// ListCustomersResponse represents the response from listing customers.
-type ListCustomersResponse struct {
-	Customers []CustomerResponse `json:"organizations"`
 }
 
 // Event Sink structures
