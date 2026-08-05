@@ -168,15 +168,15 @@ func dataAppAgentListContext(ctx context.Context, data *schema.ResourceData, met
 	// User provides app_space_id in config, we use project_id parameter for REST API
 	appSpaceID := data.Get(appSpaceIDKey).(string)
 
-	var resp ListApplicationAgentsResponse
+	var resp ListResponse[ApplicationAgentResponse]
 	err := clientCtx.GetClient().Get(ctx, "/application-agents?project_id="+appSpaceID, &resp)
 	if HasFailed(&d, err) {
 		return d
 	}
 
-	allApplicationAgents := make([]map[string]any, 0, len(resp.Agents))
-	for i := range resp.Agents {
-		agent := &resp.Agents[i]
+	allApplicationAgents := make([]map[string]any, 0, len(resp.Data))
+	for i := range resp.Data {
+		agent := &resp.Data[i]
 		// Apply exact name match filter (MinItems: 1 ensures filter is always present)
 		matchFound := false
 		for _, filter := range match {

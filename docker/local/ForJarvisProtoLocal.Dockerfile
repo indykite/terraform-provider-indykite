@@ -1,6 +1,6 @@
 # checkov:skip=CKV_DOCKER_2:ensure that HEALTHCHECK instructions have been added
-FROM golang:1.26.4-alpine@sha256:3ad57304ad93bbec8548a0437ad9e06a455660655d9af011d58b993f6f615648
-LABEL version="v0.0.1"
+FROM golang:1.26.5-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2
+LABEL version="v0.1.0"
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
@@ -37,15 +37,14 @@ RUN chmod +x "${APPUSER_HOME}/run_test.sh" \
     && mkdir "${APPUSER_HOME}/github" \
     && chown "$APPUSER":"$APPGROUP" "${APPUSER_HOME}/run_test.sh" "${APPUSER_HOME}/github"
 
-# Switch to user
-USER "$APPUSER"
+# Switch to user (numeric uid:gid of $APPUSER:$APPGROUP, resolvable by the host system)
+USER 10001:10001
 
-# Add ssh private key into container
-# trivy:ignore:AVD-DS-0031 - TODO: find a better way to pass it
-ARG SSH_PRIVATE_KEY
+# Prepare ~/.ssh with GitHub's public host key only. The SSH private key is NOT baked
+# into the image; run_test.sh materializes it at container start from the
+# SSH_PRIVATE_KEY environment variable (or use a mounted ~/.ssh/id_ed25519).
 RUN mkdir ~/.ssh/ \
-    && echo "${SSH_PRIVATE_KEY}" > ~/.ssh/id_ed25519 \
-    && chmod 600 ~/.ssh/id_ed25519 \
+    && chmod 700 ~/.ssh/ \
     && ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
 
 ENV GITHUB_BRANCH=master

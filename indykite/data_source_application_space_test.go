@@ -189,10 +189,10 @@ var _ = Describe("DataSource Application Space", func() {
 
 		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/projects") {
-				// List application spaces - return both wrapped in ListApplicationSpacesResponse
+				// List application spaces - return both wrapped in the generic {"data": [...]} response
 				w.WriteHeader(http.StatusOK)
-				_ = json.NewEncoder(w).Encode(indykite.ListApplicationSpacesResponse{
-					AppSpaces: []indykite.ApplicationSpaceResponse{appSpaceResp, appSpaceResp2},
+				_ = json.NewEncoder(w).Encode(indykite.ListResponse[indykite.ApplicationSpaceResponse]{
+					Data: []indykite.ApplicationSpaceResponse{appSpaceResp, appSpaceResp2},
 				})
 			} else {
 				w.WriteHeader(http.StatusNotFound)

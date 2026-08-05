@@ -80,8 +80,8 @@ var _ = Describe("DataSource ApplicationAgent", func() {
 				r.URL.Query().Get("project_id") == appSpaceID:
 				// List application agents by app space
 				w.WriteHeader(http.StatusOK)
-				_ = json.NewEncoder(w).Encode(indykite.ListApplicationAgentsResponse{
-					Agents: []indykite.ApplicationAgentResponse{appAgentResp},
+				_ = json.NewEncoder(w).Encode(indykite.ListResponse[indykite.ApplicationAgentResponse]{
+					Data: []indykite.ApplicationAgentResponse{appAgentResp},
 				})
 			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/application-agents/acme") &&
 				r.URL.Query().Get("location") == appSpaceID:
@@ -214,10 +214,10 @@ var _ = Describe("DataSource ApplicationAgent", func() {
 
 		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/application-agents") {
-				// List application agents - return both wrapped in ListApplicationAgentsResponse
+				// List application agents - return both wrapped in the generic {"data": [...]} response
 				w.WriteHeader(http.StatusOK)
-				_ = json.NewEncoder(w).Encode(indykite.ListApplicationAgentsResponse{
-					Agents: []indykite.ApplicationAgentResponse{appAgentResp, appAgentResp2},
+				_ = json.NewEncoder(w).Encode(indykite.ListResponse[indykite.ApplicationAgentResponse]{
+					Data: []indykite.ApplicationAgentResponse{appAgentResp, appAgentResp2},
 				})
 			} else {
 				w.WriteHeader(http.StatusNotFound)

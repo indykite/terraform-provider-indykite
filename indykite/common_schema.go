@@ -202,7 +202,7 @@ func exactNameFilterSchema() *schema.Schema {
 		Type:        schema.TypeList,
 		Required:    true,
 		MinItems:    1,
-		Description: `Filter customers based on given names. Using 'exact name match' strategy to find customer.`,
+		Description: `Filter resources based on given names. Using 'exact name match' strategy to find entries.`,
 		Elem:        &schema.Schema{Type: schema.TypeString, ValidateDiagFunc: ValidateName},
 	}
 }

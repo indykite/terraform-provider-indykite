@@ -415,19 +415,6 @@ type ProtoValidateError interface {
 	ErrorName() string
 }
 
-// IngestPipelineOperationTypes defines all supported IngestPipelineOperationTypes and its mapping.
-var IngestPipelineOperationTypes = map[string]string{
-	"OPERATION_UPSERT_NODE":                  "OPERATION_UPSERT_NODE",
-	"OPERATION_UPSERT_RELATIONSHIP":          "OPERATION_UPSERT_RELATIONSHIP",
-	"OPERATION_DELETE_NODE":                  "OPERATION_DELETE_NODE",
-	"OPERATION_DELETE_RELATIONSHIP":          "OPERATION_DELETE_RELATIONSHIP",
-	"OPERATION_DELETE_NODE_PROPERTY":         "OPERATION_DELETE_NODE_PROPERTY",
-	"OPERATION_DELETE_RELATIONSHIP_PROPERTY": "OPERATION_DELETE_RELATIONSHIP_PROPERTY",
-}
-
-// IngestPipelineOperationTypesReverse is reverse mapping of IngestPipelineOperationTypes.
-var IngestPipelineOperationTypesReverse = ReverseProtoEnumMap(IngestPipelineOperationTypes)
-
 // ExternalDataResolverConfigContentType defines all supported ContentTypes and its mapping.
 var ExternalDataResolverConfigContentType = map[string]string{
 	"json": "json",

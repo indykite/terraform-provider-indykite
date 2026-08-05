@@ -50,7 +50,7 @@ data "indykite_application_agents" "agents_by_ref" {
 ### Required
 
 - `app_space_id` (String) Identifier of Application Space
-- `filter` (List of String) Filter customers based on given names. Using 'exact name match' strategy to find customer.
+- `filter` (List of String) Filter resources based on given names. Using 'exact name match' strategy to find entries.
 
 ### Optional
 
