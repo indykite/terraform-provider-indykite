@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.40.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.39.0...v0.40.0) (2026-08-05)
+
+
+### Features
+
+* add missing lists and tests ([1b49a6c](https://github.com/indykite/terraform-provider-indykite/commit/1b49a6ceb0c14261fe4074932a3f88167ced35ef))
+
+
+### Miscellaneous Chores
+
+* **deps:** update dorny/paths-filter action to v4.0.3 ([#339](https://github.com/indykite/terraform-provider-indykite/issues/339)) ([566835e](https://github.com/indykite/terraform-provider-indykite/commit/566835e20e7b60b8203a7ea7877e266f4bd0e8b0))
+
 ## [0.39.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.38.0...v0.39.0) (2026-07-22)
 
 
