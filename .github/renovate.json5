@@ -1,6 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
+    // org shared config - https://github.com/indykite/.github/blob/master/.github/renovate.json5
+    "github>indykite/.github//.github/renovate.json5",
     ":enableRenovate",
     "config:best-practices",
     "schedule:weekly",
