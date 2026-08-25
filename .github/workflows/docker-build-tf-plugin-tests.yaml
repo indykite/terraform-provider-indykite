@@ -115,6 +115,9 @@ jobs:
     steps:
       - name: actions/checkout
         uses: indykite/.github/.github/actions/git-checkout@master # actions/checkout with dynamic fetch-depth resolution
+        if: >-
+          needs.detect-changes.outputs.build_ci == 'true' ||
+          needs.detect-changes.outputs.build_full == 'true'
 
       - name: Build terraform-plugin-tests
         # --- full image (tests baked in) — warms BuildKit cache for the second build ---
