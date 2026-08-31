@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.41.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.40.0...v0.41.0) (2026-08-31)
+
+
+### Features
+
+* upgrade to 1.27 + dependencies ([3736606](https://github.com/indykite/terraform-provider-indykite/commit/37366067dc05b2aa58abfee83a1c41bbaacb61e6))
+
+
+### Miscellaneous Chores
+
+* **deps:** update all non-major dependencies ([1320277](https://github.com/indykite/terraform-provider-indykite/commit/1320277b4da48f2286b3700b0236a87851ea35cf))
+* **deps:** update go toolchain directive to v1.26.6 [SECURITY] ([#346](https://github.com/indykite/terraform-provider-indykite/issues/346)) ([3b0e6e5](https://github.com/indykite/terraform-provider-indykite/commit/3b0e6e5da3882b29a63c34e5e4af96e6f47c5efc))
+* **deps:** update module golang.org/x/mod to v0.40.0 [SECURITY] ([#347](https://github.com/indykite/terraform-provider-indykite/issues/347)) ([0497861](https://github.com/indykite/terraform-provider-indykite/commit/0497861ff8f0624856650e7cb38d98ec3f5fce29))
+
 ## [0.40.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.39.0...v0.40.0) (2026-08-05)
 
 
