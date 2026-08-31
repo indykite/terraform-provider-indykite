@@ -240,7 +240,7 @@ repos:
   #
   # Terraform & Terragrunt
   - repo: https://github.com/antonbabenko/pre-commit-terraform
-    rev: bf9dd9c695ddaf238af36f179049202358ec22b7 # frozen: v1.108.1
+    rev: 581213484f4262600d17c71e272176d4eb6724a5 # frozen: v1.109.0
     hooks:
       # - id: tfupdate      # done via 'validate -upgrade' below
       - id: terraform_fmt
