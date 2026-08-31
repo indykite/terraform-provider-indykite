@@ -110,8 +110,8 @@ var _ = Describe("DataSource Application Space", func() {
 		}
 
 		resource.Test(GinkgoT(), resource.TestCase{
-			Providers: map[string]*schema.Provider{
-				"indykite": provider,
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
 			},
 			Steps: []resource.TestStep{
 				// Errors cases must be always first
@@ -207,8 +207,8 @@ var _ = Describe("DataSource Application Space", func() {
 		}
 
 		resource.Test(GinkgoT(), resource.TestCase{
-			Providers: map[string]*schema.Provider{
-				"indykite": provider,
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
 			},
 			Steps: []resource.TestStep{
 				// Errors cases must be always first

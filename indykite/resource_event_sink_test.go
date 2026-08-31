@@ -483,8 +483,8 @@ var _ = Describe("Resource EventSink", func() {
 		}`
 
 		resource.Test(GinkgoT(), resource.TestCase{
-			Providers: map[string]*schema.Provider{
-				"indykite": provider,
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
 			},
 			Steps: []resource.TestStep{
 				// Errors case must be always first
@@ -592,8 +592,8 @@ var _ = Describe("Resource EventSink", func() {
 		currentConfig = "azuregrid"
 
 		resource.Test(GinkgoT(), resource.TestCase{
-			Providers: map[string]*schema.Provider{
-				"indykite": provider,
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
 			},
 			Steps: []resource.TestStep{
 				{
@@ -632,8 +632,8 @@ var _ = Describe("Resource EventSink", func() {
 		currentConfig = "azurebus"
 
 		resource.Test(GinkgoT(), resource.TestCase{
-			Providers: map[string]*schema.Provider{
-				"indykite": provider,
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
 			},
 			Steps: []resource.TestStep{
 				{
@@ -675,8 +675,8 @@ var _ = Describe("Resource EventSink", func() {
 		currentConfig = "pubsub"
 
 		resource.Test(GinkgoT(), resource.TestCase{
-			Providers: map[string]*schema.Provider{
-				"indykite": provider,
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
 			},
 			Steps: []resource.TestStep{
 				{
@@ -839,8 +839,8 @@ var _ = Describe("Resource EventSink", func() {
 		}
 
 		resource.Test(GinkgoT(), resource.TestCase{
-			Providers: map[string]*schema.Provider{
-				"indykite": provider,
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
 			},
 			Steps: []resource.TestStep{
 				{
@@ -1021,8 +1021,8 @@ var _ = Describe("Resource EventSink", func() {
 		}
 
 		resource.Test(GinkgoT(), resource.TestCase{
-			Providers: map[string]*schema.Provider{
-				"indykite": provider,
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
 			},
 			Steps: []resource.TestStep{
 				{
@@ -1174,8 +1174,8 @@ var _ = Describe("Resource EventSink", func() {
 		}
 
 		resource.Test(GinkgoT(), resource.TestCase{
-			Providers: map[string]*schema.Provider{
-				"indykite": provider,
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
 			},
 			Steps: []resource.TestStep{
 				{
