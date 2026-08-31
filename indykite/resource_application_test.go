@@ -176,8 +176,8 @@ var _ = Describe("Resource Application", func() {
 		}
 
 		resource.Test(GinkgoT(), resource.TestCase{
-			Providers: map[string]*schema.Provider{
-				"indykite": provider,
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
 			},
 			Steps: []resource.TestStep{
 				{
@@ -335,8 +335,8 @@ var _ = Describe("Resource Application Import by Name", func() {
 		}
 
 		resource.Test(GinkgoT(), resource.TestCase{
-			Providers: map[string]*schema.Provider{
-				"indykite": provider,
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
 			},
 			Steps: []resource.TestStep{
 				{

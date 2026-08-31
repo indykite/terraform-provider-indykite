@@ -195,8 +195,8 @@ var _ = Describe("Resource Authorization Policy config", func() {
 		}
 
 		resource.Test(GinkgoT(), resource.TestCase{
-			Providers: map[string]*schema.Provider{
-				"indykite": provider,
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
 			},
 			Steps: []resource.TestStep{
 				// Error cases should be always first, easier to avoid missing mocks or incomplete plan
@@ -520,8 +520,8 @@ var _ = Describe("Resource Authorization Policy Import by Name", func() {
 		}
 
 		resource.Test(GinkgoT(), resource.TestCase{
-			Providers: map[string]*schema.Provider{
-				"indykite": provider,
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
 			},
 			Steps: []resource.TestStep{
 				{

@@ -67,8 +67,8 @@ var _ = Describe("Resource TrustScoreProfile", func() {
 	Describe("Error cases", func() {
 		It("should handle invalid configurations", func() {
 			resource.Test(GinkgoT(), resource.TestCase{
-				Providers: map[string]*schema.Provider{
-					"indykite": provider,
+				ProviderFactories: map[string]func() (*schema.Provider, error){
+					"indykite": func() (*schema.Provider, error) { return provider, nil },
 				},
 				Steps: []resource.TestStep{
 					{
@@ -199,8 +199,8 @@ var _ = Describe("Resource TrustScoreProfile", func() {
 			}
 
 			resource.Test(GinkgoT(), resource.TestCase{
-				Providers: map[string]*schema.Provider{
-					"indykite": provider,
+				ProviderFactories: map[string]func() (*schema.Provider, error){
+					"indykite": func() (*schema.Provider, error) { return provider, nil },
 				},
 				Steps: []resource.TestStep{
 					{
@@ -316,8 +316,8 @@ var _ = Describe("Resource TrustScoreProfile", func() {
 			}
 
 			resource.Test(GinkgoT(), resource.TestCase{
-				Providers: map[string]*schema.Provider{
-					"indykite": provider,
+				ProviderFactories: map[string]func() (*schema.Provider, error){
+					"indykite": func() (*schema.Provider, error) { return provider, nil },
 				},
 				Steps: []resource.TestStep{
 					{
@@ -428,8 +428,8 @@ var _ = Describe("Resource TrustScoreProfile", func() {
 			}
 
 			resource.Test(GinkgoT(), resource.TestCase{
-				Providers: map[string]*schema.Provider{
-					"indykite": provider,
+				ProviderFactories: map[string]func() (*schema.Provider, error){
+					"indykite": func() (*schema.Provider, error) { return provider, nil },
 				},
 				Steps: []resource.TestStep{
 					{
