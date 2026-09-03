@@ -602,6 +602,50 @@ type UpdateMCPServerRequest struct {
 	Enabled           bool     `json:"enabled"`
 }
 
+// Audit Signing structures
+
+// CreateAuditSigningRequest represents the request to create an Audit Signing configuration.
+type CreateAuditSigningRequest struct {
+	AuthParams  map[string]string `json:"auth_params,omitempty"`
+	ProjectID   string            `json:"project_id"`
+	Name        string            `json:"name"`
+	DisplayName string            `json:"display_name,omitempty"`
+	Description string            `json:"description,omitempty"`
+	Provider    string            `json:"provider"`
+	KeyResource string            `json:"key_resource,omitempty"`
+	Kid         string            `json:"kid,omitempty"`
+}
+
+// AuditSigningResponse represents an Audit Signing configuration resource.
+// AuthParams values are always masked (empty) by the API; only the keys are meaningful.
+type AuditSigningResponse struct {
+	CreateTime  time.Time         `json:"create_time"`
+	UpdateTime  time.Time         `json:"update_time"`
+	AuthParams  map[string]string `json:"auth_params,omitempty"`
+	KeyResource *string           `json:"key_resource,omitempty"`
+	Kid         *string           `json:"kid,omitempty"`
+	ID          string            `json:"id"`
+	Name        string            `json:"name"`
+	DisplayName string            `json:"display_name,omitempty"`
+	Description string            `json:"description,omitempty"`
+	CustomerID  string            `json:"organization_id"`
+	AppSpaceID  string            `json:"project_id,omitempty"`
+	Provider    string            `json:"provider,omitempty"`
+	CreatedBy   string            `json:"created_by,omitempty"`
+	UpdatedBy   string            `json:"updated_by,omitempty"`
+	Etag        string            `json:"etag,omitempty"`
+}
+
+// UpdateAuditSigningRequest represents the request to update an Audit Signing configuration.
+type UpdateAuditSigningRequest struct {
+	DisplayName *string           `json:"display_name,omitempty"`
+	Description *string           `json:"description,omitempty"`
+	AuthParams  map[string]string `json:"auth_params,omitempty"`
+	Provider    string            `json:"provider"`
+	KeyResource string            `json:"key_resource,omitempty"`
+	Kid         string            `json:"kid,omitempty"`
+}
+
 // Service Account structures
 
 // CreateServiceAccountRequest represents the request to create a service account.

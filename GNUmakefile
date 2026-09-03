@@ -21,6 +21,10 @@ TESTS_PROVIDER_DIR := ./tests/provider
 TESTS_PROVIDER_TERRAFORM := $(TERRAFORM_BIN) -chdir=$(TESTS_PROVIDER_DIR)
 TESTS_PROVIDER_PLUGIN_DIR := $(TESTS_PROVIDER_DIR)/terraform.d/plugins/registry.terraform.io/indykite/indykite/0.0.1
 TESTS_PROVIDER_PLUGIN_ARCH_DIR := $(TESTS_PROVIDER_PLUGIN_DIR)/$(GOHOSTOS)_$(GOHOSTARCH)
+# Generated CLI config (gitignored with terraform.d) telling Terraform to take the indykite
+# provider from the local plugin mirror only. Without it `terraform init` prefers the newest
+# release on the registry over the locally built 0.0.1, so the plugin under test is never used.
+TESTS_PROVIDER_CLI_CONFIG := $(TESTS_PROVIDER_DIR)/terraform.d/cli.tfrc
 SELF_MAKEFILE := $(lastword $(MAKEFILE_LIST))
 
 ifneq ($(filter $(PKG_MANAGER),$(VALID_PKG_MANAGERS)),$(PKG_MANAGER))
@@ -163,7 +167,10 @@ test:
 	GO_CPU_TEST="$(GO_CPU_TEST)" bash tests/test_unit.sh
 
 tf_init:
-	$(TESTS_PROVIDER_TERRAFORM) init -backend=false
+	@mkdir -p $(dir $(TESTS_PROVIDER_CLI_CONFIG))
+	@printf 'provider_installation {\n  filesystem_mirror {\n    path    = "%s"\n    include = ["indykite/indykite"]\n  }\n  direct {\n    exclude = ["indykite/indykite"]\n  }\n}\n' \
+		"$(abspath $(TESTS_PROVIDER_DIR))/terraform.d/plugins" > $(TESTS_PROVIDER_CLI_CONFIG)
+	TF_CLI_CONFIG_FILE=$(abspath $(TESTS_PROVIDER_CLI_CONFIG)) $(TESTS_PROVIDER_TERRAFORM) init -backend=false
 
 integration:
 	bash tests/test_integration.sh
