@@ -774,3 +774,30 @@ resource "indykite_mcp_server" "create-mcp-server" {
     }
   }
 }
+
+# -----------------------------------------------------------------------------
+# Test: Audit signing configuration
+# Commented out until the release that ships indykite_audit_signing: the
+# terraform-validate check resolves the published provider from the registry,
+# which rejects resource types it does not know yet. Uncomment once released.
+# -----------------------------------------------------------------------------
+#
+# resource "indykite_audit_signing" "create-audit-signing" {
+#   name         = "automation-terraform-audit-signing-${time_static.example.unix}"
+#   display_name = "Automation Terraform audit signing ${time_static.example.unix}"
+#   description  = "Audit signing for terraform pipeline"
+#   location     = indykite_application_space.appspace.id
+#   key_provider = "PLATFORM_MANAGED"
+#   lifecycle {
+#     create_before_destroy = true
+#     postcondition {
+#       condition     = self.app_space_id == indykite_application_space.appspace.id
+#       error_message = "app_space_id must be populated from the appspace after creation"
+#     }
+#   }
+# }
+#
+# data "indykite_audit_signings" "audit-signings" {
+#   app_space_id = indykite_application_space.appspace.id
+#   filter       = [indykite_audit_signing.create-audit-signing.name]
+# }

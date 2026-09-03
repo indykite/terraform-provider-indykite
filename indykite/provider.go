@@ -62,6 +62,7 @@ func Provider() *schema.Provider {
 			"indykite_knowledge_queries":             dataSourceKnowledgeQueryList(),
 			"indykite_trust_score_profiles":          dataSourceTrustScoreProfileList(),
 			"indykite_mcp_servers":                   dataSourceMCPServerList(),
+			"indykite_audit_signings":                dataSourceAuditSigningList(),
 			"indykite_service_accounts":              dataSourceServiceAccountList(),
 			"indykite_service_account_credentials":   dataSourceServiceAccountCredentialList(),
 		},
@@ -81,6 +82,7 @@ func Provider() *schema.Provider {
 			"indykite_service_account":              resourceServiceAccount(),
 			"indykite_service_account_credential":   resourceServiceAccountCredential(),
 			"indykite_mcp_server":                   resourceMCPServer(),
+			"indykite_audit_signing":                resourceAuditSigning(),
 		},
 	}
 
