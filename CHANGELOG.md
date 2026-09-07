@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.43.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.42.0...v0.43.0) (2026-09-07)
+
+
+### Features
+
+* provider required in audit signing ([e1adef5](https://github.com/indykite/terraform-provider-indykite/commit/e1adef594e51c6f6a1ad21d8cb959b826dfdc6cb))
+
+
+### Miscellaneous Chores
+
+* **deps:** update all non-major dependencies ([e0fedc3](https://github.com/indykite/terraform-provider-indykite/commit/e0fedc3019cc63d8d4a0693e86e7bf089b79ed95))
+
 ## [0.42.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.41.0...v0.42.0) (2026-09-03)
 
 
