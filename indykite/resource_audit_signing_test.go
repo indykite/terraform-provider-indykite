@@ -218,22 +218,27 @@ var _ = Describe("Resource AuditSigning", func() {
 					ExpectError: regexp.MustCompile("Invalid ID value"),
 				},
 				{
+					// key_provider has no default: the API requires it.
+					Config:      fmt.Sprintf(tfConfigDef, appSpaceID, "name", ""),
+					ExpectError: regexp.MustCompile(`The argument "key_provider" is required`),
+				},
+				{
 					Config:      fmt.Sprintf(tfConfigDef, appSpaceID, "name", `key_provider = "CUSTOMER_VAULT"`),
 					ExpectError: regexp.MustCompile(`expected key_provider to be one of`),
 				},
 				{
 					Config: fmt.Sprintf(tfConfigDef, appSpaceID, "name",
-						`auth_params = { credentials_json = "" }`),
+						platformManaged+`auth_params = { credentials_json = "" }`),
 					ExpectError: regexp.MustCompile(
 						`expected length of auth_params\.credentials_json to be in the range`),
 				},
 				{
 					Config: fmt.Sprintf(tfConfigDef, appSpaceID, "name",
-						`auth_params = { "`+strings.Repeat("k", 257)+`" = "v" }`),
+						platformManaged+`auth_params = { "`+strings.Repeat("k", 257)+`" = "v" }`),
 					ExpectError: regexp.MustCompile(`expected length of auth_params key "k+" to be in the range`),
 				},
 				{
-					Config:      fmt.Sprintf(tfConfigDef, appSpaceID, "name", tooManyAuthParams),
+					Config:      fmt.Sprintf(tfConfigDef, appSpaceID, "name", platformManaged+tooManyAuthParams),
 					ExpectError: regexp.MustCompile(`expected at most 32 auth_params entries, got 33`),
 				},
 				{
@@ -251,9 +256,10 @@ var _ = Describe("Resource AuditSigning", func() {
 				},
 
 				{
-					// Create and Read with default provider
+					// Create and Read with the platform managed provider
 					Config: fmt.Sprintf(tfConfigDef, appSpaceID, "my-first-audit-signing",
-						`display_name = "Display name of Audit Signing"`,
+						`display_name = "Display name of Audit Signing"
+						`+platformManaged+``,
 					),
 					Check: resource.ComposeTestCheckFunc(
 						testAuditSigningResourceDataExists("PLATFORM_MANAGED", "", "", nil),
