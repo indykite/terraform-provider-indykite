@@ -13,10 +13,11 @@ Audit Signing configuration defines which key is used to sign audit log records 
 ## Example Usage
 
 ```terraform
-# Example 1: Platform managed signing key (default provider)
+# Example 1: Platform managed signing key
 resource "indykite_audit_signing" "platform_managed" {
-  name     = "terraform-audit-signing"
-  location = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
+  name         = "terraform-audit-signing"
+  location     = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
+  key_provider = "PLATFORM_MANAGED"
 }
 
 # Example 2: Customer managed key in Google Cloud KMS
@@ -47,7 +48,8 @@ resource "indykite_audit_signing" "aws_kms" {
 }
 
 # Note: The location parameter accepts an Application Space ID.
-# key_resource, kid and auth_params are only needed for CUSTOMER_* providers.
+# key_provider is always required; key_resource, kid and auth_params are only
+# needed for CUSTOMER_* providers.
 # auth_params values are write-only: the API never returns them, so Terraform keeps
 # the configured values in state and only reconciles the set of keys.
 ```
@@ -57,6 +59,7 @@ resource "indykite_audit_signing" "aws_kms" {
 
 ### Required
 
+- `key_provider` (String) Key provider identifies who manages the signing key. One of: PLATFORM_MANAGED, CUSTOMER_GCP_KMS, CUSTOMER_AWS_KMS, CUSTOMER_AZURE_KEY_VAULT.
 - `location` (String) Identifier of Location, where to create resource
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 
@@ -65,7 +68,6 @@ resource "indykite_audit_signing" "aws_kms" {
 - `auth_params` (Map of String, Sensitive) Authentication parameters used to access the customer managed key, e.g. service account credentials or access keys. At most 32 entries. Values are write-only: the API never returns them, so Terraform keeps the values from the configuration and only reconciles the set of keys.
 - `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
-- `key_provider` (String) Key provider identifies who manages the signing key. One of: PLATFORM_MANAGED, CUSTOMER_GCP_KMS, CUSTOMER_AWS_KMS, CUSTOMER_AZURE_KEY_VAULT. Defaults to PLATFORM_MANAGED.
 - `key_resource` (String) Resource identifier of the customer managed signing key in the provider's KMS, e.g. the Cloud KMS key version name, the AWS KMS key ARN or the Azure Key Vault key identifier.
 - `kid` (String) Key ID (kid) published with signed audit records so verifiers can locate the key.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))

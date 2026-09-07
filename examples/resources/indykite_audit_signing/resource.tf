@@ -1,7 +1,8 @@
-# Example 1: Platform managed signing key (default provider)
+# Example 1: Platform managed signing key
 resource "indykite_audit_signing" "platform_managed" {
-  name     = "terraform-audit-signing"
-  location = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
+  name         = "terraform-audit-signing"
+  location     = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
+  key_provider = "PLATFORM_MANAGED"
 }
 
 # Example 2: Customer managed key in Google Cloud KMS
@@ -32,6 +33,7 @@ resource "indykite_audit_signing" "aws_kms" {
 }
 
 # Note: The location parameter accepts an Application Space ID.
-# key_resource, kid and auth_params are only needed for CUSTOMER_* providers.
+# key_provider is always required; key_resource, kid and auth_params are only
+# needed for CUSTOMER_* providers.
 # auth_params values are write-only: the API never returns them, so Terraform keeps
 # the configured values in state and only reconciles the set of keys.

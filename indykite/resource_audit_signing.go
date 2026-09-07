@@ -75,12 +75,10 @@ func resourceAuditSigning() *schema.Resource {
 
 			auditSigningProviderKey: {
 				Type:         schema.TypeString,
-				Optional:     true,
-				Default:      auditSigningProviderPlatformManaged,
+				Required:     true,
 				ValidateFunc: validation.StringInSlice(AuditSigningProviders, false),
 				Description: "Key provider identifies who manages the signing key. " +
-					"One of: PLATFORM_MANAGED, CUSTOMER_GCP_KMS, CUSTOMER_AWS_KMS, CUSTOMER_AZURE_KEY_VAULT. " +
-					"Defaults to PLATFORM_MANAGED.",
+					"One of: PLATFORM_MANAGED, CUSTOMER_GCP_KMS, CUSTOMER_AWS_KMS, CUSTOMER_AZURE_KEY_VAULT.",
 			},
 			auditSigningKeyResourceKey: {
 				Type:         schema.TypeString,
