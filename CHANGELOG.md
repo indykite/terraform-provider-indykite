@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.43.0...v0.44.0) (2026-09-09)
+
+
+### Features
+
+* upgrade lestrrat dep and adapt code ([e821816](https://github.com/indykite/terraform-provider-indykite/commit/e821816c700a9207d55b5e5e223e75bea6df1706))
+
 ## [0.43.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.42.0...v0.43.0) (2026-09-07)
 
 
