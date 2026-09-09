@@ -30,7 +30,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/hashicorp/go-retryablehttp"
-	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v4/jwk"
 )
 
 // RestClient wraps HTTP client for IndyKite Config REST API.
@@ -146,12 +146,12 @@ func parseJWK(jwkData json.RawMessage) (*ecdsa.PrivateKey, string, error) {
 		return nil, "", fmt.Errorf("failed to parse JWK: %w", err)
 	}
 
-	// Get the key ID
-	kid := key.KeyID()
+	// Get the key ID (empty string if the JWK has no "kid").
+	kid, _ := key.KeyID()
 
 	// Convert to raw key (crypto.PrivateKey interface)
-	var rawKey any
-	if err := key.Raw(&rawKey); err != nil {
+	rawKey, err := jwk.Export[any](key)
+	if err != nil {
 		return nil, "", fmt.Errorf("failed to get raw key: %w", err)
 	}
 
