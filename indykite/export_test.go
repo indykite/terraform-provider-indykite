@@ -14,7 +14,26 @@
 
 package indykite
 
-import "time"
+import (
+	"crypto/ecdsa"
+	"encoding/json"
+	"time"
+)
+
+// ParsePrivateKeyJWK exposes parseJWK to tests.
+func ParsePrivateKeyJWK(jwkData json.RawMessage) (*ecdsa.PrivateKey, string, error) {
+	return parseJWK(jwkData)
+}
+
+// ParseCredentials exposes parseCredentials to tests.
+func ParseCredentials(credentials string) (string, string, error) { //nolint:revive,gocritic // mirrors parseCredentials
+	return parseCredentials(credentials)
+}
+
+// SignAuthJWT exposes generateJWT to tests.
+func SignAuthJWT(privateKey *ecdsa.PrivateKey, kid, subject string) (string, error) {
+	return generateJWT(privateKey, kid, subject)
+}
 
 // SetCredCreateWaits overrides the application agent credential create initial
 // wait and retry backoff bounds for tests and returns a function that restores
