@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.44.0...v0.44.1) (2026-09-14)
+
+
+### Miscellaneous Chores
+
+* **deps:** update module github.com/onsi/ginkgo/v2 to v2.32.2 ([5372c34](https://github.com/indykite/terraform-provider-indykite/commit/5372c343aa4b395d155ddd81fd1b2478fc75704d))
+
 ## [0.44.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.43.0...v0.44.0) (2026-09-09)
 
 
