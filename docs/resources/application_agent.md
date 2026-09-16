@@ -52,7 +52,7 @@ resource "indykite_application_agent" "agent_multi_permissions" {
   name            = "agent-multi-permissions"
   display_name    = "Agent with Multiple Permissions"
   description     = "Agent with all available API permissions"
-  api_permissions = ["Authorization", "Capture", "EntityMatching", "IKGRead"]
+  api_permissions = ["Authorization", "Capture", "EntityMatching", "ReadAuthZConfigs"]
 }
 
 # Example 5: Agent with deletion protection enabled
@@ -85,7 +85,7 @@ resource "indykite_application_agent" "protected_agent" {
 
 ### Required
 
-- `api_permissions` (List of String) List of API permissions for the agent: Authorization, Capture, ContXIQ, EntityMatching, IKGRead and ReadDataSchema.
+- `api_permissions` (List of String) List of API permissions for the agent: Authorization, Capture, ContXIQ, EntityMatching, ReadAuthZConfigs and ReadDataSchema. The former IKGRead permission was retired by the platform and is no longer accepted; remove it from existing configurations.
 - `application_id` (String) Identifier of Application
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 

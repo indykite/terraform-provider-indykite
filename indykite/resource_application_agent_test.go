@@ -238,6 +238,83 @@ var _ = Describe("Resource ApplicationAgent", func() {
 		})
 	})
 
+	It("Test api_permissions accepts ReadAuthZConfigs and rejects retired IKGRead", func() {
+		tfConfigDef :=
+			`resource "indykite_application_agent" "development" {
+				application_id = "` + applicationID + `"
+				name = "acme"
+				display_name = "acme"
+				api_permissions = [%s]
+				deletion_protection = false
+			}`
+		newPermissions := []string{"Authorization", "Capture", "ReadAuthZConfigs"}
+
+		var sentPermissions []string
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/application-agents"):
+				var req indykite.CreateApplicationAgentRequest
+				_ = json.NewDecoder(r.Body).Decode(&req)
+				sentPermissions = req.APIPermissions
+				fallthrough
+			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, appAgentID):
+				resp := indykite.ApplicationAgentResponse{
+					ID:             appAgentID,
+					CustomerID:     customerID,
+					AppSpaceID:     appSpaceID,
+					ApplicationID:  applicationID,
+					Name:           "acme",
+					DisplayName:    "acme",
+					APIPermissions: newPermissions,
+					CreateTime:     time.Now(),
+					UpdateTime:     time.Now(),
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+
+			case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, appAgentID):
+				w.WriteHeader(http.StatusNoContent)
+
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
+			},
+			Steps: []resource.TestStep{
+				// Errors cases must be always first
+				{
+					// IKGRead was retired by the platform; it must fail schema validation
+					// instead of producing a permanent diff against the backend.
+					Config:      fmt.Sprintf(tfConfigDef, `"Authorization","Capture","IKGRead"`),
+					ExpectError: regexp.MustCompile(`(?s)api_permissions\.2.*IKGRead`),
+				},
+				{
+					Config: fmt.Sprintf(tfConfigDef, `"Authorization","Capture","ReadAuthZConfigs"`),
+					Check: resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttr(resourceName, "id", appAgentID),
+						resource.TestCheckResourceAttr(resourceName, "api_permissions.#", "3"),
+						resource.TestCheckResourceAttr(resourceName, "api_permissions.0", "Authorization"),
+						resource.TestCheckResourceAttr(resourceName, "api_permissions.1", "Capture"),
+						resource.TestCheckResourceAttr(resourceName, "api_permissions.2", "ReadAuthZConfigs"),
+					),
+				},
+			},
+		})
+
+		Expect(sentPermissions).To(Equal(newPermissions), "create request must forward ReadAuthZConfigs")
+	})
+
 	It("Test import by name with location", func() {
 		tfConfigDef :=
 			`resource "indykite_application_agent" "development" {
