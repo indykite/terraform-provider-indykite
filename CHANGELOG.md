@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.45.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.45.0...v0.45.1) (2026-09-21)
+
+
+### Miscellaneous Chores
+
+* **deps:** update all non-major dependencies ([e268926](https://github.com/indykite/terraform-provider-indykite/commit/e268926020625a24f2aee95de5e78681cc4ebba8))
+* **deps:** update golang:1.27.1-alpine Docker digest to 4cb7ac9 ([148462a](https://github.com/indykite/terraform-provider-indykite/commit/148462a072f5f7d1426cbeac28296bb19abacba7))
+
 ## [0.45.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.44.0...v0.45.0) (2026-09-16)
 
 
