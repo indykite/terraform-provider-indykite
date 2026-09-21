@@ -74,7 +74,7 @@ repos:
   #
   # Commit Message linting
   - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook # ci:ignore:executed under a separate GitHub action
-    rev: 25d0a52aa8bc0fc242613346792dc8d726c13347 # frozen: v9.26.0
+    rev: 1f1ac45c93d1c2ce36b71330252c489a5f4f2724 # frozen: v9.27.0
     hooks:
       # NON-DEFAULT stage, install explicitly with: pre-commit install -t commit-msg
       - id: commitlint
