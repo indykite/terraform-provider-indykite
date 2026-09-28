@@ -27,6 +27,25 @@ The Dockerfile is multi-stage and produces two targets sharing a common `base` s
 - **Entry point:** [`ci/startscript.sh`](ci/startscript.sh).
 - **When it is (re)built:** whenever files in `docker/infra/` directory change.
 - **Required env vars:** `GITHUB_USER`, `GITHUB_TOKEN`, `GITHUB`, `BUCKET_NAME` (and optionally `BRANCH`, `RUN_ENV`, `RELEASE_VERSION`, `SECRET_NAME`, `SLACK_WEBHOOK_URL`).
+- **Run environment (`RUN_ENV`):** selects which `.terraformPluginTests.<RUN_ENV>` section of the secret is used and is included in the report file name. It is resolved in this order:
+  1. the `RUN_ENV` env var, if set and non-empty;
+  2. the top-level `environment` key in the secret, if present;
+  3. `staging` otherwise.
+
+  Example secret:
+
+  ```json
+  {
+    "environment": "develop",
+    "terraformPluginTests": {
+      "develop": {
+        "customerID": "...",
+        "locationID": "...",
+        "serviceAccountCredentials": "..."
+      }
+    }
+  }
+  ```
 
 ### `terraform-tests` (for non-SaaS users)
 
@@ -37,7 +56,13 @@ The Dockerfile is multi-stage and produces two targets sharing a common `base` s
   destroys the created resources.
 - **Entry point:** [`full/startscript.sh`](full/startscript.sh).
 - **When it is (re)built:** whenever files in `docker/infra/` or `tests/` directories change.
-- **Required env vars:** `TERRAFORM_CONFIG_FILE` (path to a JSON config file inside the container), optionally `RUN_ENV` (defaults to `cloud`).
+- **Required env vars:** `TERRAFORM_CONFIG_FILE` (path to a JSON config file inside the container), optionally `RUN_ENV`.
+- **Run environment (`RUN_ENV`):** selects which `.terraformPluginTests.<RUN_ENV>` section of the config file is used. It is resolved in this order:
+  1. the `RUN_ENV` env var, if set and non-empty;
+  2. the top-level `environment` key in the config file, if present;
+  3. `cloud` otherwise.
+
+  The config file has the same shape as the secret shown for the `terraform-tests-ci` image above.
 
 ### Differences at a glance
 

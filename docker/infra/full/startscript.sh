@@ -7,12 +7,15 @@ set -o errexit -o nounset -o pipefail
 # default values and check for the mandatory args
 : "${TERRAFORM_CONFIG_FILE:?Config file for the test is required}"
 
-export RUN_ENV="${RUN_ENV:=cloud}"
+# getting the test setup from the secrets
+config_json=$(<"${TERRAFORM_CONFIG_FILE}")
+
+config_env=$(jq -r '.environment // "cloud"' <<<"${config_json}")
+: "${RUN_ENV:=${config_env}}"
+export RUN_ENV
 
 readonly config_prefix=".terraformPluginTests.${RUN_ENV}"
 
-# getting the test setup from the secrets
-config_json=$(<"${TERRAFORM_CONFIG_FILE}")
 CUSTOMER_ID=$(jq -r "${config_prefix}.customerID" <<<"${config_json}")
 TF_VAR_CUSTOMER_NAME=$(jq -r "${config_prefix}.customerName" <<<"${config_json}")
 TF_VAR_LOCATION_ID=$(jq -r "${config_prefix}.locationID" <<<"${config_json}")

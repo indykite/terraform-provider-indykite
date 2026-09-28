@@ -35,22 +35,25 @@ echo "I'll clone the ${BRANCH} version"
 
 cd ./*/ || exit
 
+# setup GCloud
+export BUCKET_NAME="${BUCKET_NAME:=terraform_results_deploy}"
+export SECRET_NAME=${SECRET_NAME:=terraformPluginTests}
+
+# getting the test setup from the secrets
+config_json=$(gcloud secrets versions access latest --secret="${SECRET_NAME}")
+
 # setup reporting
-export RUN_ENV="${RUN_ENV:=staging}"
+config_env=$(jq -r '.environment // "staging"' <<<"${config_json}")
+: "${RUN_ENV:=${config_env}}"
+export RUN_ENV
 export RELEASE_VERSION="${RELEASE_VERSION:=unknown}"
 
 run_date=$(date +%Y%m%d-%H%M)
 readonly BUCKET_PATH="gs://${BUCKET_NAME}"
 readonly results_file_name="${RELEASE_VERSION}_results_terraform_${RUN_ENV}_${run_date}_report.txt"
 readonly config_prefix=".terraformPluginTests.${RUN_ENV}"
-
-# setup GCloud
-export BUCKET_NAME="${BUCKET_NAME:=terraform_results_deploy}"
-export SECRET_NAME=${SECRET_NAME:=terraformPluginTests}
 readonly storage="https://storage.cloud.google.com/${BUCKET_NAME}/${results_file_name}"
 
-# getting the test setup from the secrets
-config_json=$(gcloud secrets versions access latest --secret="${SECRET_NAME}")
 CUSTOMER_ID=$(jq -r "${config_prefix}.customerID" <<<"${config_json}")
 TF_VAR_LOCATION_ID=$(jq -r "${config_prefix}.locationID" <<<"${config_json}")
 INDYKITE_APPLICATION_CREDENTIALS=$(jq -r "${config_prefix}.serviceAccountCredentials" <<<"${config_json}")
