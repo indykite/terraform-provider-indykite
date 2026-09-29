@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.46.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.45.0...v0.46.0) (2026-09-29)
+
+
+### Features
+
+* add audit and new permission ([c6562a0](https://github.com/indykite/terraform-provider-indykite/commit/c6562a011b8121c4e26624a6c0c1caca745e4ec7))
+* add audit and new permission ([5b14d2d](https://github.com/indykite/terraform-provider-indykite/commit/5b14d2d0b678539fd5ea6c8fceb71bc2a5354395))
+
+
+### Miscellaneous Chores
+
+* **deps:** update all non-major dependencies ([e268926](https://github.com/indykite/terraform-provider-indykite/commit/e268926020625a24f2aee95de5e78681cc4ebba8))
+* **deps:** update golang:1.27.1-alpine Docker digest to 4cb7ac9 ([148462a](https://github.com/indykite/terraform-provider-indykite/commit/148462a072f5f7d1426cbeac28296bb19abacba7))
+
 ## [0.45.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.44.0...v0.45.0) (2026-09-16)
 
 
