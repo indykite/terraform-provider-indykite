@@ -46,7 +46,7 @@ data "indykite_application_agent" "agent_by_name_ref" {
 
 ### Required
 
-- `api_permissions` (List of String) List of API permissions for the agent: Authorization, Capture, ContXIQ, EntityMatching, ReadAuthZConfigs and ReadDataSchema. The former IKGRead permission was retired by the platform and is no longer accepted; remove it from existing configurations.
+- `api_permissions` (List of String) List of API permissions for the agent: Audit, Authorization, Capture, ContXIQ, EntityMatching, ReadAuthZConfigs and ReadDataSchema. Audit grants read access to the tamper-proof audit log API (/audit/v1/logs, /audit/v1/manifests and /audit/v1/checkpoints). The former IKGRead permission was retired by the platform and is no longer accepted; remove it from existing configurations.
 
 ### Optional
 

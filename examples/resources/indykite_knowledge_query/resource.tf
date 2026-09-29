@@ -97,7 +97,24 @@ resource "indykite_knowledge_query" "complex_query" {
   })
 }
 
-# Example 5: Inactive knowledge query
+# Example 5: Knowledge query filtering on a request token claim
+# $token.<claim> and $ik_token.<claim> are bound by the platform from the end-user access token
+# and the IndyKite delegated token; they are never passed as input params.
+resource "indykite_knowledge_query" "delegated_query" {
+  name         = "delegated-query"
+  display_name = "Query with token claim filter"
+  description  = "Returns license numbers only to the agent named in the delegation chain"
+  location     = indykite_application_space.my_space.id
+  status       = "active"
+  policy_id    = indykite_authorization_policy.policy_for_ciq.id
+  query = jsonencode({
+    "nodes" : ["ln.property.value"],
+    "relationships" : [],
+    "filter" : { "attribute" : "$ik_token.act.sub", "operator" : "=", "value" : "agent1" }
+  })
+}
+
+# Example 6: Inactive knowledge query
 resource "indykite_knowledge_query" "inactive_query" {
   name         = "inactive-query"
   display_name = "Inactive Query"

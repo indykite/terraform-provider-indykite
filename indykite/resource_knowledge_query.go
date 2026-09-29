@@ -77,7 +77,12 @@ func resourceKnowledgeQuery() *schema.Resource {
 					validation.StringIsNotEmpty,
 					validation.StringIsJSON,
 				),
-				Description: "Configuration of Knowledge Query in JSON format, the same one exported by The Hub.",
+				Description: "Configuration of Knowledge Query in JSON format, the same one exported by The Hub. " +
+					"A query filter may reference the claims of the request tokens as `$token.<claim>` (end-user " +
+					"access token) or `$ik_token.<claim>` (IndyKite delegated token, including its RFC 8693 `act` " +
+					"delegation chain), e.g. `\"attribute\": \"$ik_token.act.sub\"`. These names are bound by the " +
+					"platform on every execution and must not be supplied as input params; a token that did not " +
+					"arrive binds an empty claim set and the filter matches nothing.",
 			},
 			knowledgeQueryStatusKey: {
 				Type:         schema.TypeString,
