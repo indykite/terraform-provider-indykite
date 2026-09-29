@@ -37,7 +37,7 @@ resource "indykite_application_agent" "agent_multi_permissions" {
   name            = "agent-multi-permissions"
   display_name    = "Agent with Multiple Permissions"
   description     = "Agent with all available API permissions"
-  api_permissions = ["Authorization", "Capture", "EntityMatching", "ReadAuthZConfigs", "Audit"]
+  api_permissions = ["Audit", "Authorization", "Capture", "ContXIQ", "EntityMatching", "ReadAuthZConfigs", "ReadDataSchema"]
 }
 
 # Example 5: Agent with deletion protection enabled
