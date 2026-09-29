@@ -126,7 +126,55 @@ resource "indykite_authorization_policy" "inactive_policy" {
   })
 }
 
-# Example 5: CIQ policy with comprehensive configuration (original example)
+# Example 5: KBAC policy reading the request token claims
+# $token holds the claims of the end-user access token (Authorization header) and
+# $ik_token those of the IndyKite delegated token (X-IK-Token header), including its
+# RFC 8693 "act" delegation chain. Both are bound by the platform and are never input params.
+resource "indykite_authorization_policy" "policy_delegated_drive" {
+  name         = "policy-delegated-drive"
+  display_name = "Policy with token claims"
+  description  = "Allows driving only when the delegated agent and the end user match the car"
+  location     = indykite_application_space.my_space.id
+  status       = "active"
+  json = jsonencode({
+    meta = {
+      policy_version = "2.0-kbac"
+    },
+    subject = {
+      type = "Person"
+    },
+    actions = ["CAN_DRIVE"],
+    resource = {
+      type = "Car"
+    },
+    condition = {
+      cypher = "MATCH (subject:Person)-[:OWNS]->(resource:Car) WHERE resource.delegated_to = $ik_token.act.sub AND resource.driver = $token.sub"
+    }
+  })
+}
+
+# Example 6: CIQ policy filtering on a delegated token claim
+resource "indykite_authorization_policy" "policy_ciq_delegated" {
+  name         = "policy-ciq-delegated"
+  display_name = "CIQ policy with token claim filter"
+  description  = "Only the agent named in the delegation chain may read the contracts"
+  location     = indykite_application_space.my_space.id
+  status       = "active"
+  json = jsonencode({
+    "meta" : { "policy_version" : "1.0-ciq" },
+    "subject" : { "type" : "Person" },
+    "condition" : {
+      "cypher" : "MATCH (subject:Person)-[r1:ACCEPTED]->(contract:Contract)",
+      "filter" : [{ "attribute" : "$ik_token.act.sub", "operator" : "=", "value" : "agent1" }]
+    },
+    "allowed_reads" : {
+      "nodes" : ["contract.*"],
+      "relationships" : ["r1.*"]
+    }
+  })
+}
+
+# Example 7: CIQ policy with comprehensive configuration (original example)
 resource "indykite_authorization_policy" "policy_for_ciq" {
   name         = "terraform-pipeline-policy-for-ciq"
   display_name = "Terraform policy for CIQ"
@@ -183,7 +231,7 @@ resource "indykite_authorization_policy" "policy_for_ciq" {
 
 ### Required
 
-- `json` (String) Configuration of Authorization Policy in JSON format, the same one exported by The Hub.
+- `json` (String) Configuration of Authorization Policy in JSON format, the same one exported by The Hub. The claims of the request tokens are available to the policy under the reserved names `$token` (the end-user access token from the Authorization header) and `$ik_token` (the IndyKite delegated token from the X-IK-Token header, including its RFC 8693 `act` delegation chain). A KBAC condition cypher reads them as parameters, e.g. `resource.delegated_to = $ik_token.act.sub`, and a CIQ policy filter reads them as attribute or value, e.g. `"attribute": "$ik_token.act.sub"`. The platform binds both names on every request, so they must not be listed as input params or supplied by callers; a token that did not arrive binds an empty claim set and the condition fails closed.
 - `location` (String) Identifier of Location, where to create resource
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 - `status` (String) Status of the Authorization Policy. Possible values are: active, draft, inactive.

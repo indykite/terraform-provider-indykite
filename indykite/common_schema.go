@@ -214,11 +214,13 @@ func apiPermissionsSchema() *schema.Schema {
 		Elem: &schema.Schema{
 			Type: schema.TypeString,
 			ValidateFunc: validation.StringInSlice([]string{
-				"Authorization", "Capture", "ContXIQ", "EntityMatching", "ReadAuthZConfigs", "ReadDataSchema",
+				"Audit", "Authorization", "Capture", "ContXIQ", "EntityMatching", "ReadAuthZConfigs", "ReadDataSchema",
 			}, false),
 		},
-		Description: `List of API permissions for the agent: Authorization, Capture, ContXIQ, EntityMatching, ` +
-			`ReadAuthZConfigs and ReadDataSchema. The former IKGRead permission was retired by the platform ` +
+		Description: `List of API permissions for the agent: Audit, Authorization, Capture, ContXIQ, ` +
+			`EntityMatching, ReadAuthZConfigs and ReadDataSchema. Audit grants read access to the tamper-proof ` +
+			`audit log API (/audit/v1/logs, /audit/v1/manifests and /audit/v1/checkpoints). ` +
+			`The former IKGRead permission was retired by the platform ` +
 			`and is no longer accepted; remove it from existing configurations.`,
 	}
 }

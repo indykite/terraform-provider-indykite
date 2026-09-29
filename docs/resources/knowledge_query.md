@@ -112,7 +112,24 @@ resource "indykite_knowledge_query" "complex_query" {
   })
 }
 
-# Example 5: Inactive knowledge query
+# Example 5: Knowledge query filtering on a request token claim
+# $token.<claim> and $ik_token.<claim> are bound by the platform from the end-user access token
+# and the IndyKite delegated token; they are never passed as input params.
+resource "indykite_knowledge_query" "delegated_query" {
+  name         = "delegated-query"
+  display_name = "Query with token claim filter"
+  description  = "Returns license numbers only to the agent named in the delegation chain"
+  location     = indykite_application_space.my_space.id
+  status       = "active"
+  policy_id    = indykite_authorization_policy.policy_for_ciq.id
+  query = jsonencode({
+    "nodes" : ["ln.property.value"],
+    "relationships" : [],
+    "filter" : { "attribute" : "$ik_token.act.sub", "operator" : "=", "value" : "agent1" }
+  })
+}
+
+# Example 6: Inactive knowledge query
 resource "indykite_knowledge_query" "inactive_query" {
   name         = "inactive-query"
   display_name = "Inactive Query"
@@ -139,7 +156,7 @@ resource "indykite_knowledge_query" "inactive_query" {
 - `location` (String) Identifier of Location, where to create resource
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 - `policy_id` (String) ID of the Authorization Policy that is used to authorize the query.
-- `query` (String) Configuration of Knowledge Query in JSON format, the same one exported by The Hub.
+- `query` (String) Configuration of Knowledge Query in JSON format, the same one exported by The Hub. A query filter may reference the claims of the request tokens as `$token.<claim>` (end-user access token) or `$ik_token.<claim>` (IndyKite delegated token, including its RFC 8693 `act` delegation chain), e.g. `"attribute": "$ik_token.act.sub"`. These names are bound by the platform on every execution and must not be supplied as input params; a token that did not arrive binds an empty claim set and the filter matches nothing.
 - `status` (String) Status of the Knowledge Query. Possible values are: active, draft, inactive.
 
 ### Optional

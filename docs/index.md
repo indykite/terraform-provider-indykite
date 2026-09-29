@@ -12,8 +12,8 @@ The [IndyKite](https://www.indykite.com/) provider allows you to interact with I
 
 The provider need to be set and configured with one of the following environment variables:
 
-- `INDYKITE_SERVICE_ACCOUNT_CREDENTIALS_FILE` with path to service account credentials file generated from our hub.
-- `INDYKITE_SERVICE_ACCOUNT_CREDENTIALS` with content of service account credentials file generated from our hub.
+- `INDYKITE_SERVICE_ACCOUNT_CREDENTIALS_FILE` with path to service account credentials file .
+- `INDYKITE_SERVICE_ACCOUNT_CREDENTIALS` with content of service account credentials file.
 
 ## Example Usage
 

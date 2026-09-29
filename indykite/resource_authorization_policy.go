@@ -63,7 +63,15 @@ func resourceAuthorizationPolicy() *schema.Resource {
 					validation.StringIsNotEmpty,
 					validation.StringIsJSON,
 				),
-				Description: "Configuration of Authorization Policy in JSON format, the same one exported by The Hub.",
+				Description: "Configuration of Authorization Policy in JSON format, the same one exported by The Hub. " +
+					"The claims of the request tokens are available to the policy under the reserved names " +
+					"`$token` (the end-user access token from the Authorization header) and `$ik_token` " +
+					"(the IndyKite delegated token from the X-IK-Token header, including its RFC 8693 `act` " +
+					"delegation chain). A KBAC condition cypher reads them as parameters, e.g. " +
+					"`resource.delegated_to = $ik_token.act.sub`, and a CIQ policy filter reads them as " +
+					"attribute or value, e.g. `\"attribute\": \"$ik_token.act.sub\"`. The platform binds both names " +
+					"on every request, so they must not be listed as input params or supplied by callers; a token " +
+					"that did not arrive binds an empty claim set and the condition fails closed.",
 			},
 			authzStatusKey: {
 				Type:         schema.TypeString,

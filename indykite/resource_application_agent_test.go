@@ -238,7 +238,7 @@ var _ = Describe("Resource ApplicationAgent", func() {
 		})
 	})
 
-	It("Test api_permissions accepts ReadAuthZConfigs and rejects retired IKGRead", func() {
+	It("Test api_permissions accepts ReadAuthZConfigs and Audit and rejects retired IKGRead", func() {
 		tfConfigDef :=
 			`resource "indykite_application_agent" "development" {
 				application_id = "` + applicationID + `"
@@ -247,7 +247,7 @@ var _ = Describe("Resource ApplicationAgent", func() {
 				api_permissions = [%s]
 				deletion_protection = false
 			}`
-		newPermissions := []string{"Authorization", "Capture", "ReadAuthZConfigs"}
+		newPermissions := []string{"Authorization", "Capture", "ReadAuthZConfigs", "Audit"}
 
 		var sentPermissions []string
 		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -300,19 +300,20 @@ var _ = Describe("Resource ApplicationAgent", func() {
 					ExpectError: regexp.MustCompile(`(?s)api_permissions\.2.*IKGRead`),
 				},
 				{
-					Config: fmt.Sprintf(tfConfigDef, `"Authorization","Capture","ReadAuthZConfigs"`),
+					Config: fmt.Sprintf(tfConfigDef, `"Authorization","Capture","ReadAuthZConfigs","Audit"`),
 					Check: resource.ComposeTestCheckFunc(
 						resource.TestCheckResourceAttr(resourceName, "id", appAgentID),
-						resource.TestCheckResourceAttr(resourceName, "api_permissions.#", "3"),
+						resource.TestCheckResourceAttr(resourceName, "api_permissions.#", "4"),
 						resource.TestCheckResourceAttr(resourceName, "api_permissions.0", "Authorization"),
 						resource.TestCheckResourceAttr(resourceName, "api_permissions.1", "Capture"),
 						resource.TestCheckResourceAttr(resourceName, "api_permissions.2", "ReadAuthZConfigs"),
+						resource.TestCheckResourceAttr(resourceName, "api_permissions.3", "Audit"),
 					),
 				},
 			},
 		})
 
-		Expect(sentPermissions).To(Equal(newPermissions), "create request must forward ReadAuthZConfigs")
+		Expect(sentPermissions).To(Equal(newPermissions), "create request must forward ReadAuthZConfigs and Audit")
 	})
 
 	It("Test import by name with location", func() {
