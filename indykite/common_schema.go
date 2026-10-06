@@ -273,6 +273,7 @@ func dbConnectionSchema() *schema.Schema {
 					Description: "Optional URL-query-encoded mapping from logical location to " +
 						"constituent database alias, e.g. 'global=db1&east=db2&west=db3'. " +
 						"Locations used in capture requests must resolve through this mapping. " +
+						"Must contain the 'global' location and must not use the reserved '__default' name. " +
 						"Must be set together with composite_db_name.",
 					RequiredWith: []string{dbConnectionKey + ".0." + dbCompositeDBNameKey},
 					ValidateFunc: validateAliasMapping,
@@ -282,8 +283,17 @@ func dbConnectionSchema() *schema.Schema {
 	}
 }
 
+const (
+	// aliasMappingGlobalName is the location that must always be present in alias_mapping.
+	aliasMappingGlobalName = "global"
+	// aliasMappingDefaultName is reserved by the backend for nodes without an explicit location.
+	aliasMappingDefaultName = "__default"
+)
+
 // validateAliasMapping checks the value is a URL-query-encoded location→alias map,
 // mirroring how the backend parses it (url.ParseQuery), with non-empty keys and values.
+// A missing "global" location or the reserved "__default" location only produce warnings:
+// the backend rejects them on write, but configurations created before it did must still plan.
 func validateAliasMapping(i any, k string) ([]string, []error) {
 	v, ok := i.(string)
 	if !ok {
@@ -296,6 +306,17 @@ func validateAliasMapping(i any, k string) ([]string, []error) {
 	if err != nil {
 		return nil, []error{fmt.Errorf(
 			"%q must be a URL-query-encoded map like 'location1=alias1&location2=alias2': %w", k, err)}
+	}
+	var warnings []string
+	if _, ok := values[aliasMappingDefaultName]; ok {
+		warnings = append(warnings, fmt.Sprintf(
+			"%q should not contain reserved location %q, the API rejects it when db_connection is updated",
+			k, aliasMappingDefaultName))
+	}
+	if _, ok := values[aliasMappingGlobalName]; !ok {
+		warnings = append(warnings, fmt.Sprintf(
+			"%q should contain location %q, the API rejects it when db_connection is updated",
+			k, aliasMappingGlobalName))
 	}
 	var errs []error
 	for location, aliases := range values {
@@ -316,7 +337,7 @@ func validateAliasMapping(i any, k string) ([]string, []error) {
 			}
 		}
 	}
-	return nil, errs
+	return warnings, errs
 }
 
 func dbConnectionComputedSchema() *schema.Schema {

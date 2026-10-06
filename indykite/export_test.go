@@ -18,6 +18,8 @@ import (
 	"crypto/ecdsa"
 	"encoding/json"
 	"time"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 // ParsePrivateKeyJWK exposes parseJWK to tests.
@@ -44,6 +46,18 @@ func SetCredCreateWaits(initial, waitMin, waitMax time.Duration) func() {
 	return func() {
 		credCreateInitialWait, credCreateRetryWaitMin, credCreateRetryWaitMax = origInitial, origMin, origMax
 	}
+}
+
+// ReadPathForID exposes buildReadPath to tests for a resource with the given ID.
+func ReadPathForID(resourcePath, id string) string {
+	data := (&schema.Resource{}).Data(nil)
+	data.SetId(id)
+	return buildReadPath(resourcePath, data)
+}
+
+// CheckAliasMapping exposes validateAliasMapping to tests.
+func CheckAliasMapping(value any) ([]string, []error) {
+	return validateAliasMapping(value, "alias_mapping")
 }
 
 // CredCreateMaxRetries exposes the credential create retry bound to tests.

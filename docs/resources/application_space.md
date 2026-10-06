@@ -142,7 +142,7 @@ Required:
 
 Optional:
 
-- `alias_mapping` (String) Optional URL-query-encoded mapping from logical location to constituent database alias, e.g. 'global=db1&east=db2&west=db3'. Locations used in capture requests must resolve through this mapping. Must be set together with composite_db_name.
+- `alias_mapping` (String) Optional URL-query-encoded mapping from logical location to constituent database alias, e.g. 'global=db1&east=db2&west=db3'. Locations used in capture requests must resolve through this mapping. Must contain the 'global' location and must not use the reserved '__default' name. Must be set together with composite_db_name.
 - `composite_db_name` (String) Optional Neo4j composite database name. When set, the IKG is federated across the constituent databases listed in alias_mapping; omit it for a regular single-database IKG. Must be set together with alias_mapping.
 - `name` (String) Optional database name
 

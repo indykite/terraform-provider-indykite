@@ -76,6 +76,18 @@ var _ = Describe("DataSource ApplicationAgent", func() {
 
 		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch {
+			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/application-agents/acme"):
+				// Get application agent by name: project_id is required, deprecated location is rejected
+				if r.URL.Query().Has("location") || r.URL.Query().Get("project_id") != appSpaceID {
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+				if nameFound {
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(appAgentResp)
+				} else {
+					w.WriteHeader(http.StatusNotFound)
+				}
 			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/application-agents") &&
 				r.URL.Query().Get("project_id") == appSpaceID:
 				// List application agents by app space
@@ -83,15 +95,6 @@ var _ = Describe("DataSource ApplicationAgent", func() {
 				_ = json.NewEncoder(w).Encode(indykite.ListResponse[indykite.ApplicationAgentResponse]{
 					Data: []indykite.ApplicationAgentResponse{appAgentResp},
 				})
-			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/application-agents/acme") &&
-				r.URL.Query().Get("location") == appSpaceID:
-				// Get application agent by name
-				if nameFound {
-					w.WriteHeader(http.StatusOK)
-					_ = json.NewEncoder(w).Encode(appAgentResp)
-				} else {
-					w.WriteHeader(http.StatusNotFound)
-				}
 			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/application-agents/"+appAgentID):
 				// Read by ID - this also triggers nameFound for next test
 				nameFound = true
