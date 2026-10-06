@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.47.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.46.0...v0.47.0) (2026-10-06)
+
+
+### Features
+
+* replace location with project_id and deprecate ([060778f](https://github.com/indykite/terraform-provider-indykite/commit/060778f99789da3093148343a5ec2359532f81ea))
+
+
+### Miscellaneous Chores
+
+* **deps:** update all non-major dependencies ([f326b7d](https://github.com/indykite/terraform-provider-indykite/commit/f326b7da7b59d25517a59bad09901fb435a56c8c))
+* **deps:** update golang:1.27.1-alpine Docker digest to 8a5910f ([ca3a409](https://github.com/indykite/terraform-provider-indykite/commit/ca3a409a2043f28e0a6ea76bfca3eaa410307d22))
+
 ## [0.46.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.45.0...v0.46.0) (2026-09-29)
 
 
