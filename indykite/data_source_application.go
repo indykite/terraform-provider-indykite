@@ -89,7 +89,7 @@ func lookupApplicationByName(
 	}
 
 	resp := &ApplicationResponse{}
-	err := clientCtx.GetClient().Get(ctx, "/applications/"+name+"?location="+appSpaceID, resp)
+	err := clientCtx.GetClient().Get(ctx, "/applications/"+name+"?project_id="+appSpaceID, resp)
 	if err != nil {
 		return nil, diag.Diagnostic{
 			Severity: diag.Error,

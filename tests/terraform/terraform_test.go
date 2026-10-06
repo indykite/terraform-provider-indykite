@@ -107,9 +107,15 @@ var _ = Describe("Terraform", func() {
 		Expect(resp.ID).To(Equal(myResult["policy_drive_car"]))
 	})
 
-	// Pending until the release that ships indykite_audit_signing; the matching
-	// resource block in tests/provider/test.tf is commented out for the same reason.
-	PIt("ReadAuditSigning", func() {
+	It("ReadAgentWithAuditPermissions", func() {
+		var resp indykite.ApplicationAgentResponse
+		err := client.Get(context.Background(), "/application-agents/"+myResult["agent_audit"], &resp)
+		Expect(err).To(Succeed())
+		Expect(resp.ID).To(Equal(myResult["agent_audit"]))
+		Expect(resp.APIPermissions).To(ConsistOf("Audit", "ReadAuthZConfigs"))
+	})
+
+	It("ReadAuditSigning", func() {
 		var resp indykite.AuditSigningResponse
 		err := client.Get(context.Background(), "/audit-signings/"+myResult["create-audit-signing"], &resp)
 		Expect(err).To(Succeed())

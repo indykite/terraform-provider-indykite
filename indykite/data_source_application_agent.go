@@ -94,7 +94,7 @@ func lookupApplicationAgentByName(
 	}
 
 	resp := &ApplicationAgentResponse{}
-	err := clientCtx.GetClient().Get(ctx, "/application-agents/"+name+"?location="+appSpaceID, resp)
+	err := clientCtx.GetClient().Get(ctx, "/application-agents/"+name+"?project_id="+appSpaceID, resp)
 	if err != nil {
 		return nil, diag.Diagnostic{
 			Severity: diag.Error,

@@ -121,6 +121,26 @@ resource "indykite_application_agent" "agent" {
   deletion_protection = false
 }
 
+# -----------------------------------------------------------------------------
+# Test: Application agent with the Audit and ReadAuthZConfigs API permissions
+# -----------------------------------------------------------------------------
+
+resource "indykite_application_agent" "agent_audit" {
+  application_id  = indykite_application.application.id
+  name            = "automation-terraform-agent-audit-${time_static.example.unix}"
+  display_name    = "Automation Terraform audit agent ${time_static.example.unix}"
+  description     = "Agent with Audit and ReadAuthZConfigs permissions for terraform pipeline"
+  api_permissions = ["Audit", "ReadAuthZConfigs"]
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = toset(self.api_permissions) == toset(["Audit", "ReadAuthZConfigs"])
+      error_message = "api_permissions must round-trip Audit and ReadAuthZConfigs through create/read"
+    }
+  }
+  deletion_protection = false
+}
+
 resource "indykite_application_agent_credential" "with_public" {
   app_agent_id = indykite_application_agent.agent.id
   display_name = "Automation Terraform credential ${time_static.example.unix}"
@@ -777,27 +797,35 @@ resource "indykite_mcp_server" "create-mcp-server" {
 
 # -----------------------------------------------------------------------------
 # Test: Audit signing configuration
-# Commented out until the release that ships indykite_audit_signing: the
-# terraform-validate check resolves the published provider from the registry,
-# which rejects resource types it does not know yet. Uncomment once released.
 # -----------------------------------------------------------------------------
-#
-# resource "indykite_audit_signing" "create-audit-signing" {
-#   name         = "automation-terraform-audit-signing-${time_static.example.unix}"
-#   display_name = "Automation Terraform audit signing ${time_static.example.unix}"
-#   description  = "Audit signing for terraform pipeline"
-#   location     = indykite_application_space.appspace.id
-#   key_provider = "PLATFORM_MANAGED"
-#   lifecycle {
-#     create_before_destroy = true
-#     postcondition {
-#       condition     = self.app_space_id == indykite_application_space.appspace.id
-#       error_message = "app_space_id must be populated from the appspace after creation"
-#     }
-#   }
-# }
-#
-# data "indykite_audit_signings" "audit-signings" {
-#   app_space_id = indykite_application_space.appspace.id
-#   filter       = [indykite_audit_signing.create-audit-signing.name]
-# }
+
+resource "indykite_audit_signing" "create-audit-signing" {
+  name         = "automation-terraform-audit-signing-${time_static.example.unix}"
+  display_name = "Automation Terraform audit signing ${time_static.example.unix}"
+  description  = "Audit signing for terraform pipeline"
+  location     = indykite_application_space.appspace.id
+  key_provider = "PLATFORM_MANAGED"
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = self.app_space_id == indykite_application_space.appspace.id
+      error_message = "app_space_id must be populated from the appspace after creation"
+    }
+  }
+}
+
+data "indykite_audit_signings" "audit-signings" {
+  app_space_id = indykite_application_space.appspace.id
+  filter       = [indykite_audit_signing.create-audit-signing.name]
+  lifecycle {
+    postcondition {
+      condition = try(
+        length(self.audit_signings) == 1 &&
+        self.audit_signings[0].id == indykite_audit_signing.create-audit-signing.id &&
+        self.audit_signings[0].key_provider == "PLATFORM_MANAGED",
+        false
+      )
+      error_message = "audit signing list must return exactly the created PLATFORM_MANAGED config"
+    }
+  }
+}

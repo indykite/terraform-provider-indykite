@@ -17,9 +17,11 @@ package indykite
 import (
 	"context"
 	"errors"
+	"net/http"
 	"regexp"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -33,6 +35,55 @@ func basicStateImporter(_ context.Context, data *schema.ResourceData, _ any) ([]
 	}
 
 	return []*schema.ResourceData{data}, nil
+}
+
+// appAgentStateImporter keeps supporting "agent-name?location=<application ID>" imports.
+// The Config API resolves Application Agent names within a Project, so when the location
+// is an Application, it is replaced by the Application's Project ID. Any other location
+// is passed through unchanged and treated as a Project ID.
+func appAgentStateImporter(ctx context.Context, data *schema.ResourceData, meta any) ([]*schema.ResourceData, error) {
+	if err := parseImportID(data); err != nil {
+		return nil, err
+	}
+
+	name, location, isNameLookup := strings.Cut(data.Id(), "?location=")
+	if !isNameLookup {
+		return []*schema.ResourceData{data}, nil
+	}
+
+	var d diag.Diagnostics
+	clientCtx := getClientContext(&d, meta)
+	if clientCtx == nil {
+		return nil, errors.New("unable to retrieve IndyKite client from meta")
+	}
+	var app ApplicationResponse
+	err := clientCtx.GetClient().Get(ctx, "/applications/"+location, &app)
+	switch {
+	case err == nil && app.AppSpaceID != "":
+		data.SetId(name + "?location=" + app.AppSpaceID)
+	case err == nil:
+		return nil, errors.New("application response is missing project_id")
+	case !isNotApplicationError(err):
+		return nil, errors.Join(errors.New("unable to resolve import location as an application"), err)
+	}
+
+	return []*schema.ResourceData{data}, nil
+}
+
+// isNotApplicationError reports whether err proves the location is not an Application:
+// 404 for an unknown Application, 400/422 when the API rejects the value as an Application ID
+// (e.g. a Project ID). Any other error must be surfaced instead of guessing.
+func isNotApplicationError(err error) bool {
+	var restErr *RestError
+	if !errors.As(err, &restErr) {
+		return false
+	}
+	switch restErr.StatusCode {
+	case http.StatusNotFound, http.StatusBadRequest, http.StatusUnprocessableEntity:
+		return true
+	default:
+		return false
+	}
 }
 
 func parseImportID(d *schema.ResourceData) error {

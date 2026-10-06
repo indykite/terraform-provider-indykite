@@ -43,7 +43,7 @@ func resourceApplicationAgent() *schema.Resource {
 		UpdateContext: resAppAgentUpdate,
 		DeleteContext: resAppAgentDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: basicStateImporter,
+			StateContext: appAgentStateImporter,
 		},
 		Timeouts: defaultTimeouts(),
 		Schema: map[string]*schema.Schema{

@@ -317,6 +317,9 @@ var _ = Describe("Resource ApplicationAgent", func() {
 	})
 
 	It("Test import by name with location", func() {
+		// Well-formed GID the mock answers with HTTP 500 when resolved as an Application
+		const serverErrorLocation = "gid:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+
 		tfConfigDef :=
 			`resource "indykite_application_agent" "development" {
 				application_id = "` + applicationID + `"
@@ -352,7 +355,9 @@ var _ = Describe("Resource ApplicationAgent", func() {
 				// Support both ID and name?location=applicationID formats
 				// Check if it's a name-based lookup or ID-based lookup
 				pathAfterAgents := strings.TrimPrefix(r.URL.Path, "/configs/v1/application-agents/")
-				isNameLookup := strings.Contains(pathAfterAgents, "wonka-agent")
+				// Names are resolved within a Project, like the Config API does
+				isNameLookup := strings.Contains(pathAfterAgents, "wonka-agent") &&
+					r.URL.Query().Get("project_id") == appSpaceID && !r.URL.Query().Has("location")
 				isIDLookup := strings.Contains(pathAfterAgents, appAgentID)
 
 				var resp indykite.ApplicationAgentResponse
@@ -375,6 +380,27 @@ var _ = Describe("Resource ApplicationAgent", func() {
 					w.WriteHeader(http.StatusNotFound)
 					_ = json.NewEncoder(w).Encode(map[string]string{"message": "Not Found"})
 				}
+
+			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/applications/"):
+				// Import resolves an Application location to its Project
+				switch {
+				case strings.HasSuffix(r.URL.Path, "/applications/"+serverErrorLocation):
+					w.WriteHeader(http.StatusInternalServerError)
+					_ = json.NewEncoder(w).Encode(map[string]string{"message": "Internal Server Error"})
+					return
+				case !strings.HasSuffix(r.URL.Path, "/applications/"+applicationID):
+					// Like the Config API, a non-Application GID fails validation
+					w.WriteHeader(http.StatusUnprocessableEntity)
+					_ = json.NewEncoder(w).Encode(map[string]string{"message": "Unprocessable Entity"})
+					return
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(indykite.ApplicationResponse{
+					ID:         applicationID,
+					CustomerID: customerID,
+					AppSpaceID: appSpaceID,
+					Name:       "wonka-app",
+				})
 
 			case r.Method == http.MethodDelete && strings.Contains(r.URL.Path, appAgentID):
 				w.WriteHeader(http.StatusNoContent)
@@ -403,9 +429,24 @@ var _ = Describe("Resource ApplicationAgent", func() {
 					),
 				},
 				{
+					// Existing form: Application ID as location is resolved to its Project
 					ResourceName:  resourceName,
 					ImportState:   true,
 					ImportStateId: "wonka-agent?location=" + applicationID,
+				},
+				{
+					// Project ID as location is used as is
+					ResourceName:  resourceName,
+					ImportState:   true,
+					ImportStateId: "wonka-agent?location=" + appSpaceID,
+				},
+				{
+					// Errors other than "not an Application" are surfaced, not treated as a Project ID
+					ResourceName:  resourceName,
+					ImportState:   true,
+					ImportStateId: "wonka-agent?location=" + serverErrorLocation,
+					ExpectError: regexp.MustCompile(
+						`(?s)unable to resolve import location as an application.*HTTP 500`),
 				},
 			},
 		})
