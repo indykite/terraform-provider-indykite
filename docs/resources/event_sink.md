@@ -137,7 +137,7 @@ resource "indykite_event_sink" "create-event" {
   name         = "terraform-event-sink-${time_static.example.unix}"
   display_name = "Terraform event sink  ${time_static.example.unix}"
   description  = "Event sink for terraform"
-  location     = indykite_application_space.appspace.id
+  project_id   = indykite_application_space.appspace.id
   providers {
     provider_name = "kafka-provider-01"
     kafka {
@@ -214,10 +214,10 @@ resource "indykite_event_sink" "create-event" {
   }
 }
 
-# Example 1: Minimal Kafka event sink with hardcoded location
+# Example 1: Minimal Kafka event sink with hardcoded project_id
 resource "indykite_event_sink" "minimal_kafka" {
-  name     = "minimal-kafka-sink"
-  location = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
+  name       = "minimal-kafka-sink"
+  project_id = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
   providers {
     provider_name = "kafka-main"
     kafka {
@@ -240,7 +240,7 @@ resource "indykite_event_sink" "kafka_with_ref" {
   name         = "kafka-sink-with-ref"
   display_name = "Kafka Sink with Reference"
   description  = "Event sink using application space reference"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   providers {
     provider_name = "kafka-prod"
     kafka {
@@ -267,7 +267,7 @@ resource "indykite_event_sink" "azure_grid" {
   name         = "azure-event-grid-sink"
   display_name = "Azure Event Grid Sink"
   description  = "Event sink for Azure Event Grid"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   providers {
     provider_name = "azure-grid-prod"
     azure_event_grid {
@@ -288,7 +288,7 @@ resource "indykite_event_sink" "gcp_pubsub" {
   name         = "gcp-pubsub-sink"
   display_name = "GCP Pub/Sub Sink"
   description  = "Event sink for Google Cloud Pub/Sub"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   providers {
     provider_name = "gcp-pubsub"
     pubsub {
@@ -311,7 +311,7 @@ resource "indykite_event_sink" "azure_bus" {
   name         = "azure-service-bus-sink"
   display_name = "Azure Service Bus Sink"
   description  = "Event sink for Azure Service Bus"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   providers {
     provider_name = "azure-bus-prod"
     azure_service_bus {
@@ -332,7 +332,7 @@ resource "indykite_event_sink" "multi_route" {
   name         = "multi-route-sink"
   display_name = "Multi-Route Event Sink"
   description  = "Event sink with multiple routes and complex filtering"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   providers {
     provider_name = "kafka-audit"
     kafka {
@@ -375,7 +375,7 @@ resource "indykite_event_sink" "multi_route" {
   }
 }
 
-# Note: The location parameter accepts an Application Space ID.
+# Note: The project_id parameter accepts an Application Space ID. location is deprecated, use project_id instead.
 # You must define at least one provider (kafka, azure_event_grid, or azure_service_bus).
 # You must define at least one route that references a provider_id.
 # The event sink will automatically populate app_space_id and customer_id as computed fields.
@@ -387,7 +387,6 @@ resource "indykite_event_sink" "multi_route" {
 
 ### Required
 
-- `location` (String) Identifier of Location, where to create resource
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 - `providers` (Block List, Min: 1) (see [below for nested schema](#nestedblock--providers))
 - `routes` (Block List, Min: 1) (see [below for nested schema](#nestedblock--routes))
@@ -397,6 +396,8 @@ resource "indykite_event_sink" "multi_route" {
 - `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
 - `include_cdc_events` (Boolean) When true, CDC (Change Data Capture) events will be emitted to this event sink. When false or unset, CDC events will not be emitted. Defaults to false for backward compatibility.
+- `location` (String, Deprecated) Identifier of Location, where to create resource. Deprecated, use project_id instead
+- `project_id` (String) Identifier of Project, where to create resource
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only

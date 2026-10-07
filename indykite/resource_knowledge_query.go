@@ -55,12 +55,13 @@ func resourceKnowledgeQuery() *schema.Resource {
 		UpdateContext: resKnowledgeQueryUpdate,
 		DeleteContext: resKnowledgeQueryDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: basicStateImporter,
+			StateContext: projectStateImporter,
 		},
 
 		Timeouts: defaultTimeouts(),
 		Schema: map[string]*schema.Schema{
 			locationKey:    locationSchema(),
+			projectIDKey:   projectIDSchema(),
 			customerIDKey:  setComputed(customerIDSchema()),
 			appSpaceIDKey:  setComputed(appSpaceIDSchema()),
 			nameKey:        nameSchema(),
@@ -115,7 +116,7 @@ func resKnowledgeQueryCreate(ctx context.Context, data *schema.ResourceData, met
 	apiStatus := KnowledgeQueryStatusToAPI[statusValue]
 
 	req := CreateKnowledgeQueryRequest{
-		ProjectID:   data.Get(locationKey).(string),
+		ProjectID:   projectIDFromData(data),
 		Name:        data.Get(nameKey).(string),
 		DisplayName: stringValue(optionalString(data, displayNameKey)),
 		Description: stringValue(optionalString(data, descriptionKey)),
@@ -156,11 +157,7 @@ func resKnowledgeQueryRead(ctx context.Context, data *schema.ResourceData, meta 
 	setData(&d, data, appSpaceIDKey, resp.AppSpaceID)
 
 	// Set location based on which is present
-	if resp.AppSpaceID != "" {
-		setData(&d, data, locationKey, resp.AppSpaceID)
-	} else if resp.CustomerID != "" {
-		setData(&d, data, locationKey, resp.CustomerID)
-	}
+	setProjectIDData(&d, data, resp.AppSpaceID, resp.CustomerID)
 
 	setData(&d, data, nameKey, resp.Name)
 	setData(&d, data, displayNameKey, resp.DisplayName)

@@ -19,6 +19,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
@@ -28,6 +29,7 @@ const (
 	displayNameKey        = "display_name"
 	descriptionKey        = "description"
 	locationKey           = "location"
+	projectIDKey          = "project_id"
 	customerIDKey         = "customer_id"
 	appSpaceIDKey         = "app_space_id"
 	applicationIDKey      = "application_id"
@@ -53,7 +55,9 @@ const (
 )
 
 const (
-	locationDescription      = `Identifier of Location, where to create resource`
+	locationDescription      = `Identifier of Location, where to create resource. Deprecated, use project_id instead`
+	projectIDDescription     = `Identifier of Project, where to create resource`
+	locationDeprecation      = `Use project_id instead.`
 	customerIDDescription    = `Identifier of Customer`
 	appSpaceIDDescription    = `Identifier of Application Space`
 	applicationIDDescription = `Identifier of Application`
@@ -385,8 +389,47 @@ func dbConnectionComputedSchema() *schema.Schema {
 	}
 }
 
+// locationSchema is the deprecated alias of project_id: exactly one of them must be set,
+// and both are computed so that switching from one to the other does not produce a diff.
 func locationSchema() *schema.Schema {
-	return baseIDSchema(locationDescription)
+	base := baseIDSchema(locationDescription)
+	base.Required = false
+	base.Optional = true
+	base.Computed = true
+	base.Deprecated = locationDeprecation
+	base.ExactlyOneOf = []string{locationKey, projectIDKey}
+	return base
+}
+
+func projectIDSchema() *schema.Schema {
+	base := baseIDSchema(projectIDDescription)
+	base.Required = false
+	base.Optional = true
+	base.Computed = true
+	base.ExactlyOneOf = []string{locationKey, projectIDKey}
+	return base
+}
+
+// projectIDFromData returns project_id, or the deprecated location when project_id is not set.
+func projectIDFromData(data *schema.ResourceData) string {
+	if v, _ := data.Get(projectIDKey).(string); v != "" {
+		return v
+	}
+	v, _ := data.Get(locationKey).(string)
+	return v
+}
+
+// setProjectIDData stores the parent of a configuration in both project_id and the deprecated location.
+func setProjectIDData(d *diag.Diagnostics, data *schema.ResourceData, appSpaceID, customerID string) {
+	parentID := appSpaceID
+	if parentID == "" {
+		parentID = customerID
+	}
+	if parentID == "" {
+		return
+	}
+	setData(d, data, projectIDKey, parentID)
+	setData(d, data, locationKey, parentID)
 }
 
 func customerIDSchema() *schema.Schema {

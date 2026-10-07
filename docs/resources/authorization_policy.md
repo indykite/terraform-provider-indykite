@@ -33,15 +33,15 @@ resource "indykite_authorization_policy" "policy_drive_car" {
       cypher = "MATCH (subject:Person)-[:OWNS]->(resource:Car)"
     }
   })
-  location = "AppSpaceID"
-  status   = "active"
+  project_id = "AppSpaceID"
+  status     = "active"
 }
 
-# Example 1: Minimal policy with hardcoded location
+# Example 1: Minimal policy with hardcoded project_id
 resource "indykite_authorization_policy" "minimal_policy" {
-  name     = "minimal-policy"
-  location = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
-  status   = "active"
+  name       = "minimal-policy"
+  project_id = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
+  status     = "active"
   json = jsonencode({
     meta = {
       policyVersion = "1.0-indykite"
@@ -61,7 +61,7 @@ resource "indykite_authorization_policy" "policy_with_ref" {
   name         = "policy-with-reference"
   display_name = "Policy with AppSpace Reference"
   description  = "Policy using application space reference"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   status       = "active"
   json = jsonencode({
     meta = {
@@ -85,7 +85,7 @@ resource "indykite_authorization_policy" "policy_with_tags" {
   name         = "policy-with-tags"
   display_name = "Policy with Tags"
   description  = "Policy demonstrating tag usage"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   status       = "active"
   tags         = ["production", "critical", "gdpr"]
   json = jsonencode({
@@ -110,7 +110,7 @@ resource "indykite_authorization_policy" "inactive_policy" {
   name         = "inactive-policy"
   display_name = "Inactive Policy"
   description  = "Policy that is not currently active"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   status       = "inactive"
   json = jsonencode({
     meta = {
@@ -134,7 +134,7 @@ resource "indykite_authorization_policy" "policy_delegated_drive" {
   name         = "policy-delegated-drive"
   display_name = "Policy with token claims"
   description  = "Allows driving only when the delegated agent and the end user match the car"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   status       = "active"
   json = jsonencode({
     meta = {
@@ -158,7 +158,7 @@ resource "indykite_authorization_policy" "policy_ciq_delegated" {
   name         = "policy-ciq-delegated"
   display_name = "CIQ policy with token claim filter"
   description  = "Only the agent named in the delegation chain may read the contracts"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   status       = "active"
   json = jsonencode({
     "meta" : { "policy_version" : "1.0-ciq" },
@@ -217,11 +217,11 @@ resource "indykite_authorization_policy" "policy_for_ciq" {
       "relationships" : ["<string>"]
     },
   })
-  location = indykite_application_space.appspace.id
-  status   = "active"
+  project_id = indykite_application_space.appspace.id
+  status     = "active"
 }
 
-# Note: The location parameter accepts an Application Space ID.
+# Note: The project_id parameter accepts an Application Space ID. location is deprecated, use project_id instead.
 # You can use either a hardcoded GID or a reference to an application_space resource.
 # The policy will automatically populate app_space_id and customer_id as computed fields.
 ```
@@ -232,7 +232,6 @@ resource "indykite_authorization_policy" "policy_for_ciq" {
 ### Required
 
 - `json` (String) Configuration of Authorization Policy in JSON format, the same one exported by The Hub. The claims of the request tokens are available to the policy under the reserved names `$token` (the end-user access token from the Authorization header) and `$ik_token` (the IndyKite delegated token from the X-IK-Token header, including its RFC 8693 `act` delegation chain). A KBAC condition cypher reads them as parameters, e.g. `resource.delegated_to = $ik_token.act.sub`, and a CIQ policy filter reads them as attribute or value, e.g. `"attribute": "$ik_token.act.sub"`. The platform binds both names on every request, so they must not be listed as input params or supplied by callers; a token that did not arrive binds an empty claim set and the condition fails closed.
-- `location` (String) Identifier of Location, where to create resource
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 - `status` (String) Status of the Authorization Policy. Possible values are: active, draft, inactive.
 
@@ -240,6 +239,8 @@ resource "indykite_authorization_policy" "policy_for_ciq" {
 
 - `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
+- `location` (String, Deprecated) Identifier of Location, where to create resource. Deprecated, use project_id instead
+- `project_id` (String) Identifier of Project, where to create resource
 - `tags` (List of String) Tags of the Authorization Policy.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 

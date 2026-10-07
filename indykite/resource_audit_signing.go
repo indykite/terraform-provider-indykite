@@ -46,22 +46,24 @@ var AuditSigningProviders = []string{
 
 func resourceAuditSigning() *schema.Resource {
 	return &schema.Resource{
-		Description: "Audit Signing configuration defines which key is used to sign audit log records of a Project. " +
-			"The key is either managed by the IndyKite platform, or provided by the customer through a cloud KMS " +
-			"(Google Cloud KMS, AWS KMS or Azure Key Vault), in which case the key resource, key ID and " +
-			"authentication parameters must be supplied.",
+		Description: "Audit Signing configuration declares who manages the key that signs a Project's audit " +
+			"log records: the IndyKite platform, or the customer through a cloud KMS (Google Cloud KMS, " +
+			"AWS KMS or Azure Key Vault), in which case the key resource, key ID and authentication " +
+			"parameters must be supplied. Every signed record in the Audit Log API carries the kid of " +
+			"the key that signed it.",
 		CreateContext: resAuditSigningCreate,
 		ReadContext:   resAuditSigningRead,
 		UpdateContext: resAuditSigningUpdate,
 		DeleteContext: resAuditSigningDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: basicStateImporter,
+			StateContext: projectStateImporter,
 		},
 		CustomizeDiff: validateAuditSigningCustomerManagedKey,
 
 		Timeouts: defaultTimeouts(),
 		Schema: map[string]*schema.Schema{
 			locationKey:   locationSchema(),
+			projectIDKey:  projectIDSchema(),
 			customerIDKey: setComputed(customerIDSchema()),
 			appSpaceIDKey: setComputed(appSpaceIDSchema()),
 
@@ -91,7 +93,8 @@ func resourceAuditSigning() *schema.Resource {
 				Type:         schema.TypeString,
 				Optional:     true,
 				ValidateFunc: validation.StringLenBetween(0, 256),
-				Description:  "Key ID (kid) published with signed audit records so verifiers can locate the key.",
+				Description: "Key ID (kid): the name records signed with this key carry, and the kid verifiers " +
+					"look up in the Audit Log API's JWK Set.",
 			},
 			auditSigningAuthParamsKey: {
 				Type:             schema.TypeMap,
@@ -99,10 +102,11 @@ func resourceAuditSigning() *schema.Resource {
 				Sensitive:        true,
 				Elem:             &schema.Schema{Type: schema.TypeString},
 				ValidateDiagFunc: validateAuditSigningAuthParams,
-				Description: "Authentication parameters used to access the customer managed key, " +
-					"e.g. service account credentials or access keys. At most 32 entries. " +
-					"Values are write-only: the API never returns them, so Terraform keeps the values " +
-					"from the configuration and only reconciles the set of keys.",
+				Description: "Authentication parameters used to access the customer managed key, e.g. a role ARN " +
+					"with its external ID, a service account email, or a tenant and client ID. At most 32 " +
+					"entries; every key and value between 1 and 256 characters, so a key file or a PEM " +
+					"private key cannot be passed. Values are write-only: the API never returns them, so " +
+					"Terraform keeps the values from the configuration and only reconciles the set of keys.",
 			},
 		},
 	}
@@ -118,7 +122,7 @@ func resAuditSigningCreate(ctx context.Context, data *schema.ResourceData, meta 
 	defer cancel()
 
 	req := CreateAuditSigningRequest{
-		ProjectID:   data.Get(locationKey).(string),
+		ProjectID:   projectIDFromData(data),
 		Name:        data.Get(nameKey).(string),
 		DisplayName: stringValue(optionalString(data, displayNameKey)),
 		Description: stringValue(optionalString(data, descriptionKey)),
@@ -158,11 +162,7 @@ func resAuditSigningRead(ctx context.Context, data *schema.ResourceData, meta an
 	setData(&d, data, customerIDKey, resp.CustomerID)
 	setData(&d, data, appSpaceIDKey, resp.AppSpaceID)
 
-	if resp.AppSpaceID != "" {
-		setData(&d, data, locationKey, resp.AppSpaceID)
-	} else if resp.CustomerID != "" {
-		setData(&d, data, locationKey, resp.CustomerID)
-	}
+	setProjectIDData(&d, data, resp.AppSpaceID, resp.CustomerID)
 
 	setData(&d, data, nameKey, resp.Name)
 	setData(&d, data, displayNameKey, resp.DisplayName)

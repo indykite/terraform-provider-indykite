@@ -47,12 +47,13 @@ func resourceExternalDataResolver() *schema.Resource {
 		UpdateContext: resExternalDataResolverUpdate,
 		DeleteContext: resExternalDataResolverDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: basicStateImporter,
+			StateContext: projectStateImporter,
 		},
 
 		Timeouts: defaultTimeouts(),
 		Schema: map[string]*schema.Schema{
 			locationKey:   locationSchema(),
+			projectIDKey:  projectIDSchema(),
 			customerIDKey: setComputed(customerIDSchema()),
 			appSpaceIDKey: setComputed(appSpaceIDSchema()),
 
@@ -148,7 +149,7 @@ func resExternalDataResolverCreate(ctx context.Context, data *schema.ResourceDat
 	defer cancel()
 
 	req := CreateExternalDataResolverRequest{
-		ProjectID:        data.Get(locationKey).(string),
+		ProjectID:        projectIDFromData(data),
 		Name:             data.Get(nameKey).(string),
 		DisplayName:      stringValue(optionalString(data, displayNameKey)),
 		Description:      stringValue(optionalString(data, descriptionKey)),
@@ -193,11 +194,7 @@ func resExternalDataResolverRead(ctx context.Context, data *schema.ResourceData,
 	setData(&d, data, appSpaceIDKey, resp.AppSpaceID)
 
 	// Set location based on which is present
-	if resp.AppSpaceID != "" {
-		setData(&d, data, locationKey, resp.AppSpaceID)
-	} else if resp.CustomerID != "" {
-		setData(&d, data, locationKey, resp.CustomerID)
-	}
+	setProjectIDData(&d, data, resp.AppSpaceID, resp.CustomerID)
 
 	setData(&d, data, nameKey, resp.Name)
 	// Only set optional fields if they have non-empty values

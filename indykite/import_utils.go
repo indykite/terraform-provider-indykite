@@ -37,6 +37,23 @@ func basicStateImporter(_ context.Context, data *schema.ResourceData, _ any) ([]
 	return []*schema.ResourceData{data}, nil
 }
 
+// projectStateImporter is the importer of the resources with a project_id attribute.
+// Besides "gid:xxx" and the deprecated "resource-name?location=gid:xxx", it accepts
+// "resource-name?project_id=gid:xxx", which is rewritten to the location form that
+// buildReadPath already translates to the Config API project_id query parameter.
+func projectStateImporter(ctx context.Context, data *schema.ResourceData, meta any) ([]*schema.ResourceData, error) {
+	importID := data.Id()
+	if name, projectID, ok := strings.Cut(importID, "?"+projectIDKey+"="); ok {
+		data.SetId(name + "?" + locationKey + "=" + projectID)
+	}
+	if err := parseImportID(data); err != nil {
+		return nil, errors.New("Unimplemented id format: " + importID +
+			". Expected 'gid:xxx', 'resource-name?project_id=gid:xxx', " +
+			"or deprecated 'resource-name?location=gid:xxx'")
+	}
+	return basicStateImporter(ctx, data, meta)
+}
+
 // appAgentStateImporter keeps supporting "agent-name?location=<application ID>" imports.
 // The Config API resolves Application Agent names within a Project, so when the location
 // is an Application, it is replaced by the Application's Project ID. Any other location

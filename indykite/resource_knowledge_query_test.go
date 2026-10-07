@@ -64,9 +64,12 @@ var _ = Describe("Resource Knowledge Query config", func() {
 				{
 					Config: `resource "indykite_knowledge_query" "wonka" {
 						name = "wonka-knowledge-query-config"
+						query = "{}"
+						status = "active"
+						policy_id = "` + sampleID + `"
 					}
 					`,
-					ExpectError: regexp.MustCompile(`The argument "location" is required, but no definition was found`),
+					ExpectError: regexp.MustCompile("one of `location,project_id` must be specified"),
 				},
 				{
 					Config: `resource "indykite_knowledge_query" "wonka" {

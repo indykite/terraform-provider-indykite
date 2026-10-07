@@ -46,12 +46,13 @@ func resourceTrustScoreProfile() *schema.Resource {
 		UpdateContext: resTrustScoreProfileUpdate,
 		DeleteContext: resTrustScoreProfileDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: basicStateImporter,
+			StateContext: projectStateImporter,
 		},
 
 		Timeouts: defaultTimeouts(),
 		Schema: map[string]*schema.Schema{
 			locationKey:   locationSchema(),
+			projectIDKey:  projectIDSchema(),
 			customerIDKey: setComputed(customerIDSchema()),
 			appSpaceIDKey: setComputed(appSpaceIDSchema()),
 
@@ -128,7 +129,7 @@ func resTrustScoreProfileCreate(ctx context.Context, data *schema.ResourceData, 
 	apiSchedule := TrustScoreProfileScheduleToAPI[scheduleValue]
 
 	req := CreateTrustScoreProfileRequest{
-		ProjectID:          data.Get(locationKey).(string),
+		ProjectID:          projectIDFromData(data),
 		Name:               data.Get(nameKey).(string),
 		DisplayName:        stringValue(optionalString(data, displayNameKey)),
 		Description:        stringValue(optionalString(data, descriptionKey)),
@@ -169,11 +170,7 @@ func resTrustScoreProfileRead(ctx context.Context, data *schema.ResourceData, me
 	setData(&d, data, appSpaceIDKey, resp.AppSpaceID)
 
 	// Set location based on which is present
-	if resp.AppSpaceID != "" {
-		setData(&d, data, locationKey, resp.AppSpaceID)
-	} else if resp.CustomerID != "" {
-		setData(&d, data, locationKey, resp.CustomerID)
-	}
+	setProjectIDData(&d, data, resp.AppSpaceID, resp.CustomerID)
 
 	setData(&d, data, nameKey, resp.Name)
 	setData(&d, data, displayNameKey, resp.DisplayName)

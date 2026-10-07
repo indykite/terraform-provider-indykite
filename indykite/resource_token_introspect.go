@@ -67,12 +67,13 @@ func resourceTokenIntrospect() *schema.Resource {
 		UpdateContext: resTokenIntrospectUpdate,
 		DeleteContext: resTokenIntrospectDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: basicStateImporter,
+			StateContext: projectStateImporter,
 		},
 
 		Timeouts: defaultTimeouts(),
 		Schema: map[string]*schema.Schema{
 			locationKey:   locationSchema(),
+			projectIDKey:  projectIDSchema(),
 			customerIDKey: setComputed(customerIDSchema()),
 			appSpaceIDKey: setComputed(appSpaceIDSchema()),
 
@@ -218,7 +219,7 @@ func resTokenIntrospectCreate(ctx context.Context, data *schema.ResourceData, me
 	defer cancel()
 
 	req := buildTokenIntrospectRequest(data)
-	req.ProjectID = data.Get(locationKey).(string)
+	req.ProjectID = projectIDFromData(data)
 	req.Name = data.Get(nameKey).(string)
 	req.DisplayName = stringValue(optionalString(data, displayNameKey))
 	req.Description = stringValue(optionalString(data, descriptionKey))
@@ -255,11 +256,7 @@ func resTokenIntrospectRead(ctx context.Context, data *schema.ResourceData, meta
 	setData(&d, data, appSpaceIDKey, resp.AppSpaceID)
 
 	// Set location based on which is present
-	if resp.AppSpaceID != "" {
-		setData(&d, data, locationKey, resp.AppSpaceID)
-	} else if resp.CustomerID != "" {
-		setData(&d, data, locationKey, resp.CustomerID)
-	}
+	setProjectIDData(&d, data, resp.AppSpaceID, resp.CustomerID)
 
 	setData(&d, data, nameKey, resp.Name)
 	setData(&d, data, displayNameKey, resp.DisplayName)
