@@ -18,15 +18,15 @@ resource "indykite_authorization_policy" "policy_drive_car" {
       cypher = "MATCH (subject:Person)-[:OWNS]->(resource:Car)"
     }
   })
-  location = "AppSpaceID"
-  status   = "active"
+  project_id = "AppSpaceID"
+  status     = "active"
 }
 
-# Example 1: Minimal policy with hardcoded location
+# Example 1: Minimal policy with hardcoded project_id
 resource "indykite_authorization_policy" "minimal_policy" {
-  name     = "minimal-policy"
-  location = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
-  status   = "active"
+  name       = "minimal-policy"
+  project_id = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
+  status     = "active"
   json = jsonencode({
     meta = {
       policyVersion = "1.0-indykite"
@@ -46,7 +46,7 @@ resource "indykite_authorization_policy" "policy_with_ref" {
   name         = "policy-with-reference"
   display_name = "Policy with AppSpace Reference"
   description  = "Policy using application space reference"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   status       = "active"
   json = jsonencode({
     meta = {
@@ -70,7 +70,7 @@ resource "indykite_authorization_policy" "policy_with_tags" {
   name         = "policy-with-tags"
   display_name = "Policy with Tags"
   description  = "Policy demonstrating tag usage"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   status       = "active"
   tags         = ["production", "critical", "gdpr"]
   json = jsonencode({
@@ -95,7 +95,7 @@ resource "indykite_authorization_policy" "inactive_policy" {
   name         = "inactive-policy"
   display_name = "Inactive Policy"
   description  = "Policy that is not currently active"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   status       = "inactive"
   json = jsonencode({
     meta = {
@@ -119,7 +119,7 @@ resource "indykite_authorization_policy" "policy_delegated_drive" {
   name         = "policy-delegated-drive"
   display_name = "Policy with token claims"
   description  = "Allows driving only when the delegated agent and the end user match the car"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   status       = "active"
   json = jsonencode({
     meta = {
@@ -143,7 +143,7 @@ resource "indykite_authorization_policy" "policy_ciq_delegated" {
   name         = "policy-ciq-delegated"
   display_name = "CIQ policy with token claim filter"
   description  = "Only the agent named in the delegation chain may read the contracts"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   status       = "active"
   json = jsonencode({
     "meta" : { "policy_version" : "1.0-ciq" },
@@ -202,10 +202,10 @@ resource "indykite_authorization_policy" "policy_for_ciq" {
       "relationships" : ["<string>"]
     },
   })
-  location = indykite_application_space.appspace.id
-  status   = "active"
+  project_id = indykite_application_space.appspace.id
+  status     = "active"
 }
 
-# Note: The location parameter accepts an Application Space ID.
+# Note: The project_id parameter accepts an Application Space ID. location is deprecated, use project_id instead.
 # You can use either a hardcoded GID or a reference to an application_space resource.
 # The policy will automatically populate app_space_id and customer_id as computed fields.

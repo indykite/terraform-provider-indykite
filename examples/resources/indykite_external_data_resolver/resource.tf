@@ -3,7 +3,7 @@ resource "indykite_external_data_resolver" "get-resolver" {
   name         = "terraform-resolver-get"
   display_name = "Terraform external data resolver get"
   description  = "External data resolver for terraform pipeline"
-  location     = "AppSpaceID"
+  project_id   = "AppSpaceID"
 
   url    = "https://www.example.com/sourceresolver?data=xxx"
   method = "GET"
@@ -21,7 +21,7 @@ resource "indykite_external_data_resolver" "post-resolver" {
   name         = "terraform-resolver-post"
   display_name = "Terraform external data resolver post"
   description  = "External data resolver for terraform pipeline"
-  location     = "AppSpaceID"
+  project_id   = "AppSpaceID"
 
   url    = "https://example.com/sourceresolver2/where-data"
   method = "POST"
@@ -39,10 +39,10 @@ resource "indykite_external_data_resolver" "post-resolver" {
   response_selector = ".resp"
 }
 
-# Example 1: Minimal GET resolver with hardcoded location
+# Example 1: Minimal GET resolver with hardcoded project_id
 resource "indykite_external_data_resolver" "minimal_get" {
   name              = "minimal-get-resolver"
-  location          = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
+  project_id        = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
   url               = "https://api.example.com/data"
   method            = "GET"
   request_type      = "json"
@@ -55,7 +55,7 @@ resource "indykite_external_data_resolver" "get_with_ref" {
   name              = "get-resolver-with-ref"
   display_name      = "GET Resolver with Reference"
   description       = "External data resolver using application space reference"
-  location          = indykite_application_space.my_space.id
+  project_id        = indykite_application_space.my_space.id
   url               = "https://api.example.com/users"
   method            = "GET"
   request_type      = "json"
@@ -68,7 +68,7 @@ resource "indykite_external_data_resolver" "get_multi_headers" {
   name         = "get-resolver-multi-headers"
   display_name = "GET Resolver with Multiple Headers"
   description  = "Resolver with multiple authentication and custom headers"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   url          = "https://api.example.com/secure-data"
   method       = "GET"
   headers {
@@ -93,7 +93,7 @@ resource "indykite_external_data_resolver" "post_with_ref" {
   name         = "post-resolver-with-ref"
   display_name = "POST Resolver with Reference"
   description  = "POST resolver using application space reference"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   url          = "https://api.example.com/query"
   method       = "POST"
   headers {
@@ -115,7 +115,7 @@ resource "indykite_external_data_resolver" "post_complex" {
   name         = "post-resolver-complex"
   display_name = "POST Resolver with Complex Payload"
   description  = "Resolver with complex request payload"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   url          = "https://api.example.com/advanced-query"
   method       = "POST"
   headers {
@@ -132,7 +132,7 @@ resource "indykite_external_data_resolver" "post_complex" {
   response_selector = ".data.items"
 }
 
-# Note: The location parameter accepts an Application Space ID.
+# Note: The project_id parameter accepts an Application Space ID. location is deprecated, use project_id instead.
 # method can be either "GET" or "POST".
 # request_type and response_type currently only support "json".
 # The resolver will automatically populate app_space_id and customer_id as computed fields.

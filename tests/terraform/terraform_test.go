@@ -122,4 +122,64 @@ var _ = Describe("Terraform", func() {
 		Expect(resp.ID).To(Equal(myResult["create-audit-signing"]))
 		Expect(resp.Provider).To(Equal("PLATFORM_MANAGED"))
 	})
+
+	// Configurations created with project_id instead of the deprecated location.
+	// Pending until the release that ships project_id; the matching resource blocks in
+	// tests/provider/test.tf are commented out for the same reason.
+	PIt("ReadPolicyWithProjectID", func() {
+		var resp indykite.AuthorizationPolicyResponse
+		err := client.Get(context.Background(), "/authorization-policies/"+myResult["policy_project_id"], &resp)
+		Expect(err).To(Succeed())
+		Expect(resp.ID).To(Equal(myResult["policy_project_id"]))
+		Expect(resp.AppSpaceID).To(Equal(myResult["appspace"]))
+	})
+
+	PIt("ReadExternalDataResolverWithProjectID", func() {
+		var resp indykite.ExternalDataResolverResponse
+		err := client.Get(context.Background(), "/external-data-resolvers/"+myResult["resolver_project_id"], &resp)
+		Expect(err).To(Succeed())
+		Expect(resp.ID).To(Equal(myResult["resolver_project_id"]))
+		Expect(resp.AppSpaceID).To(Equal(myResult["appspace"]))
+	})
+
+	PIt("ReadKnowledgeQueryWithProjectID", func() {
+		var resp indykite.KnowledgeQueryResponse
+		err := client.Get(context.Background(), "/knowledge-queries/"+myResult["query_project_id"], &resp)
+		Expect(err).To(Succeed())
+		Expect(resp.ID).To(Equal(myResult["query_project_id"]))
+		Expect(resp.AppSpaceID).To(Equal(myResult["appspace"]))
+	})
+
+	PIt("ReadTrustScoreProfileWithProjectID", func() {
+		var resp indykite.TrustScoreProfileResponse
+		err := client.Get(context.Background(), "/trust-score-profiles/"+myResult["score_project_id"], &resp)
+		Expect(err).To(Succeed())
+		Expect(resp.ID).To(Equal(myResult["score_project_id"]))
+		Expect(resp.AppSpaceID).To(Equal(os.Getenv("TF_VAR_LOCATION_ID")))
+	})
+
+	PIt("ReadEntityMatchingPipelineWithProjectID", func() {
+		var resp indykite.EntityMatchingPipelineResponse
+		err := client.Get(context.Background(), "/entity-matching-pipelines/"+myResult["pipeline_project_id"], &resp)
+		Expect(err).To(Succeed())
+		Expect(resp.ID).To(Equal(myResult["pipeline_project_id"]))
+		Expect(resp.AppSpaceID).To(Equal(os.Getenv("TF_VAR_LOCATION_ID")))
+	})
+
+	PIt("ReadTokenIntrospectWithProjectID", func() {
+		var resp indykite.TokenIntrospectResponse
+		err := client.Get(context.Background(), "/token-introspects/"+myResult["token_introspect_project_id"], &resp)
+		Expect(err).To(Succeed())
+		Expect(resp.ID).To(Equal(myResult["token_introspect_project_id"]))
+		Expect(resp.AppSpaceID).To(Equal(myResult["appspace"]))
+	})
+
+	PIt("ReadAuditSigningWithProjectID", func() {
+		var resp indykite.AuditSigningResponse
+		err := client.Get(context.Background(), "/audit-signings/"+myResult["audit_signing_project_id"], &resp)
+		Expect(err).To(Succeed())
+		Expect(resp.ID).To(Equal(myResult["audit_signing_project_id"]))
+		Expect(resp.AppSpaceID).To(Equal(myResult["appspace"]))
+		Expect(resp.Provider).To(Equal("PLATFORM_MANAGED"))
+	})
 })

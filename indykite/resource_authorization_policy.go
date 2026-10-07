@@ -41,12 +41,13 @@ func resourceAuthorizationPolicy() *schema.Resource {
 		UpdateContext: resAuthorizationPolicyUpdate,
 		DeleteContext: resAuthorizationPolicyDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: basicStateImporter,
+			StateContext: projectStateImporter,
 		},
 
 		Timeouts: defaultTimeouts(),
 		Schema: map[string]*schema.Schema{
 			locationKey:    locationSchema(),
+			projectIDKey:   projectIDSchema(),
 			customerIDKey:  setComputed(customerIDSchema()),
 			appSpaceIDKey:  setComputed(appSpaceIDSchema()),
 			nameKey:        nameSchema(),
@@ -106,7 +107,7 @@ func resAuthorizationPolicyCreate(ctx context.Context, data *schema.ResourceData
 	apiStatus := AuthorizationPolicyStatusToAPI[statusValue]
 
 	req := CreateAuthorizationPolicyRequest{
-		ProjectID:   data.Get(locationKey).(string),
+		ProjectID:   projectIDFromData(data),
 		Name:        data.Get(nameKey).(string),
 		DisplayName: stringValue(optionalString(data, displayNameKey)),
 		Description: stringValue(optionalString(data, descriptionKey)),
@@ -147,11 +148,7 @@ func resAuthorizationPolicyRead(ctx context.Context, data *schema.ResourceData, 
 	setData(&d, data, appSpaceIDKey, resp.AppSpaceID)
 
 	// Set location based on which is present
-	if resp.AppSpaceID != "" {
-		setData(&d, data, locationKey, resp.AppSpaceID)
-	} else if resp.CustomerID != "" {
-		setData(&d, data, locationKey, resp.CustomerID)
-	}
+	setProjectIDData(&d, data, resp.AppSpaceID, resp.CustomerID)
 
 	setData(&d, data, nameKey, resp.Name)
 	setData(&d, data, displayNameKey, resp.DisplayName)

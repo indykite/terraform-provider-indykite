@@ -3,12 +3,12 @@
 page_title: "indykite_audit_signing Resource - IndyKite"
 subcategory: ""
 description: |-
-  Audit Signing configuration defines which key is used to sign audit log records of a Project. The key is either managed by the IndyKite platform, or provided by the customer through a cloud KMS (Google Cloud KMS, AWS KMS or Azure Key Vault), in which case the key resource, key ID and authentication parameters must be supplied.
+  Audit Signing configuration declares who manages the key that signs a Project's audit log records: the IndyKite platform, or the customer through a cloud KMS (Google Cloud KMS, AWS KMS or Azure Key Vault), in which case the key resource, key ID and authentication parameters must be supplied. Every signed record in the Audit Log API carries the kid of the key that signed it.
 ---
 
 # indykite_audit_signing (Resource)
 
-Audit Signing configuration defines which key is used to sign audit log records of a Project. The key is either managed by the IndyKite platform, or provided by the customer through a cloud KMS (Google Cloud KMS, AWS KMS or Azure Key Vault), in which case the key resource, key ID and authentication parameters must be supplied.
+Audit Signing configuration declares who manages the key that signs a Project's audit log records: the IndyKite platform, or the customer through a cloud KMS (Google Cloud KMS, AWS KMS or Azure Key Vault), in which case the key resource, key ID and authentication parameters must be supplied. Every signed record in the Audit Log API carries the kid of the key that signed it.
 
 ## Example Usage
 
@@ -16,7 +16,7 @@ Audit Signing configuration defines which key is used to sign audit log records 
 # Example 1: Platform managed signing key
 resource "indykite_audit_signing" "platform_managed" {
   name         = "terraform-audit-signing"
-  location     = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
+  project_id   = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
   key_provider = "PLATFORM_MANAGED"
 }
 
@@ -25,29 +25,35 @@ resource "indykite_audit_signing" "gcp_kms" {
   name         = "terraform-audit-signing-gcp"
   display_name = "Audit signing with Cloud KMS"
   description  = "Audit records are signed with a key hosted in the customer's Cloud KMS"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   key_provider = "CUSTOMER_GCP_KMS"
+  # the full crypto key VERSION name; the key version must use EC_SIGN_P256_SHA256
   key_resource = "projects/my-project/locations/europe-west1/keyRings/audit/cryptoKeys/signing/cryptoKeyVersions/1"
   kid          = "audit-signing-2026"
+  # each auth_params key and value is limited to 256 characters: pass identifiers and
+  # short secrets, never a key file or a PEM private key
   auth_params = {
-    credentials_json = file("${path.module}/kms-service-account.json")
+    client_email = "audit-signer@my-project.iam.gserviceaccount.com"
   }
 }
 
 # Example 3: Customer managed key in AWS KMS
 resource "indykite_audit_signing" "aws_kms" {
   name         = "terraform-audit-signing-aws"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   key_provider = "CUSTOMER_AWS_KMS"
+  # the key ARN; its region segment selects the KMS region. ECC_NIST_P256, ECDSA_SHA_256
   key_resource = "arn:aws:kms:eu-west-1:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab"
   kid          = "audit-signing-aws"
+  # an IAM role with an external ID, as AWS recommends for third-party access,
+  # instead of long-term access keys
   auth_params = {
-    access_key_id     = var.aws_access_key_id
-    secret_access_key = var.aws_secret_access_key
+    role_arn    = "arn:aws:iam::123456789012:role/indykite-audit-signer"
+    external_id = var.indykite_external_id
   }
 }
 
-# Note: The location parameter accepts an Application Space ID.
+# Note: The project_id parameter accepts an Application Space ID. location is deprecated, use project_id instead.
 # key_provider is always required; key_resource, kid and auth_params are only
 # needed for CUSTOMER_* providers.
 # auth_params values are write-only: the API never returns them, so Terraform keeps
@@ -60,16 +66,17 @@ resource "indykite_audit_signing" "aws_kms" {
 ### Required
 
 - `key_provider` (String) Key provider identifies who manages the signing key. One of: PLATFORM_MANAGED, CUSTOMER_GCP_KMS, CUSTOMER_AWS_KMS, CUSTOMER_AZURE_KEY_VAULT.
-- `location` (String) Identifier of Location, where to create resource
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 
 ### Optional
 
-- `auth_params` (Map of String, Sensitive) Authentication parameters used to access the customer managed key, e.g. service account credentials or access keys. At most 32 entries. Values are write-only: the API never returns them, so Terraform keeps the values from the configuration and only reconciles the set of keys.
+- `auth_params` (Map of String, Sensitive) Authentication parameters used to access the customer managed key, e.g. a role ARN with its external ID, a service account email, or a tenant and client ID. At most 32 entries; every key and value between 1 and 256 characters, so a key file or a PEM private key cannot be passed. Values are write-only: the API never returns them, so Terraform keeps the values from the configuration and only reconciles the set of keys.
 - `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
 - `key_resource` (String) Resource identifier of the customer managed signing key in the provider's KMS, e.g. the Cloud KMS key version name, the AWS KMS key ARN or the Azure Key Vault key identifier.
-- `kid` (String) Key ID (kid) published with signed audit records so verifiers can locate the key.
+- `kid` (String) Key ID (kid): the name records signed with this key carry, and the kid verifiers look up in the Audit Log API's JWK Set.
+- `location` (String, Deprecated) Identifier of Location, where to create resource. Deprecated, use project_id instead
+- `project_id` (String) Identifier of Project, where to create resource
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only

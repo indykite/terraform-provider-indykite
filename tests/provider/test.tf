@@ -829,3 +829,144 @@ data "indykite_audit_signings" "audit-signings" {
     }
   }
 }
+
+# -----------------------------------------------------------------------------
+# Test: project_id instead of the deprecated location
+# The blocks above keep using location; each block below creates the same kind of
+# configuration with project_id and checks that both attributes are read back.
+# indykite_mcp_server and indykite_event_sink have no twin: the platform allows only one
+# MCP server and one event sink per project, and the blocks above already create them.
+# Commented out until the release that ships project_id: the terraform-validate check
+# resolves the published provider from the registry, which rejects arguments it does
+# not know yet. Uncomment once released, together with the pending reads in
+# tests/terraform/terraform_test.go.
+# -----------------------------------------------------------------------------
+#
+# resource "indykite_authorization_policy" "policy_project_id" {
+#   name = "automation-terraform-policy-project-id-${time_static.example.unix}"
+#   json = jsonencode({
+#     meta = {
+#       policy_version = "1.0-ciq"
+#     },
+#     subject = {
+#       type = "Person"
+#     },
+#     condition = {
+#       cypher = "MATCH (subject:Person)-[:HAS]->(payment:PaymentMethod)"
+#     },
+#     allowed_reads = {
+#       nodes = ["subject.*", "payment.*"]
+#     }
+#   })
+#   project_id = indykite_application_space.appspace.id
+#   status     = "active"
+#   lifecycle {
+#     create_before_destroy = true
+#     postcondition {
+#       condition     = self.project_id == indykite_application_space.appspace.id && self.location == self.project_id
+#       error_message = "project_id and location must be read back as the appspace"
+#     }
+#   }
+# }
+#
+# resource "indykite_external_data_resolver" "resolver_project_id" {
+#   name       = "automation-terraform-resolver-project-id-${time_static.example.unix}"
+#   project_id = indykite_application_space.appspace.id
+#
+#   url               = "https://api.example.com/data"
+#   method            = "GET"
+#   request_type      = "json"
+#   response_type     = "json"
+#   response_selector = "."
+#   lifecycle {
+#     create_before_destroy = true
+#     postcondition {
+#       condition     = self.project_id == indykite_application_space.appspace.id && self.location == self.project_id
+#       error_message = "project_id and location must be read back as the appspace"
+#     }
+#   }
+# }
+#
+# resource "indykite_knowledge_query" "query_project_id" {
+#   name       = "automation-terraform-knowledge-query-project-id-${time_static.example.unix}"
+#   project_id = indykite_application_space.appspace.id
+#   query = jsonencode({
+#     nodes = ["subject.external_id", "payment.external_id"]
+#   })
+#   status    = "active"
+#   policy_id = indykite_authorization_policy.policy_project_id.id
+#   lifecycle {
+#     create_before_destroy = true
+#     postcondition {
+#       condition     = self.project_id == indykite_application_space.appspace.id && self.location == self.project_id
+#       error_message = "project_id and location must be read back as the appspace"
+#     }
+#   }
+# }
+#
+# resource "indykite_trust_score_profile" "score_project_id" {
+#   name                = "automation-terraform-trust-score-project-id-${time_static.example.unix}"
+#   project_id          = local.location_id
+#   node_classification = "Vehicle"
+#   dimension {
+#     name   = "NAME_FRESHNESS"
+#     weight = 1.0
+#   }
+#   schedule = "UPDATE_FREQUENCY_SIX_HOURS"
+#   lifecycle {
+#     create_before_destroy = true
+#     postcondition {
+#       condition     = self.project_id == local.location_id && self.location == self.project_id
+#       error_message = "project_id and location must be read back as the location_id project"
+#     }
+#   }
+# }
+#
+# resource "indykite_entity_matching_pipeline" "pipeline_project_id" {
+#   name       = "automation-terraform-entitymatching-project-id-${time_static.example.unix}"
+#   project_id = local.location_id
+#
+#   source_node_filter = ["Device"]
+#   target_node_filter = ["Device"]
+#   lifecycle {
+#     create_before_destroy = true
+#     postcondition {
+#       condition     = self.project_id == local.location_id && self.location == self.project_id
+#       error_message = "project_id and location must be read back as the location_id project"
+#     }
+#   }
+# }
+#
+# resource "indykite_token_introspect" "token_introspect_project_id" {
+#   name       = "automation-terraform-token-introspect-project-id-${time_static.example.unix}"
+#   project_id = indykite_application_space.appspace.id
+#   # a Token Introspect is unique per issuer and client ID within a project
+#   jwt_matcher {
+#     issuer   = "https://auth-project-id.example.com"
+#     audience = "automation-terraform-project-id"
+#   }
+#   online_validation {
+#     cache_ttl = 600
+#   }
+#   ikg_node_type = "Person"
+#   lifecycle {
+#     create_before_destroy = true
+#     postcondition {
+#       condition     = self.project_id == indykite_application_space.appspace.id && self.location == self.project_id
+#       error_message = "project_id and location must be read back as the appspace"
+#     }
+#   }
+# }
+#
+# resource "indykite_audit_signing" "audit_signing_project_id" {
+#   name         = "automation-terraform-audit-signing-project-id-${time_static.example.unix}"
+#   project_id   = indykite_application_space.appspace.id
+#   key_provider = "PLATFORM_MANAGED"
+#   lifecycle {
+#     create_before_destroy = true
+#     postcondition {
+#       condition     = self.project_id == indykite_application_space.appspace.id && self.location == self.project_id
+#       error_message = "project_id and location must be read back as the appspace"
+#     }
+#   }
+# }

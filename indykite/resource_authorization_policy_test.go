@@ -203,9 +203,11 @@ var _ = Describe("Resource Authorization Policy config", func() {
 				{
 					Config: `resource "indykite_authorization_policy" "wonka" {
 						name = "wonka-authorization-policy-config"
+						json = "{}"
+						status = "active"
 					}
 					`,
-					ExpectError: regexp.MustCompile(`The argument "location" is required, but no definition was found`),
+					ExpectError: regexp.MustCompile("one of `location,project_id` must be specified"),
 				},
 				{
 					Config: `resource "indykite_authorization_policy" "wonka" {

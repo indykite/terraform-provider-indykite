@@ -3,7 +3,7 @@ resource "indykite_token_introspect" "token1" {
   name         = "terraform-token-introspect"
   display_name = "Terraform token introspect"
   description  = "Token introspect for terraform pipeline"
-  location     = "AppSpaceID"
+  project_id   = "AppSpaceID"
   jwt_matcher {
     issuer   = "https://example.com"
     audience = "audience-id"
@@ -24,7 +24,7 @@ resource "indykite_token_introspect" "token2" {
   name         = "terraform-token-introspect-offline"
   display_name = "Terraform token introspect offline"
   description  = "Token introspect for terraform pipeline with offline validation"
-  location     = "AppSpaceID"
+  project_id   = "AppSpaceID"
   jwt_matcher {
     issuer   = "https://example.com"
     audience = "audience-id"
@@ -51,10 +51,10 @@ resource "indykite_token_introspect" "token2" {
   sub_claim     = "custom_sub"
 }
 
-# Example 1: Minimal JWT with online validation and hardcoded location
+# Example 1: Minimal JWT with online validation and hardcoded project_id
 resource "indykite_token_introspect" "minimal_online" {
-  name     = "minimal-online-jwt"
-  location = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
+  name       = "minimal-online-jwt"
+  project_id = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
   jwt_matcher {
     issuer   = "https://auth.example.com"
     audience = "my-app"
@@ -70,7 +70,7 @@ resource "indykite_token_introspect" "online_with_ref" {
   name         = "online-jwt-with-ref"
   display_name = "Online JWT with Reference"
   description  = "JWT token introspect with online validation using app space reference"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   jwt_matcher {
     issuer   = "https://auth.example.com"
     audience = "my-application"
@@ -93,7 +93,7 @@ resource "indykite_token_introspect" "offline_with_ref" {
   name         = "offline-jwt-with-ref"
   display_name = "Offline JWT with Reference"
   description  = "JWT token introspect with offline validation"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   jwt_matcher {
     issuer   = "https://auth.example.com"
     audience = "my-app-offline"
@@ -118,7 +118,7 @@ resource "indykite_token_introspect" "custom_claims" {
   name         = "jwt-custom-claims"
   display_name = "JWT with Custom Claims"
   description  = "Token introspect with extensive claims mapping"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   jwt_matcher {
     issuer   = "https://auth.example.com"
     audience = "custom-app"
@@ -139,7 +139,7 @@ resource "indykite_token_introspect" "custom_claims" {
   sub_claim      = "user_identifier"
 }
 
-# Note: The location parameter accepts an Application Space ID.
+# Note: The project_id parameter accepts an Application Space ID. location is deprecated, use project_id instead.
 # You must use either jwt_matcher or opaque_matcher (not both).
 # You must use either online_validation or offline_validation (not both).
 # The token introspect will automatically populate app_space_id and customer_id as computed fields.

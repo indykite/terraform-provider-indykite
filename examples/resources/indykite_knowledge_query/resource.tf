@@ -15,8 +15,8 @@ resource "indykite_authorization_policy" "policy_for_ciq" {
       "relationships" : ["r1"]
     }
   })
-  location = "AppSpaceID"
-  status   = "active"
+  project_id = "AppSpaceID"
+  status     = "active"
 }
 
 # Example - knowledge query
@@ -24,7 +24,7 @@ resource "indykite_knowledge_query" "create-query" {
   name         = "terraform-knowledge-query"
   display_name = "Terraform knowledge-query"
   description  = "Knowledge query for terraform"
-  location     = "AppSpaceID"
+  project_id   = "AppSpaceID"
   query = jsonencode({
     "nodes" : ["ln.property.value"],
     "relationships" : [],
@@ -34,12 +34,12 @@ resource "indykite_knowledge_query" "create-query" {
   policy_id = indykite_authorization_policy.policy_for_ciq.id
 }
 
-# Example 1: Minimal knowledge query with hardcoded location
+# Example 1: Minimal knowledge query with hardcoded project_id
 resource "indykite_knowledge_query" "minimal_query" {
-  name      = "minimal-query"
-  location  = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
-  status    = "active"
-  policy_id = indykite_authorization_policy.policy_for_ciq.id
+  name       = "minimal-query"
+  project_id = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
+  status     = "active"
+  policy_id  = indykite_authorization_policy.policy_for_ciq.id
   query = jsonencode({
     "nodes" : ["Person.property.email"]
   })
@@ -50,7 +50,7 @@ resource "indykite_knowledge_query" "query_with_ref" {
   name         = "query-with-reference"
   display_name = "Query with AppSpace Reference"
   description  = "Knowledge query using application space reference"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   status       = "active"
   policy_id    = indykite_authorization_policy.policy_for_ciq.id
   query = jsonencode({
@@ -64,7 +64,7 @@ resource "indykite_knowledge_query" "query_with_policy" {
   name         = "query-with-policy"
   display_name = "Query with Policy"
   description  = "Knowledge query with authorization policy"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   status       = "active"
   policy_id    = indykite_authorization_policy.my_policy.id
   query = jsonencode({
@@ -79,7 +79,7 @@ resource "indykite_knowledge_query" "complex_query" {
   name         = "complex-query"
   display_name = "Complex Knowledge Query"
   description  = "Query with complex filtering and relationships"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   status       = "active"
   policy_id    = indykite_authorization_policy.my_policy.id
   query = jsonencode({
@@ -104,7 +104,7 @@ resource "indykite_knowledge_query" "delegated_query" {
   name         = "delegated-query"
   display_name = "Query with token claim filter"
   description  = "Returns license numbers only to the agent named in the delegation chain"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   status       = "active"
   policy_id    = indykite_authorization_policy.policy_for_ciq.id
   query = jsonencode({
@@ -119,7 +119,7 @@ resource "indykite_knowledge_query" "inactive_query" {
   name         = "inactive-query"
   display_name = "Inactive Query"
   description  = "Knowledge query that is not currently active"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   status       = "inactive"
   policy_id    = indykite_authorization_policy.policy_for_ciq.id
   query = jsonencode({
@@ -127,7 +127,7 @@ resource "indykite_knowledge_query" "inactive_query" {
   })
 }
 
-# Note: The location parameter accepts an Application Space ID.
+# Note: The project_id parameter accepts an Application Space ID. location is deprecated, use project_id instead.
 # status can be either "active" or "inactive".
 # policy_id is optional and references an authorization policy.
 # The query will automatically populate app_space_id and customer_id as computed fields.

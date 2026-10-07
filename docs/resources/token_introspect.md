@@ -24,7 +24,7 @@ resource "indykite_token_introspect" "token1" {
   name         = "terraform-token-introspect"
   display_name = "Terraform token introspect"
   description  = "Token introspect for terraform pipeline"
-  location     = "AppSpaceID"
+  project_id   = "AppSpaceID"
   jwt_matcher {
     issuer   = "https://example.com"
     audience = "audience-id"
@@ -45,7 +45,7 @@ resource "indykite_token_introspect" "token2" {
   name         = "terraform-token-introspect-offline"
   display_name = "Terraform token introspect offline"
   description  = "Token introspect for terraform pipeline with offline validation"
-  location     = "AppSpaceID"
+  project_id   = "AppSpaceID"
   jwt_matcher {
     issuer   = "https://example.com"
     audience = "audience-id"
@@ -72,10 +72,10 @@ resource "indykite_token_introspect" "token2" {
   sub_claim     = "custom_sub"
 }
 
-# Example 1: Minimal JWT with online validation and hardcoded location
+# Example 1: Minimal JWT with online validation and hardcoded project_id
 resource "indykite_token_introspect" "minimal_online" {
-  name     = "minimal-online-jwt"
-  location = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
+  name       = "minimal-online-jwt"
+  project_id = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
   jwt_matcher {
     issuer   = "https://auth.example.com"
     audience = "my-app"
@@ -91,7 +91,7 @@ resource "indykite_token_introspect" "online_with_ref" {
   name         = "online-jwt-with-ref"
   display_name = "Online JWT with Reference"
   description  = "JWT token introspect with online validation using app space reference"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   jwt_matcher {
     issuer   = "https://auth.example.com"
     audience = "my-application"
@@ -114,7 +114,7 @@ resource "indykite_token_introspect" "offline_with_ref" {
   name         = "offline-jwt-with-ref"
   display_name = "Offline JWT with Reference"
   description  = "JWT token introspect with offline validation"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   jwt_matcher {
     issuer   = "https://auth.example.com"
     audience = "my-app-offline"
@@ -139,7 +139,7 @@ resource "indykite_token_introspect" "custom_claims" {
   name         = "jwt-custom-claims"
   display_name = "JWT with Custom Claims"
   description  = "Token introspect with extensive claims mapping"
-  location     = indykite_application_space.my_space.id
+  project_id   = indykite_application_space.my_space.id
   jwt_matcher {
     issuer   = "https://auth.example.com"
     audience = "custom-app"
@@ -160,7 +160,7 @@ resource "indykite_token_introspect" "custom_claims" {
   sub_claim      = "user_identifier"
 }
 
-# Note: The location parameter accepts an Application Space ID.
+# Note: The project_id parameter accepts an Application Space ID. location is deprecated, use project_id instead.
 # You must use either jwt_matcher or opaque_matcher (not both).
 # You must use either online_validation or offline_validation (not both).
 # The token introspect will automatically populate app_space_id and customer_id as computed fields.
@@ -172,7 +172,6 @@ resource "indykite_token_introspect" "custom_claims" {
 ### Required
 
 - `ikg_node_type` (String) Node type in IKG to which we will try to match sub claim with DT external_id.
-- `location` (String) Identifier of Location, where to create resource
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 
 ### Optional
@@ -186,11 +185,13 @@ resource "indykite_token_introspect" "custom_claims" {
 - `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
 - `jwt_matcher` (Block List, Max: 1) Specifies all attributes required to match a JWT token. (see [below for nested schema](#nestedblock--jwt_matcher))
+- `location` (String, Deprecated) Identifier of Location, where to create resource. Deprecated, use project_id instead
 - `offline_validation` (Block List, Max: 1) Offline validation works only with JWT and checks token locally. (see [below for nested schema](#nestedblock--offline_validation))
 - `online_validation` (Block List, Max: 1) Online validation works with both JWT and Opaque tokens. It will call userinfo endpoint to validate token and fetch user claims. (see [below for nested schema](#nestedblock--online_validation))
 - `opaque_matcher` (Block List, Max: 1) Specify opaque token matcher. Currently we support only 1 opaque matcher per application space. (see [below for nested schema](#nestedblock--opaque_matcher))
 - `perform_upsert` (Boolean) Perform Upsert specify, if we should create and/or update DigitalTwin in IKG if it doesn't exist with.
 	In future this will perform upsert also on properties that are derived from token.
+- `project_id` (String) Identifier of Project, where to create resource
 - `sub_claim` (String) Sub claim is used to match DigitalTwin with external_id. If not specified, standard 'sub' claim will be used. Either 'sub' or specified claim will then also be mapped to 'external_id' claim.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 

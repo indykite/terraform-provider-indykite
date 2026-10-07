@@ -20,7 +20,7 @@ MCP Server configuration registers a Model Context Protocol server with the Indy
 # Example 1: Minimal MCP Server with hardcoded IDs
 resource "indykite_mcp_server" "minimal" {
   name                = "terraform-mcp-server"
-  location            = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
+  project_id          = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
   app_agent_id        = "gid:AAAABWluZHlraURlgAAFDwAAAAA"
   token_introspect_id = "gid:AAAABnRva2VuSW50cm9zcGVjdAAA"
   scopes_supported    = ["read"]
@@ -32,7 +32,7 @@ resource "indykite_mcp_server" "with_refs" {
   name                = "terraform-mcp-server-full"
   display_name        = "Terraform MCP Server"
   description         = "MCP Server exposing knowledge graph access to AI agents"
-  location            = indykite_application_space.my_space.id
+  project_id          = indykite_application_space.my_space.id
   app_agent_id        = indykite_application_agent.my_agent.id
   token_introspect_id = indykite_token_introspect.my_introspect.id
   scopes_supported    = ["read", "write"]
@@ -44,14 +44,14 @@ resource "indykite_mcp_server" "disabled" {
   name                = "terraform-mcp-server-disabled"
   display_name        = "Disabled MCP Server"
   description         = "Temporarily disabled while the underlying agent is being rotated"
-  location            = indykite_application_space.my_space.id
+  project_id          = indykite_application_space.my_space.id
   app_agent_id        = indykite_application_agent.my_agent.id
   token_introspect_id = indykite_token_introspect.my_introspect.id
   scopes_supported    = ["read", "write", "admin"]
   enabled             = false
 }
 
-# Note: The location parameter accepts an Application Space ID.
+# Note: The project_id parameter accepts an Application Space ID. location is deprecated, use project_id instead.
 # app_agent_id and token_introspect_id must point at existing resources in the same project.
 # scopes_supported must contain at least one OAuth scope.
 # The MCP server will automatically populate app_space_id and customer_id as computed fields.
@@ -64,7 +64,6 @@ resource "indykite_mcp_server" "disabled" {
 
 - `app_agent_id` (String) Identifier of Application Agent used by the MCP server, in GID format.
 - `enabled` (Boolean) Whether the MCP server is enabled.
-- `location` (String) Identifier of Location, where to create resource
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 - `scopes_supported` (List of String) List of OAuth scopes supported by the MCP server. Must contain at least one scope.
 - `token_introspect_id` (String) Identifier of Token Introspect configuration used by the MCP server, in GID format.
@@ -73,6 +72,8 @@ resource "indykite_mcp_server" "disabled" {
 
 - `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
+- `location` (String, Deprecated) Identifier of Location, where to create resource. Deprecated, use project_id instead
+- `project_id` (String) Identifier of Project, where to create resource
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
