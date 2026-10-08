@@ -312,6 +312,100 @@ var _ = Describe("Resource AuditSigning", func() {
 		})
 	})
 
+	It("Test customer managed key with values known only after apply", func() {
+		const parentID = "gid:AAAAJ0KNdmA0XE2Zob0Y6OmsVfc"
+		var (
+			mu     sync.Mutex
+			stored = map[string]indykite.AuditSigningResponse{}
+		)
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			mu.Lock()
+			defer mu.Unlock()
+			switch {
+			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/audit-signings"):
+				var req indykite.CreateAuditSigningRequest
+				_ = json.NewDecoder(r.Body).Decode(&req)
+				id := sampleID
+				if req.Provider == "PLATFORM_MANAGED" {
+					id = parentID
+				}
+				stored[id] = indykite.AuditSigningResponse{
+					ID:          id,
+					Name:        req.Name,
+					CustomerID:  customerID,
+					AppSpaceID:  appSpaceID,
+					Provider:    req.Provider,
+					KeyResource: new(req.KeyResource),
+					Kid:         new(req.Kid),
+					AuthParams:  maskAuthParams(req.AuthParams),
+					CreateTime:  time.Now(),
+					UpdateTime:  time.Now(),
+				}
+				w.WriteHeader(http.StatusCreated)
+				_ = json.NewEncoder(w).Encode(map[string]string{"id": id})
+			case r.Method == http.MethodGet:
+				resp, ok := stored[r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]]
+				if !ok {
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(resp)
+			case r.Method == http.MethodDelete:
+				w.WriteHeader(http.StatusNoContent)
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		// "parent" only exists to provide values that are unknown until it is created.
+		tfConfigDef := `resource "indykite_audit_signing" "parent" {
+				project_id   = "` + appSpaceID + `"
+				name         = "parent"
+				key_provider = "PLATFORM_MANAGED"
+			}
+			resource "indykite_audit_signing" "development" {
+				project_id   = "` + appSpaceID + `"
+				name         = "wonka-audit"
+				key_provider = "CUSTOMER_AWS_KMS"
+				%s
+			}`
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
+			},
+			Steps: []resource.TestStep{
+				// Errors case must always come first
+				{
+					// A kid that is really missing still fails at plan time.
+					Config:      fmt.Sprintf(tfConfigDef, `key_resource = indykite_audit_signing.parent.app_space_id`),
+					ExpectError: regexp.MustCompile(`"kid" is required when key_provider is CUSTOMER_AWS_KMS`),
+				},
+				{
+					Config:      fmt.Sprintf(tfConfigDef, `kid = indykite_audit_signing.parent.id`),
+					ExpectError: regexp.MustCompile(`"key_resource" is required when key_provider is CUSTOMER_AWS_KMS`),
+				},
+				{
+					// Both values are unknown at plan time: the plan must not reject them.
+					Config: fmt.Sprintf(tfConfigDef, `key_resource = indykite_audit_signing.parent.app_space_id
+						kid          = indykite_audit_signing.parent.id`),
+					Check: resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttr(resourceName, "key_resource", appSpaceID),
+						resource.TestCheckResourceAttr(resourceName, "kid", parentID),
+					),
+				},
+			},
+		})
+	})
+
 	It("Test import by name with location", func() {
 		tfConfigDef := `resource "indykite_audit_signing" "development" {
 				location = "%s"

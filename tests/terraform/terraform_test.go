@@ -123,10 +123,22 @@ var _ = Describe("Terraform", func() {
 		Expect(resp.Provider).To(Equal("PLATFORM_MANAGED"))
 	})
 
+	It("ReadAuditSigningCustomerManaged", func() {
+		var resp indykite.AuditSigningResponse
+		err := client.Get(context.Background(), "/audit-signings/"+myResult["audit_signing_customer_aws"], &resp)
+		Expect(err).To(Succeed())
+		Expect(resp.ID).To(Equal(myResult["audit_signing_customer_aws"]))
+		Expect(resp.AppSpaceID).To(Equal(myResult["appspace"]))
+		Expect(resp.Provider).To(Equal("CUSTOMER_AWS_KMS"))
+		Expect(resp.KeyResource).To(HaveValue(
+			Equal("arn:aws:kms:eu-west-1:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab")))
+		Expect(resp.Kid).To(HaveValue(Equal("automation-terraform-aws")))
+		// auth_params is write-only: the keys come back, the values are always masked.
+		Expect(resp.AuthParams).To(Equal(map[string]string{"role_arn": "", "external_id": ""}))
+	})
+
 	// Configurations created with project_id instead of the deprecated location.
-	// Pending until the release that ships project_id; the matching resource blocks in
-	// tests/provider/test.tf are commented out for the same reason.
-	PIt("ReadPolicyWithProjectID", func() {
+	It("ReadPolicyWithProjectID", func() {
 		var resp indykite.AuthorizationPolicyResponse
 		err := client.Get(context.Background(), "/authorization-policies/"+myResult["policy_project_id"], &resp)
 		Expect(err).To(Succeed())
@@ -134,7 +146,7 @@ var _ = Describe("Terraform", func() {
 		Expect(resp.AppSpaceID).To(Equal(myResult["appspace"]))
 	})
 
-	PIt("ReadExternalDataResolverWithProjectID", func() {
+	It("ReadExternalDataResolverWithProjectID", func() {
 		var resp indykite.ExternalDataResolverResponse
 		err := client.Get(context.Background(), "/external-data-resolvers/"+myResult["resolver_project_id"], &resp)
 		Expect(err).To(Succeed())
@@ -142,7 +154,7 @@ var _ = Describe("Terraform", func() {
 		Expect(resp.AppSpaceID).To(Equal(myResult["appspace"]))
 	})
 
-	PIt("ReadKnowledgeQueryWithProjectID", func() {
+	It("ReadKnowledgeQueryWithProjectID", func() {
 		var resp indykite.KnowledgeQueryResponse
 		err := client.Get(context.Background(), "/knowledge-queries/"+myResult["query_project_id"], &resp)
 		Expect(err).To(Succeed())
@@ -150,7 +162,7 @@ var _ = Describe("Terraform", func() {
 		Expect(resp.AppSpaceID).To(Equal(myResult["appspace"]))
 	})
 
-	PIt("ReadTrustScoreProfileWithProjectID", func() {
+	It("ReadTrustScoreProfileWithProjectID", func() {
 		var resp indykite.TrustScoreProfileResponse
 		err := client.Get(context.Background(), "/trust-score-profiles/"+myResult["score_project_id"], &resp)
 		Expect(err).To(Succeed())
@@ -158,7 +170,7 @@ var _ = Describe("Terraform", func() {
 		Expect(resp.AppSpaceID).To(Equal(os.Getenv("TF_VAR_LOCATION_ID")))
 	})
 
-	PIt("ReadEntityMatchingPipelineWithProjectID", func() {
+	It("ReadEntityMatchingPipelineWithProjectID", func() {
 		var resp indykite.EntityMatchingPipelineResponse
 		err := client.Get(context.Background(), "/entity-matching-pipelines/"+myResult["pipeline_project_id"], &resp)
 		Expect(err).To(Succeed())
@@ -166,7 +178,7 @@ var _ = Describe("Terraform", func() {
 		Expect(resp.AppSpaceID).To(Equal(os.Getenv("TF_VAR_LOCATION_ID")))
 	})
 
-	PIt("ReadTokenIntrospectWithProjectID", func() {
+	It("ReadTokenIntrospectWithProjectID", func() {
 		var resp indykite.TokenIntrospectResponse
 		err := client.Get(context.Background(), "/token-introspects/"+myResult["token_introspect_project_id"], &resp)
 		Expect(err).To(Succeed())
@@ -174,7 +186,7 @@ var _ = Describe("Terraform", func() {
 		Expect(resp.AppSpaceID).To(Equal(myResult["appspace"]))
 	})
 
-	PIt("ReadAuditSigningWithProjectID", func() {
+	It("ReadAuditSigningWithProjectID", func() {
 		var resp indykite.AuditSigningResponse
 		err := client.Get(context.Background(), "/audit-signings/"+myResult["audit_signing_project_id"], &resp)
 		Expect(err).To(Succeed())

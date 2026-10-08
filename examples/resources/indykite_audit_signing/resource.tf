@@ -6,10 +6,11 @@ resource "indykite_audit_signing" "platform_managed" {
 }
 
 # Example 2: Customer managed key in Google Cloud KMS
+# Customer managed keys are stored but not yet used: records are signed with the platform key for now.
 resource "indykite_audit_signing" "gcp_kms" {
   name         = "terraform-audit-signing-gcp"
   display_name = "Audit signing with Cloud KMS"
-  description  = "Audit records are signed with a key hosted in the customer's Cloud KMS"
+  description  = "Audit records will be signed with a key hosted in the customer's Cloud KMS"
   project_id   = indykite_application_space.my_space.id
   key_provider = "CUSTOMER_GCP_KMS"
   # the full crypto key VERSION name; the key version must use EC_SIGN_P256_SHA256
@@ -23,6 +24,7 @@ resource "indykite_audit_signing" "gcp_kms" {
 }
 
 # Example 3: Customer managed key in AWS KMS
+# Customer managed keys are stored but not yet used: records are signed with the platform key for now.
 resource "indykite_audit_signing" "aws_kms" {
   name         = "terraform-audit-signing-aws"
   project_id   = indykite_application_space.my_space.id
@@ -40,6 +42,6 @@ resource "indykite_audit_signing" "aws_kms" {
 
 # Note: The project_id parameter accepts an Application Space ID. location is deprecated, use project_id instead.
 # key_provider is always required; key_resource, kid and auth_params are only
-# needed for CUSTOMER_* providers.
+# needed for CUSTOMER_* providers. CUSTOMER_AZURE_KEY_VAULT is accepted but has no signing support yet.
 # auth_params values are write-only: the API never returns them, so Terraform keeps
 # the configured values in state and only reconciles the set of keys.

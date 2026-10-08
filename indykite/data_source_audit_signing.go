@@ -25,7 +25,9 @@ func dataSourceAuditSigningList() *schema.Resource {
 			"or CUSTOMER_AZURE_KEY_VAULT")
 	entrySchema[auditSigningKeyResourceKey] = computedStringSchema(
 		"Resource identifier of the customer managed signing key")
-	entrySchema[auditSigningKidKey] = computedStringSchema("Key ID (kid) published with signed audit records")
+	entrySchema[auditSigningKidKey] = computedStringSchema(
+		"Key ID (kid) of the customer managed key. Records will carry it once customer managed keys " +
+			"are used for signing; today they carry the platform key's kid")
 	entrySchema[auditSigningAuthParamsKey] = &schema.Schema{
 		Type:     schema.TypeMap,
 		Computed: true,

@@ -47,10 +47,10 @@ var AuditSigningProviders = []string{
 func resourceAuditSigning() *schema.Resource {
 	return &schema.Resource{
 		Description: "Audit Signing configuration declares who manages the key that signs a Project's audit " +
-			"log records: the IndyKite platform, or the customer through a cloud KMS (Google Cloud KMS, " +
-			"AWS KMS or Azure Key Vault), in which case the key resource, key ID and authentication " +
-			"parameters must be supplied. Every signed record in the Audit Log API carries the kid of " +
-			"the key that signed it.",
+			"log records: the IndyKite platform, or the customer through a cloud KMS, in which case the " +
+			"key resource, key ID and authentication parameters must be supplied. Customer managed keys " +
+			"(BYOK) are stored but not yet used: every record is currently signed with the platform key, " +
+			"and the Audit Log API's JWK Set publishes that key. Azure Key Vault has no signing support yet.",
 		CreateContext: resAuditSigningCreate,
 		ReadContext:   resAuditSigningRead,
 		UpdateContext: resAuditSigningUpdate,
@@ -80,7 +80,9 @@ func resourceAuditSigning() *schema.Resource {
 				Required:     true,
 				ValidateFunc: validation.StringInSlice(AuditSigningProviders, false),
 				Description: "Key provider identifies who manages the signing key. " +
-					"One of: PLATFORM_MANAGED, CUSTOMER_GCP_KMS, CUSTOMER_AWS_KMS, CUSTOMER_AZURE_KEY_VAULT.",
+					"One of: PLATFORM_MANAGED, CUSTOMER_GCP_KMS, CUSTOMER_AWS_KMS, CUSTOMER_AZURE_KEY_VAULT. " +
+					"Only PLATFORM_MANAGED is used for signing today; CUSTOMER_* configurations are stored " +
+					"for the upcoming customer managed key support.",
 			},
 			auditSigningKeyResourceKey: {
 				Type:         schema.TypeString,
@@ -93,8 +95,8 @@ func resourceAuditSigning() *schema.Resource {
 				Type:         schema.TypeString,
 				Optional:     true,
 				ValidateFunc: validation.StringLenBetween(0, 256),
-				Description: "Key ID (kid): the name records signed with this key carry, and the kid verifiers " +
-					"look up in the Audit Log API's JWK Set.",
+				Description: "Key ID (kid) of the customer managed key. Records will carry it once customer " +
+					"managed keys are used for signing; today they carry the platform key's kid.",
 			},
 			auditSigningAuthParamsKey: {
 				Type:             schema.TypeMap,
@@ -224,12 +226,20 @@ func resAuditSigningDelete(ctx context.Context, data *schema.ResourceData, meta 
 // validateAuditSigningCustomerManagedKey rule that a customer managed
 // provider must name the key: key_resource and kid are required unless the key is
 // PLATFORM_MANAGED. Checking it at plan time avoids a failed apply.
+// A value that is not known yet (e.g. computed from another resource) reads as empty,
+// so it is skipped here and checked again in the plan where it is known.
 func validateAuditSigningCustomerManagedKey(_ context.Context, d *schema.ResourceDiff, _ any) error {
+	if !d.NewValueKnown(auditSigningProviderKey) {
+		return nil
+	}
 	provider, _ := d.Get(auditSigningProviderKey).(string)
 	if provider == auditSigningProviderPlatformManaged {
 		return nil
 	}
 	for _, key := range []string{auditSigningKeyResourceKey, auditSigningKidKey} {
+		if !d.NewValueKnown(key) {
+			continue
+		}
 		if v, _ := d.Get(key).(string); v == "" {
 			return fmt.Errorf("%q is required when %s is %s", key, auditSigningProviderKey, provider)
 		}
