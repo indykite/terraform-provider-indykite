@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.47.0...v0.48.0) (2026-10-08)
+
+
+### Features
+
+* replace location by project_id and deprecate + tests ([1b66148](https://github.com/indykite/terraform-provider-indykite/commit/1b66148bfc39e759b6c86fe1897c03c2af009468))
+
 ## [0.47.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.46.0...v0.47.0) (2026-10-06)
 
 
