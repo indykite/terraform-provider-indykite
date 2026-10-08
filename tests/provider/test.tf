@@ -726,6 +726,33 @@ data "indykite_application_agent" "lookup_agent" {
   depends_on      = [indykite_application_agent.agent]
 }
 
+# Look up the application by name: GET /applications/<name>?project_id=<appspace>
+data "indykite_application" "lookup_application_by_name" {
+  app_space_id = indykite_application_space.appspace.id
+  name         = indykite_application.application.name
+  depends_on   = [indykite_application.application]
+  lifecycle {
+    postcondition {
+      condition     = self.id == indykite_application.application.id
+      error_message = "application lookup by name within project_id must return the created application"
+    }
+  }
+}
+
+# Look up the application agent by name: GET /application-agents/<name>?project_id=<appspace>
+data "indykite_application_agent" "lookup_agent_by_name" {
+  app_space_id    = indykite_application_space.appspace.id
+  name            = indykite_application_agent.agent.name
+  api_permissions = ["Authorization", "Capture"]
+  depends_on      = [indykite_application_agent.agent]
+  lifecycle {
+    postcondition {
+      condition     = self.id == indykite_application_agent.agent.id
+      error_message = "application agent lookup by name within project_id must return the created agent"
+    }
+  }
+}
+
 # -----------------------------------------------------------------------------
 # Test: Entity matching pipeline with multiple node filters
 # -----------------------------------------------------------------------------
@@ -831,142 +858,314 @@ data "indykite_audit_signings" "audit-signings" {
 }
 
 # -----------------------------------------------------------------------------
+# Test: Customer managed audit signing configuration
+# The Config API stores CUSTOMER_* configurations but the platform does not use them
+# for signing yet, so the key below is never contacted and can be fictitious.
+# -----------------------------------------------------------------------------
+
+resource "indykite_audit_signing" "audit_signing_customer_aws" {
+  name         = "automation-terraform-audit-signing-aws-${time_static.example.unix}"
+  project_id   = indykite_application_space.appspace.id
+  key_provider = "CUSTOMER_AWS_KMS"
+  key_resource = "arn:aws:kms:eu-west-1:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab"
+  kid          = "automation-terraform-aws"
+  auth_params = {
+    role_arn    = "arn:aws:iam::123456789012:role/indykite-audit-signer"
+    external_id = "automation-terraform-external-id" # checkov:skip=CKV_SECRET_6:acceptance test
+  }
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition = (
+        self.key_provider == "CUSTOMER_AWS_KMS" &&
+        self.key_resource == "arn:aws:kms:eu-west-1:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab" &&
+        self.kid == "automation-terraform-aws"
+      )
+      error_message = "key_provider, key_resource and kid must round-trip through create/read"
+    }
+    postcondition {
+      # the API masks auth_params values; Terraform keeps the configured ones
+      condition     = nonsensitive(toset(keys(self.auth_params))) == toset(["role_arn", "external_id"])
+      error_message = "auth_params keys must round-trip through create/read"
+    }
+  }
+}
+
+# -----------------------------------------------------------------------------
 # Test: project_id instead of the deprecated location
 # The blocks above keep using location; each block below creates the same kind of
 # configuration with project_id and checks that both attributes are read back.
 # indykite_mcp_server and indykite_event_sink have no twin: the platform allows only one
 # MCP server and one event sink per project, and the blocks above already create them.
-# Commented out until the release that ships project_id: the terraform-validate check
-# resolves the published provider from the registry, which rejects arguments it does
-# not know yet. Uncomment once released, together with the pending reads in
-# tests/terraform/terraform_test.go.
 # -----------------------------------------------------------------------------
-#
-# resource "indykite_authorization_policy" "policy_project_id" {
-#   name = "automation-terraform-policy-project-id-${time_static.example.unix}"
-#   json = jsonencode({
-#     meta = {
-#       policy_version = "1.0-ciq"
-#     },
-#     subject = {
-#       type = "Person"
-#     },
-#     condition = {
-#       cypher = "MATCH (subject:Person)-[:HAS]->(payment:PaymentMethod)"
-#     },
-#     allowed_reads = {
-#       nodes = ["subject.*", "payment.*"]
-#     }
-#   })
-#   project_id = indykite_application_space.appspace.id
-#   status     = "active"
-#   lifecycle {
-#     create_before_destroy = true
-#     postcondition {
-#       condition     = self.project_id == indykite_application_space.appspace.id && self.location == self.project_id
-#       error_message = "project_id and location must be read back as the appspace"
-#     }
-#   }
-# }
-#
-# resource "indykite_external_data_resolver" "resolver_project_id" {
-#   name       = "automation-terraform-resolver-project-id-${time_static.example.unix}"
-#   project_id = indykite_application_space.appspace.id
-#
-#   url               = "https://api.example.com/data"
-#   method            = "GET"
-#   request_type      = "json"
-#   response_type     = "json"
-#   response_selector = "."
-#   lifecycle {
-#     create_before_destroy = true
-#     postcondition {
-#       condition     = self.project_id == indykite_application_space.appspace.id && self.location == self.project_id
-#       error_message = "project_id and location must be read back as the appspace"
-#     }
-#   }
-# }
-#
-# resource "indykite_knowledge_query" "query_project_id" {
-#   name       = "automation-terraform-knowledge-query-project-id-${time_static.example.unix}"
-#   project_id = indykite_application_space.appspace.id
-#   query = jsonencode({
-#     nodes = ["subject.external_id", "payment.external_id"]
-#   })
-#   status    = "active"
-#   policy_id = indykite_authorization_policy.policy_project_id.id
-#   lifecycle {
-#     create_before_destroy = true
-#     postcondition {
-#       condition     = self.project_id == indykite_application_space.appspace.id && self.location == self.project_id
-#       error_message = "project_id and location must be read back as the appspace"
-#     }
-#   }
-# }
-#
-# resource "indykite_trust_score_profile" "score_project_id" {
-#   name                = "automation-terraform-trust-score-project-id-${time_static.example.unix}"
-#   project_id          = local.location_id
-#   node_classification = "Vehicle"
-#   dimension {
-#     name   = "NAME_FRESHNESS"
-#     weight = 1.0
-#   }
-#   schedule = "UPDATE_FREQUENCY_SIX_HOURS"
-#   lifecycle {
-#     create_before_destroy = true
-#     postcondition {
-#       condition     = self.project_id == local.location_id && self.location == self.project_id
-#       error_message = "project_id and location must be read back as the location_id project"
-#     }
-#   }
-# }
-#
-# resource "indykite_entity_matching_pipeline" "pipeline_project_id" {
-#   name       = "automation-terraform-entitymatching-project-id-${time_static.example.unix}"
-#   project_id = local.location_id
-#
-#   source_node_filter = ["Device"]
-#   target_node_filter = ["Device"]
-#   lifecycle {
-#     create_before_destroy = true
-#     postcondition {
-#       condition     = self.project_id == local.location_id && self.location == self.project_id
-#       error_message = "project_id and location must be read back as the location_id project"
-#     }
-#   }
-# }
-#
-# resource "indykite_token_introspect" "token_introspect_project_id" {
-#   name       = "automation-terraform-token-introspect-project-id-${time_static.example.unix}"
-#   project_id = indykite_application_space.appspace.id
-#   # a Token Introspect is unique per issuer and client ID within a project
-#   jwt_matcher {
-#     issuer   = "https://auth-project-id.example.com"
-#     audience = "automation-terraform-project-id"
-#   }
-#   online_validation {
-#     cache_ttl = 600
-#   }
-#   ikg_node_type = "Person"
-#   lifecycle {
-#     create_before_destroy = true
-#     postcondition {
-#       condition     = self.project_id == indykite_application_space.appspace.id && self.location == self.project_id
-#       error_message = "project_id and location must be read back as the appspace"
-#     }
-#   }
-# }
-#
-# resource "indykite_audit_signing" "audit_signing_project_id" {
-#   name         = "automation-terraform-audit-signing-project-id-${time_static.example.unix}"
-#   project_id   = indykite_application_space.appspace.id
-#   key_provider = "PLATFORM_MANAGED"
-#   lifecycle {
-#     create_before_destroy = true
-#     postcondition {
-#       condition     = self.project_id == indykite_application_space.appspace.id && self.location == self.project_id
-#       error_message = "project_id and location must be read back as the appspace"
-#     }
-#   }
-# }
+
+resource "indykite_authorization_policy" "policy_project_id" {
+  name = "automation-terraform-policy-project-id-${time_static.example.unix}"
+  json = jsonencode({
+    meta = {
+      policy_version = "1.0-ciq"
+    },
+    subject = {
+      type = "Person"
+    },
+    condition = {
+      cypher = "MATCH (subject:Person)-[:HAS]->(payment:PaymentMethod)"
+    },
+    allowed_reads = {
+      nodes = ["subject.*", "payment.*"]
+    }
+  })
+  project_id = indykite_application_space.appspace.id
+  status     = "active"
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = self.project_id == indykite_application_space.appspace.id && self.location == self.project_id
+      error_message = "project_id and location must be read back as the appspace"
+    }
+  }
+}
+
+resource "indykite_external_data_resolver" "resolver_project_id" {
+  name       = "automation-terraform-resolver-project-id-${time_static.example.unix}"
+  project_id = indykite_application_space.appspace.id
+
+  url               = "https://api.example.com/data"
+  method            = "GET"
+  request_type      = "json"
+  response_type     = "json"
+  response_selector = "."
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = self.project_id == indykite_application_space.appspace.id && self.location == self.project_id
+      error_message = "project_id and location must be read back as the appspace"
+    }
+  }
+}
+
+resource "indykite_knowledge_query" "query_project_id" {
+  name       = "automation-terraform-knowledge-query-project-id-${time_static.example.unix}"
+  project_id = indykite_application_space.appspace.id
+  query = jsonencode({
+    nodes = ["subject.external_id", "payment.external_id"]
+  })
+  status    = "active"
+  policy_id = indykite_authorization_policy.policy_project_id.id
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = self.project_id == indykite_application_space.appspace.id && self.location == self.project_id
+      error_message = "project_id and location must be read back as the appspace"
+    }
+  }
+}
+
+resource "indykite_trust_score_profile" "score_project_id" {
+  name                = "automation-terraform-trust-score-project-id-${time_static.example.unix}"
+  project_id          = local.location_id
+  node_classification = "Vehicle"
+  dimension {
+    name   = "NAME_FRESHNESS"
+    weight = 1.0
+  }
+  schedule = "UPDATE_FREQUENCY_SIX_HOURS"
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = self.project_id == local.location_id && self.location == self.project_id
+      error_message = "project_id and location must be read back as the location_id project"
+    }
+  }
+}
+
+resource "indykite_entity_matching_pipeline" "pipeline_project_id" {
+  name       = "automation-terraform-entitymatching-project-id-${time_static.example.unix}"
+  project_id = local.location_id
+
+  source_node_filter = ["Device"]
+  target_node_filter = ["Device"]
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = self.project_id == local.location_id && self.location == self.project_id
+      error_message = "project_id and location must be read back as the location_id project"
+    }
+  }
+}
+
+resource "indykite_token_introspect" "token_introspect_project_id" {
+  name       = "automation-terraform-token-introspect-project-id-${time_static.example.unix}"
+  project_id = indykite_application_space.appspace.id
+  # a Token Introspect is unique per issuer and client ID within a project
+  jwt_matcher {
+    issuer   = "https://auth-project-id.example.com"
+    audience = "automation-terraform-project-id"
+  }
+  online_validation {
+    cache_ttl = 600
+  }
+  ikg_node_type = "Person"
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = self.project_id == indykite_application_space.appspace.id && self.location == self.project_id
+      error_message = "project_id and location must be read back as the appspace"
+    }
+  }
+}
+
+resource "indykite_audit_signing" "audit_signing_project_id" {
+  name         = "automation-terraform-audit-signing-project-id-${time_static.example.unix}"
+  project_id   = indykite_application_space.appspace.id
+  key_provider = "PLATFORM_MANAGED"
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = self.project_id == indykite_application_space.appspace.id && self.location == self.project_id
+      error_message = "project_id and location must be read back as the appspace"
+    }
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Test: List data sources send project_id
+# Each list reads GET /<type>?project_id=<project>&full_fetch=true and must return
+# exactly the configuration created above, in the right project.
+# -----------------------------------------------------------------------------
+
+data "indykite_authorization_policies" "list_authorization_policies" {
+  app_space_id = indykite_application_space.appspace.id
+  filter       = [indykite_authorization_policy.policy_project_id.name]
+  depends_on   = [indykite_authorization_policy.policy_project_id]
+  lifecycle {
+    postcondition {
+      condition = try(
+        length(self.authorization_policies) == 1 &&
+        self.authorization_policies[0].id == indykite_authorization_policy.policy_project_id.id &&
+        self.authorization_policies[0].app_space_id == indykite_application_space.appspace.id,
+        false
+      )
+      error_message = "authorization_policies list by project_id must return exactly the created configuration"
+    }
+  }
+}
+
+data "indykite_knowledge_queries" "list_knowledge_queries" {
+  app_space_id = indykite_application_space.appspace.id
+  filter       = [indykite_knowledge_query.query_project_id.name]
+  depends_on   = [indykite_knowledge_query.query_project_id]
+  lifecycle {
+    postcondition {
+      condition = try(
+        length(self.knowledge_queries) == 1 &&
+        self.knowledge_queries[0].id == indykite_knowledge_query.query_project_id.id &&
+        self.knowledge_queries[0].app_space_id == indykite_application_space.appspace.id,
+        false
+      )
+      error_message = "knowledge_queries list by project_id must return exactly the created configuration"
+    }
+  }
+}
+
+data "indykite_external_data_resolvers" "list_external_data_resolvers" {
+  app_space_id = indykite_application_space.appspace.id
+  filter       = [indykite_external_data_resolver.resolver_project_id.name]
+  depends_on   = [indykite_external_data_resolver.resolver_project_id]
+  lifecycle {
+    postcondition {
+      condition = try(
+        length(self.external_data_resolvers) == 1 &&
+        self.external_data_resolvers[0].id == indykite_external_data_resolver.resolver_project_id.id &&
+        self.external_data_resolvers[0].app_space_id == indykite_application_space.appspace.id,
+        false
+      )
+      error_message = "external_data_resolvers list by project_id must return exactly the created configuration"
+    }
+  }
+}
+
+data "indykite_token_introspects" "list_token_introspects" {
+  app_space_id = indykite_application_space.appspace.id
+  filter       = [indykite_token_introspect.token_introspect_project_id.name]
+  depends_on   = [indykite_token_introspect.token_introspect_project_id]
+  lifecycle {
+    postcondition {
+      condition = try(
+        length(self.token_introspects) == 1 &&
+        self.token_introspects[0].id == indykite_token_introspect.token_introspect_project_id.id &&
+        self.token_introspects[0].app_space_id == indykite_application_space.appspace.id,
+        false
+      )
+      error_message = "token_introspects list by project_id must return exactly the created configuration"
+    }
+  }
+}
+
+data "indykite_trust_score_profiles" "list_trust_score_profiles" {
+  app_space_id = local.location_id
+  filter       = [indykite_trust_score_profile.score_project_id.name]
+  depends_on   = [indykite_trust_score_profile.score_project_id]
+  lifecycle {
+    postcondition {
+      condition = try(
+        length(self.trust_score_profiles) == 1 &&
+        self.trust_score_profiles[0].id == indykite_trust_score_profile.score_project_id.id &&
+        self.trust_score_profiles[0].app_space_id == local.location_id,
+        false
+      )
+      error_message = "trust_score_profiles list by project_id must return exactly the created configuration"
+    }
+  }
+}
+
+data "indykite_entity_matching_pipelines" "list_entity_matching_pipelines" {
+  app_space_id = local.location_id
+  filter       = [indykite_entity_matching_pipeline.pipeline_project_id.name]
+  depends_on   = [indykite_entity_matching_pipeline.pipeline_project_id]
+  lifecycle {
+    postcondition {
+      condition = try(
+        length(self.entity_matching_pipelines) == 1 &&
+        self.entity_matching_pipelines[0].id == indykite_entity_matching_pipeline.pipeline_project_id.id &&
+        self.entity_matching_pipelines[0].app_space_id == local.location_id,
+        false
+      )
+      error_message = "entity_matching_pipelines list by project_id must return exactly the created configuration"
+    }
+  }
+}
+
+data "indykite_event_sinks" "list_event_sinks" {
+  app_space_id = indykite_application_space.appspace.id
+  filter       = [indykite_event_sink.create-event.name]
+  depends_on   = [indykite_event_sink.create-event]
+  lifecycle {
+    postcondition {
+      condition = try(
+        length(self.event_sinks) == 1 &&
+        self.event_sinks[0].id == indykite_event_sink.create-event.id &&
+        self.event_sinks[0].app_space_id == indykite_application_space.appspace.id,
+        false
+      )
+      error_message = "event_sinks list by project_id must return exactly the created configuration"
+    }
+  }
+}
+
+data "indykite_mcp_servers" "list_mcp_servers" {
+  app_space_id = indykite_application_space.appspace.id
+  filter       = [indykite_mcp_server.create-mcp-server.name]
+  depends_on   = [indykite_mcp_server.create-mcp-server]
+  lifecycle {
+    postcondition {
+      condition = try(
+        length(self.mcp_servers) == 1 &&
+        self.mcp_servers[0].id == indykite_mcp_server.create-mcp-server.id &&
+        self.mcp_servers[0].app_space_id == indykite_application_space.appspace.id,
+        false
+      )
+      error_message = "mcp_servers list by project_id must return exactly the created configuration"
+    }
+  }
+}

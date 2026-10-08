@@ -3,12 +3,12 @@
 page_title: "indykite_audit_signing Resource - IndyKite"
 subcategory: ""
 description: |-
-  Audit Signing configuration declares who manages the key that signs a Project's audit log records: the IndyKite platform, or the customer through a cloud KMS (Google Cloud KMS, AWS KMS or Azure Key Vault), in which case the key resource, key ID and authentication parameters must be supplied. Every signed record in the Audit Log API carries the kid of the key that signed it.
+  Audit Signing configuration declares who manages the key that signs a Project's audit log records: the IndyKite platform, or the customer through a cloud KMS, in which case the key resource, key ID and authentication parameters must be supplied. Customer managed keys (BYOK) are stored but not yet used: every record is currently signed with the platform key, and the Audit Log API's JWK Set publishes that key. Azure Key Vault has no signing support yet.
 ---
 
 # indykite_audit_signing (Resource)
 
-Audit Signing configuration declares who manages the key that signs a Project's audit log records: the IndyKite platform, or the customer through a cloud KMS (Google Cloud KMS, AWS KMS or Azure Key Vault), in which case the key resource, key ID and authentication parameters must be supplied. Every signed record in the Audit Log API carries the kid of the key that signed it.
+Audit Signing configuration declares who manages the key that signs a Project's audit log records: the IndyKite platform, or the customer through a cloud KMS, in which case the key resource, key ID and authentication parameters must be supplied. Customer managed keys (BYOK) are stored but not yet used: every record is currently signed with the platform key, and the Audit Log API's JWK Set publishes that key. Azure Key Vault has no signing support yet.
 
 ## Example Usage
 
@@ -21,10 +21,11 @@ resource "indykite_audit_signing" "platform_managed" {
 }
 
 # Example 2: Customer managed key in Google Cloud KMS
+# Customer managed keys are stored but not yet used: records are signed with the platform key for now.
 resource "indykite_audit_signing" "gcp_kms" {
   name         = "terraform-audit-signing-gcp"
   display_name = "Audit signing with Cloud KMS"
-  description  = "Audit records are signed with a key hosted in the customer's Cloud KMS"
+  description  = "Audit records will be signed with a key hosted in the customer's Cloud KMS"
   project_id   = indykite_application_space.my_space.id
   key_provider = "CUSTOMER_GCP_KMS"
   # the full crypto key VERSION name; the key version must use EC_SIGN_P256_SHA256
@@ -38,6 +39,7 @@ resource "indykite_audit_signing" "gcp_kms" {
 }
 
 # Example 3: Customer managed key in AWS KMS
+# Customer managed keys are stored but not yet used: records are signed with the platform key for now.
 resource "indykite_audit_signing" "aws_kms" {
   name         = "terraform-audit-signing-aws"
   project_id   = indykite_application_space.my_space.id
@@ -55,7 +57,7 @@ resource "indykite_audit_signing" "aws_kms" {
 
 # Note: The project_id parameter accepts an Application Space ID. location is deprecated, use project_id instead.
 # key_provider is always required; key_resource, kid and auth_params are only
-# needed for CUSTOMER_* providers.
+# needed for CUSTOMER_* providers. CUSTOMER_AZURE_KEY_VAULT is accepted but has no signing support yet.
 # auth_params values are write-only: the API never returns them, so Terraform keeps
 # the configured values in state and only reconciles the set of keys.
 ```
@@ -65,7 +67,7 @@ resource "indykite_audit_signing" "aws_kms" {
 
 ### Required
 
-- `key_provider` (String) Key provider identifies who manages the signing key. One of: PLATFORM_MANAGED, CUSTOMER_GCP_KMS, CUSTOMER_AWS_KMS, CUSTOMER_AZURE_KEY_VAULT.
+- `key_provider` (String) Key provider identifies who manages the signing key. One of: PLATFORM_MANAGED, CUSTOMER_GCP_KMS, CUSTOMER_AWS_KMS, CUSTOMER_AZURE_KEY_VAULT. Only PLATFORM_MANAGED is used for signing today; CUSTOMER_* configurations are stored for the upcoming customer managed key support.
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 
 ### Optional
@@ -74,7 +76,7 @@ resource "indykite_audit_signing" "aws_kms" {
 - `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
 - `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
 - `key_resource` (String) Resource identifier of the customer managed signing key in the provider's KMS, e.g. the Cloud KMS key version name, the AWS KMS key ARN or the Azure Key Vault key identifier.
-- `kid` (String) Key ID (kid): the name records signed with this key carry, and the kid verifiers look up in the Audit Log API's JWK Set.
+- `kid` (String) Key ID (kid) of the customer managed key. Records will carry it once customer managed keys are used for signing; today they carry the platform key's kid.
 - `location` (String, Deprecated) Identifier of Location, where to create resource. Deprecated, use project_id instead
 - `project_id` (String) Identifier of Project, where to create resource
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
