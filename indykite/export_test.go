@@ -60,6 +60,11 @@ func CheckAliasMapping(value any) ([]string, []error) {
 	return validateAliasMapping(value, "alias_mapping")
 }
 
+// ConvertServiceAccountConfig exposes serviceAccountConfigString to tests.
+func ConvertServiceAccountConfig(raw json.RawMessage) (string, error) {
+	return serviceAccountConfigString(raw)
+}
+
 // CredCreateMaxRetries exposes the credential create retry bound to tests.
 func CredCreateMaxRetries() int {
 	return credCreateMaxRetries

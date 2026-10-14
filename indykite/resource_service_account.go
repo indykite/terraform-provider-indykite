@@ -47,6 +47,7 @@ func resourceServiceAccount() *schema.Resource {
 			deletionProtectionKey: deletionProtectionSchema(),
 			roleKey:               roleSchema(),
 		},
+		CustomizeDiff: roleForceNew,
 	}
 }
 
@@ -54,13 +55,27 @@ func roleSchema() *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeString,
 		Required: true,
-		ForceNew: true,
-		Description: `Role assigned to the service account.
-		Valid values are: all_editor, all_viewer.`,
+		Description: `Role assigned to the service account. Changing it replaces the service account.
+		Valid values are: all_editor, all_viewer.
+		The API does not return the role: after import, the first apply records the configured role
+		without verifying it.`,
 		ValidateFunc: validation.StringInSlice([]string{
 			"all_editor", "all_viewer",
 		}, false),
 	}
+}
+
+// roleForceNew replaces the service account when its role changes, as the API cannot change it.
+// After import the role is not in state, because the API does not return it; the configured role
+// is then recorded in place instead.
+func roleForceNew(_ context.Context, d *schema.ResourceDiff, _ any) error {
+	if d.Id() == "" || !d.HasChange(roleKey) {
+		return nil
+	}
+	if oldRole, _ := d.GetChange(roleKey); oldRole == "" {
+		return nil
+	}
+	return d.ForceNew(roleKey)
 }
 
 func resServiceAccountCreateContext(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
@@ -114,7 +129,10 @@ func resServiceAccountReadContext(ctx context.Context, data *schema.ResourceData
 	setData(&d, data, descriptionKey, resp.Description)
 	setData(&d, data, createTimeKey, resp.CreateTime)
 	setData(&d, data, updateTimeKey, resp.UpdateTime)
-	setData(&d, data, roleKey, resp.Role)
+	// The read response has no role; keep the value from state unless the API returns one.
+	if resp.Role != "" {
+		setData(&d, data, roleKey, resp.Role)
+	}
 
 	return d
 }
@@ -128,9 +146,19 @@ func resServiceAccountUpdateContext(ctx context.Context, data *schema.ResourceDa
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
 	defer cancel()
 
+	if hasNameChanged(&d, data) {
+		return d
+	}
+
+	// deletion_protection is not sent to the API, and the role cannot be updated: it only changes
+	// in place when it is recorded after import.
+	if !data.HasChangesExcept(deletionProtectionKey, roleKey) {
+		return d
+	}
+
 	req := UpdateServiceAccountRequest{
-		DisplayName: optionalString(data, displayNameKey),
-		Description: optionalString(data, descriptionKey),
+		DisplayName: updateOptionalString(data, displayNameKey),
+		Description: updateOptionalString(data, descriptionKey),
 	}
 
 	var resp ServiceAccountResponse

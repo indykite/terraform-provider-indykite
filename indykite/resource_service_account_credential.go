@@ -15,7 +15,10 @@
 package indykite
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -54,9 +57,11 @@ func resourceServiceAccountCredential() *schema.Resource {
 				DiffSuppressFunc: DisplayNameCredentialDiffSuppress,
 				Description:      "Optional human readable name of the credential.",
 			},
+			// Computed: when omitted, the API sets a far-future expiry that must not force replacement.
 			expireTimeKey: {
 				Type:             schema.TypeString,
 				Optional:         true,
+				Computed:         true,
 				ForceNew:         true,
 				ValidateFunc:     validation.IsRFC3339Time,
 				DiffSuppressFunc: ExpireTimeDiffSuppress,
@@ -107,9 +112,36 @@ func resServiceAccountCredCreate(ctx context.Context, data *schema.ResourceData,
 	}
 	data.SetId(resp.ID)
 	setData(&d, data, serviceAccountIDKey, resp.ServiceAccountID)
-	setData(&d, data, serviceAccountConfigKey, resp.ServiceAccountConfig)
+
+	// The configuration is only returned on create, so it is set here and never on read.
+	config, err := serviceAccountConfigString(resp.ServiceAccountConfig)
+	if HasFailed(&d, err) {
+		return d
+	}
+	setData(&d, data, serviceAccountConfigKey, config)
 
 	return resServiceAccountCredRead(ctx, data, meta)
+}
+
+// serviceAccountConfigString converts the service_account_config of the create response to the
+// JSON text stored in state. The API returns a JSON object; a JSON string is accepted as well.
+func serviceAccountConfigString(raw json.RawMessage) (string, error) {
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		return "", nil
+	}
+	if trimmed[0] == '"' {
+		var s string
+		if err := json.Unmarshal(trimmed, &s); err != nil {
+			return "", fmt.Errorf("failed to decode service_account_config: %w", err)
+		}
+		return s, nil
+	}
+	var buf bytes.Buffer
+	if err := json.Compact(&buf, trimmed); err != nil {
+		return "", fmt.Errorf("failed to decode service_account_config: %w", err)
+	}
+	return buf.String(), nil
 }
 
 func resServiceAccountCredRead(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
@@ -134,7 +166,6 @@ func resServiceAccountCredRead(ctx context.Context, data *schema.ResourceData, m
 	setData(&d, data, serviceAccountIDKey, resp.ServiceAccountID)
 	setData(&d, data, displayNameKey, resp.DisplayName)
 	setData(&d, data, kidKey, resp.Kid)
-	setData(&d, data, serviceAccountConfigKey, resp.ServiceAccountConfig)
 	setData(&d, data, createTimeKey, resp.CreateTime)
 	if resp.ExpireTime != "" {
 		setData(&d, data, expireTimeKey, resp.ExpireTime)

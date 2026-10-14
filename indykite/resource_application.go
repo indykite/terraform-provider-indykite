@@ -111,6 +111,10 @@ func resApplicationUpdate(ctx context.Context, data *schema.ResourceData, meta a
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
 	defer cancel()
 
+	if hasNameChanged(&d, data) {
+		return d
+	}
+
 	// If only change in plan is delete_protection, just ignore the request
 	if !data.HasChangeExcept(deletionProtectionKey) {
 		return d

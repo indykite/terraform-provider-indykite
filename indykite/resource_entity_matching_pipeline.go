@@ -181,15 +181,17 @@ func resEntityMatchingPipelineUpdate(ctx context.Context, data *schema.ResourceD
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
 	defer cancel()
 
+	if hasNameChanged(&d, data) {
+		return d
+	}
+
+	// Rerun interval is always sent: the API clears it when it is omitted from an update.
+	interval := data.Get(entityMatchingPipelineRerunInterval).(string)
 	req := UpdateEntityMatchingPipelineRequest{
 		DisplayName:           updateOptionalString(data, displayNameKey),
 		Description:           updateOptionalString(data, descriptionKey),
+		RerunInterval:         &interval,
 		SimilarityScoreCutoff: float32(data.Get(entityMatchingPipelineSimilarityScoreCutOffKey).(float64)),
-	}
-
-	if data.HasChange(entityMatchingPipelineRerunInterval) {
-		interval := data.Get(entityMatchingPipelineRerunInterval).(string)
-		req.RerunInterval = &interval
 	}
 
 	var resp EntityMatchingPipelineResponse

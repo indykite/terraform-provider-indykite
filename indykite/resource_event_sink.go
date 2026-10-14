@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"slices"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -73,13 +74,16 @@ const (
 | **BatchDeleteNodeTags** | indykite.audit.capture.delete.node.tag | captureLabel | Car |
 |  |  | captureLabel | Green |
 | **BatchDeleteNodePropertyMetadata** | indykite.audit.capture.delete.node.property.metadata |  |  |
+| All Capture Events | indykite.audit.capture.* |  |  |
 |  | **Configuration Events** |  |  |
 | Config | indykite.audit.config.create |  |  |
 |  | indykite.audit.config.read |  |  |
 |  | indykite.audit.config.update |  |  |
 |  | indykite.audit.config.delete |  |  |
+|  | indykite.audit.config.list |  |  |
 |  | indykite.audit.config.permission.assign |  |  |
 |  | indykite.audit.config.permission.revoke |  |  |
+| All Config Events | indykite.audit.config.* |  |  |
 |  | **Token Events** |  |  |
 | TokenIntrospect | indykite.audit.credentials.token.introspected |  |  |
 |  | **Authorization Events** |  |  |
@@ -88,19 +92,20 @@ const (
 |  | indykite.audit.authorization.searchsubject |  |  |
 |  | indykite.audit.authorization.searchresource |  |  |
 |  | indykite.audit.authorization.searchaction |  |  |
-|  | indykite.audit.authorization.isauthorized |  |  |
-|  | indykite.audit.authorization.whatauthorized |  |  |
-|  | indykite.audit.authorization.whoauthorized |  |  |
+| All Authorization Events | indykite.audit.authorization.* |  |  |
 |  | **Ciq Events** |  |  |
 | Ciq | indykite.audit.ciq.execute |  |  |
 |  | **CDC Events** (requires include_cdc_events = true) |  |  |
-| CDC | indykite.audit.cdc.node.create |  |  |
-|  | indykite.audit.cdc.node.update |  |  |
-|  | indykite.audit.cdc.node.delete |  |  |
+| CDC | indykite.audit.cdc.node.create | label0 | Person |
+|  | indykite.audit.cdc.node.update | label0 | Person |
+|  | indykite.audit.cdc.node.delete | label0 | Person |
 |  | indykite.audit.cdc.relationship.create |  |  |
 |  | indykite.audit.cdc.relationship.update |  |  |
 |  | indykite.audit.cdc.relationship.delete |  |  |
-|  |  |  |  | `
+| All CDC Events | indykite.audit.cdc.* |  |  |
+|  |  |  |  |
+
+CDC node events carry the node labels as keys label0, label1, ... in alphabetical order, one key per label.`
 )
 
 func resourceEventSink() *schema.Resource {
@@ -368,10 +373,11 @@ func routeSchema() map[string]*schema.Schema {
 			Optional: true,
 		},
 		keysValuesKey: {
-			Type:     schema.TypeList,
-			Elem:     &schema.Resource{Schema: keysValuesSchema()},
-			Optional: true,
-			MaxItems: 1,
+			Type:        schema.TypeList,
+			Elem:        &schema.Resource{Schema: keysValuesSchema()},
+			Description: "Filter selecting the events routed to the provider. The API requires it on every route.",
+			Required:    true,
+			MaxItems:    1,
 		},
 		routeDisplayKey: {
 			Type:     schema.TypeString,
@@ -381,8 +387,11 @@ func routeSchema() map[string]*schema.Schema {
 			),
 		},
 		routeIDKey: {
-			Type:     schema.TypeString,
-			Optional: true,
+			Type:        schema.TypeString,
+			Optional:    true,
+			Description: "Kept in Terraform state only; it is not sent to the API, which has no route identifier.",
+			Deprecated: "route_id is not stored by the API and has no effect. " +
+				"It will be removed in a future major version.",
 			ValidateFunc: validation.All(
 				validation.StringLenBetween(2, 63),
 			),
@@ -399,14 +408,16 @@ func keysValuesSchema() map[string]*schema.Schema {
 			Elem: &schema.Resource{
 				Schema: map[string]*schema.Schema{
 					keyKey: {
-						Type:        schema.TypeString,
-						Required:    true,
-						Description: "Key for the ingest eventType",
+						Type:         schema.TypeString,
+						Required:     true,
+						Description:  "Key for the ingest eventType",
+						ValidateFunc: validation.StringIsNotEmpty,
 					},
 					valueKey: {
-						Type:        schema.TypeString,
-						Required:    true,
-						Description: "Value for the ingest eventType",
+						Type:         schema.TypeString,
+						Required:     true,
+						Description:  "Value for the ingest eventType",
+						ValidateFunc: validation.StringIsNotEmpty,
 					},
 				},
 			},
@@ -415,7 +426,8 @@ func keysValuesSchema() map[string]*schema.Schema {
 			Type:     schema.TypeString,
 			Required: true,
 			ValidateFunc: validation.All(
-				validation.StringMatch(regexp.MustCompile(`^[a-zA-Z0-9_*\\.]+$`),
+				validation.StringMatch(
+					regexp.MustCompile(`^[a-zA-Z0-9_*\.]+$`), //nolint:gocritic // keep the escaped dot for readability
 					"must contain only letters, numbers, underscores, asterisks and dots"),
 			),
 		},
@@ -484,10 +496,25 @@ func resEventSinkRead(ctx context.Context, data *schema.ResourceData, meta any) 
 	setData(&d, data, createTimeKey, resp.CreateTime)
 	setData(&d, data, updateTimeKey, resp.UpdateTime)
 
-	// Flatten providers and routes from Config
-	flattenEventSinkConfig(&d, data, resp.Config)
+	flattenEventSinkConfig(&d, data, eventSinkConfigFromResponse(&resp))
 
 	return d
+}
+
+// eventSinkConfigFromResponse returns providers, routes and include_cdc_events of the response.
+// The API returns them at the top level; the legacy nested "config" envelope is used as a fallback.
+func eventSinkConfigFromResponse(resp *EventSinkResponse) map[string]any {
+	if resp.Providers == nil && resp.Routes == nil && resp.IncludeCDCEvents == nil {
+		return resp.Config
+	}
+	config := map[string]any{
+		"providers": resp.Providers,
+		"routes":    resp.Routes,
+	}
+	if resp.IncludeCDCEvents != nil {
+		config["include_cdc_events"] = *resp.IncludeCDCEvents
+	}
+	return config
 }
 
 func resEventSinkUpdate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
@@ -498,6 +525,10 @@ func resEventSinkUpdate(ctx context.Context, data *schema.ResourceData, meta any
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
 	defer cancel()
+
+	if hasNameChanged(&d, data) {
+		return d
+	}
 
 	providers := data.Get(providersKey).([]any)
 	routes := data.Get(routesKey).([]any)
@@ -635,7 +666,6 @@ func buildRouteMap(item map[string]any) map[string]any {
 		"provider_id":     item[providerIDKey],
 		"stop_processing": item[stopProcessingKey],
 		"display_name":    item[routeDisplayKey],
-		"id":              item[routeIDKey],
 	}
 
 	if kvList, ok := item[keysValuesKey].([]any); ok && len(kvList) > 0 {
@@ -645,38 +675,31 @@ func buildRouteMap(item map[string]any) map[string]any {
 	return routeMap
 }
 
-// buildKeysValuesMap builds the keysValues map for a route.
+// buildKeysValuesMap builds the event_type_key_values_filter map for a route.
+// The API names the key/value pairs context_key_value and silently drops unknown fields.
 func buildKeysValuesMap(kvData map[string]any) map[string]any {
-	var pairs []any
-	if pairsList, ok := kvData[keyValuePairsKey].([]any); ok {
-		pairs = make([]any, 0, len(pairsList))
-		for _, pair := range pairsList {
-			if pairData, ok := pair.(map[string]any); ok {
-				pairs = append(pairs, map[string]any{
-					"key":   pairData[keyKey],
-					"value": pairData[valueKey],
-				})
-			}
+	filter := map[string]any{
+		"event_type": kvData[evTypeKey],
+	}
+	pairsList, _ := kvData[keyValuePairsKey].([]any)
+	pairs := make([]any, 0, len(pairsList))
+	for _, pair := range pairsList {
+		if pairData, ok := pair.(map[string]any); ok {
+			pairs = append(pairs, map[string]any{
+				"key":   pairData[keyKey],
+				"value": pairData[valueKey],
+			})
 		}
 	}
-	return map[string]any{
-		"key_value_pairs": pairs,
-		"event_type":      kvData[evTypeKey],
+	if len(pairs) > 0 {
+		filter["context_key_value"] = pairs
 	}
+	return filter
 }
 
-// buildKafkaConfig builds Kafka configuration preserving sensitive password from state.
-func buildKafkaConfig(kafkaData map[string]any, data *schema.ResourceData) map[string]any {
-	// Preserve sensitive password from state
-	var oldPassword any
-	if val, ok := data.Get(providersKey).([]any); ok && len(val) > 0 {
-		for _, y := range val {
-			if kafkaList, ok := y.(map[string]any)[kafkaKey].([]any); ok && len(kafkaList) > 0 {
-				kafka := kafkaList[0].(map[string]any)
-				oldPassword = kafka[passwordKey]
-			}
-		}
-	}
+// buildKafkaConfig builds Kafka configuration preserving sensitive password from the prior state block.
+func buildKafkaConfig(kafkaData, prior map[string]any) map[string]any {
+	oldPassword := prior[passwordKey]
 
 	// Helper to get value from either snake_case or camelCase
 	getValue := func(snakeCase, camelCase string) any {
@@ -697,18 +720,10 @@ func buildKafkaConfig(kafkaData map[string]any, data *schema.ResourceData) map[s
 	}
 }
 
-// flattenEventSinkConfig converts Config map to Terraform schema data.
-func buildAzureEventGridConfig(gridData map[string]any, data *schema.ResourceData) map[string]any {
-	// Preserve sensitive access key from state
-	var oldAccessKey any
-	if val, ok := data.Get(providersKey).([]any); ok && len(val) > 0 {
-		for _, y := range val {
-			if gridList, ok := y.(map[string]any)[azureEventGridKey].([]any); ok && len(gridList) > 0 {
-				grid := gridList[0].(map[string]any)
-				oldAccessKey = grid[accessKey]
-			}
-		}
-	}
+// buildAzureEventGridConfig builds Azure Event Grid configuration preserving sensitive access key
+// from the prior state block.
+func buildAzureEventGridConfig(gridData, prior map[string]any) map[string]any {
+	oldAccessKey := prior[accessKey]
 
 	// Helper to get value from either snake_case or camelCase
 	getValue := func(snakeCase, camelCase string) any {
@@ -725,17 +740,10 @@ func buildAzureEventGridConfig(gridData map[string]any, data *schema.ResourceDat
 	}
 }
 
-func buildAzureServiceBusConfig(busData map[string]any, data *schema.ResourceData) map[string]any {
-	// Preserve sensitive connection string from state
-	var oldConnection any
-	if val, ok := data.Get(providersKey).([]any); ok && len(val) > 0 {
-		for _, y := range val {
-			if busList, ok := y.(map[string]any)[azureServiceBusKey].([]any); ok && len(busList) > 0 {
-				bus := busList[0].(map[string]any)
-				oldConnection = bus[connectionStringKey]
-			}
-		}
-	}
+// buildAzureServiceBusConfig builds Azure Service Bus configuration preserving sensitive connection
+// string from the prior state block.
+func buildAzureServiceBusConfig(busData, prior map[string]any) map[string]any {
+	oldConnection := prior[connectionStringKey]
 
 	// Helper to get value from either snake_case or camelCase
 	getValue := func(snakeCase, camelCase string) any {
@@ -752,17 +760,10 @@ func buildAzureServiceBusConfig(busData map[string]any, data *schema.ResourceDat
 	}
 }
 
-func buildPubSubConfig(pubsubData map[string]any, data *schema.ResourceData) map[string]any {
-	// Preserve sensitive credentials from state
-	var oldCredentials any
-	if val, ok := data.Get(providersKey).([]any); ok && len(val) > 0 {
-		for _, y := range val {
-			if pubsubList, ok := y.(map[string]any)[pubsubKey].([]any); ok && len(pubsubList) > 0 {
-				ps := pubsubList[0].(map[string]any)
-				oldCredentials = ps[credentialsJSONKey]
-			}
-		}
-	}
+// buildPubSubConfig builds Google Cloud Pub/Sub configuration preserving sensitive credentials
+// from the prior state block.
+func buildPubSubConfig(pubsubData, prior map[string]any) map[string]any {
+	oldCredentials := prior[credentialsJSONKey]
 
 	// Helper to get value from either snake_case or camelCase
 	getValue := func(snakeCase, camelCase string) any {
@@ -785,7 +786,7 @@ func flattenEventSinkConfig(d *diag.Diagnostics, data *schema.ResourceData, conf
 	setData(d, data, providersKey, flattenEventSinkProviders(data, providersMap))
 
 	routesList, _ := config["routes"].([]any)
-	setData(d, data, routesKey, flattenEventSinkRoutes(routesList))
+	setData(d, data, routesKey, flattenEventSinkRoutes(data, routesList))
 
 	if v, ok := config["include_cdc_events"]; ok {
 		setData(d, data, includeCdcEventsKey, v)
@@ -805,42 +806,91 @@ func pickMap(m map[string]any, keys ...string) (map[string]any, bool) {
 	return nil, false
 }
 
-// getEither returns m[snakeCase] if present, otherwise m[camelCase].
-func getEither(m map[string]any, snakeCase, camelCase string) any {
-	if val, ok := m[snakeCase]; ok {
-		return val
+// getEither returns the value of the first of the given keys present in m.
+// Used to tolerate both current and legacy key names in API responses.
+func getEither(m map[string]any, keys ...string) any {
+	for _, k := range keys {
+		if val, ok := m[k]; ok {
+			return val
+		}
 	}
-	return m[camelCase]
+	return nil
+}
+
+// orderedProviderNames returns the provider names of the API response in the order of the current
+// state, followed by the remaining names sorted. The API returns providers as an unordered map,
+// while providers is an ordered list in the schema.
+func orderedProviderNames(data *schema.ResourceData, providersMap map[string]any) []string {
+	names := make([]string, 0, len(providersMap))
+	seen := make(map[string]bool, len(providersMap))
+	stateProviders, _ := data.Get(providersKey).([]any)
+	for _, p := range stateProviders {
+		item, _ := p.(map[string]any)
+		name, _ := item[providerNameKey].(string)
+		if _, ok := providersMap[name]; ok && !seen[name] {
+			names = append(names, name)
+			seen[name] = true
+		}
+	}
+	rest := make([]string, 0, len(providersMap)-len(names))
+	for name := range providersMap {
+		if !seen[name] {
+			rest = append(rest, name)
+		}
+	}
+	slices.Sort(rest)
+	return append(names, rest...)
+}
+
+// priorProviderBlock returns the typeKey block (e.g. kafka) of the provider named name from the
+// current state. The API returns secrets empty, so they are preserved from this block.
+func priorProviderBlock(data *schema.ResourceData, name, typeKey string) map[string]any {
+	stateProviders, _ := data.Get(providersKey).([]any)
+	for _, p := range stateProviders {
+		item, _ := p.(map[string]any)
+		if item[providerNameKey] != name {
+			continue
+		}
+		if blocks, ok := item[typeKey].([]any); ok && len(blocks) > 0 {
+			block, _ := blocks[0].(map[string]any)
+			return block
+		}
+	}
+	return nil
 }
 
 // flattenEventSinkProviders converts the API providers map into Terraform schema blocks.
 func flattenEventSinkProviders(data *schema.ResourceData, providersMap map[string]any) []map[string]any {
 	var results []map[string]any
-	for key, p := range providersMap {
-		providerData, _ := p.(map[string]any)
+	for _, key := range orderedProviderNames(data, providersMap) {
+		providerData, _ := providersMap[key].(map[string]any)
 
 		if kafkaData, ok := pickMap(providerData, "kafka"); ok {
 			results = append(results, map[string]any{
 				providerNameKey: key,
-				kafkaKey:        []any{buildKafkaConfig(kafkaData, data)},
+				kafkaKey: []any{buildKafkaConfig(kafkaData,
+					priorProviderBlock(data, key, kafkaKey))},
 			})
 		}
 		if gridData, ok := pickMap(providerData, "azure_event_grid", "azureEventGrid"); ok {
 			results = append(results, map[string]any{
-				providerNameKey:   key,
-				azureEventGridKey: []any{buildAzureEventGridConfig(gridData, data)},
+				providerNameKey: key,
+				azureEventGridKey: []any{buildAzureEventGridConfig(gridData,
+					priorProviderBlock(data, key, azureEventGridKey))},
 			})
 		}
 		if busData, ok := pickMap(providerData, "azure_service_bus", "azureServiceBus"); ok {
 			results = append(results, map[string]any{
-				providerNameKey:    key,
-				azureServiceBusKey: []any{buildAzureServiceBusConfig(busData, data)},
+				providerNameKey: key,
+				azureServiceBusKey: []any{buildAzureServiceBusConfig(busData,
+					priorProviderBlock(data, key, azureServiceBusKey))},
 			})
 		}
 		if pubsubData, ok := pickMap(providerData, "pubsub", "pubSub"); ok {
 			results = append(results, map[string]any{
 				providerNameKey: key,
-				pubsubKey:       []any{buildPubSubConfig(pubsubData, data)},
+				pubsubKey: []any{buildPubSubConfig(pubsubData,
+					priorProviderBlock(data, key, pubsubKey))},
 			})
 		}
 	}
@@ -848,11 +898,19 @@ func flattenEventSinkProviders(data *schema.ResourceData, providersMap map[strin
 }
 
 // flattenEventSinkRoutes converts the API routes list into Terraform schema blocks.
-func flattenEventSinkRoutes(routesList []any) []any {
+// The API keeps the route order and has no route identifier, so route_id is preserved
+// from the route at the same position in the current state.
+func flattenEventSinkRoutes(data *schema.ResourceData, routesList []any) []any {
+	stateRoutes, _ := data.Get(routesKey).([]any)
 	routes := make([]any, len(routesList))
 	for i, r := range routesList {
 		routeData, _ := r.(map[string]any)
-		routes[i] = flattenEventSinkRoute(routeData)
+		routeMap := flattenEventSinkRoute(routeData)
+		if i < len(stateRoutes) {
+			stateRoute, _ := stateRoutes[i].(map[string]any)
+			routeMap[routeIDKey] = stateRoute[routeIDKey]
+		}
+		routes[i] = routeMap
 	}
 	return routes
 }
@@ -863,7 +921,6 @@ func flattenEventSinkRoute(routeData map[string]any) map[string]any {
 		providerIDKey:     getEither(routeData, "provider_id", "providerId"),
 		stopProcessingKey: getEither(routeData, "stop_processing", "stopProcessing"),
 		routeDisplayKey:   getEither(routeData, "display_name", "displayName"),
-		routeIDKey:        routeData["id"],
 	}
 
 	kvData, ok := pickMap(routeData, "event_type_key_values_filter", "keysValues")
@@ -871,7 +928,7 @@ func flattenEventSinkRoute(routeData map[string]any) map[string]any {
 		return routeMap
 	}
 
-	pairsList, _ := getEither(kvData, "key_value_pairs", "keyValuePairs").([]any)
+	pairsList, _ := getEither(kvData, "context_key_value", "key_value_pairs", "keyValuePairs").([]any)
 	keyValuePairs := make([]any, len(pairsList))
 	for j, pair := range pairsList {
 		pairData, _ := pair.(map[string]any)

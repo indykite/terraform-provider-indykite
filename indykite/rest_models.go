@@ -544,10 +544,15 @@ type EventSinkResponse struct {
 	Description string         `json:"description,omitempty"`
 	CustomerID  string         `json:"organization_id"`
 	AppSpaceID  string         `json:"project_id,omitempty"`
-	Config      map[string]any `json:"config"`
-	CreateTime  time.Time      `json:"create_time"`
-	UpdateTime  time.Time      `json:"update_time"`
 	Etag        string         `json:"etag,omitempty"`
+	Providers   map[string]any `json:"providers,omitempty"`
+	// Config is the legacy nested envelope, read only when the top-level fields are absent.
+	Config map[string]any `json:"config,omitempty"`
+	// IncludeCDCEvents is a pointer to tell an omitted value apart from false.
+	IncludeCDCEvents *bool     `json:"include_cdc_events,omitempty"`
+	CreateTime       time.Time `json:"create_time"`
+	UpdateTime       time.Time `json:"update_time"`
+	Routes           []any     `json:"routes,omitempty"`
 }
 
 // UpdateEventSinkRequest represents the request to update an event sink.
@@ -687,12 +692,13 @@ type CreateServiceAccountCredentialRequest struct {
 
 // ServiceAccountCredentialResponse represents a service account credential resource.
 type ServiceAccountCredentialResponse struct {
-	ID                   string    `json:"id"`
-	DisplayName          string    `json:"display_name,omitempty"`
-	Kid                  string    `json:"kid"`
-	ServiceAccountID     string    `json:"service_account_id"`
-	OrganizationID       string    `json:"organization_id"`
-	ServiceAccountConfig string    `json:"service_account_config,omitempty"`
-	CreateTime           time.Time `json:"create_time"`
-	ExpireTime           string    `json:"expire_time,omitempty"`
+	ID               string    `json:"id"`
+	DisplayName      string    `json:"display_name,omitempty"`
+	Kid              string    `json:"kid"`
+	ServiceAccountID string    `json:"service_account_id"`
+	OrganizationID   string    `json:"organization_id"`
+	CreateTime       time.Time `json:"create_time"`
+	ExpireTime       string    `json:"expire_time,omitempty"`
+	// ServiceAccountConfig is returned only on create, as a JSON object.
+	ServiceAccountConfig json.RawMessage `json:"service_account_config,omitempty"`
 }

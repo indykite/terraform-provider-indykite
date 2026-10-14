@@ -319,6 +319,10 @@ func resTokenIntrospectUpdate(ctx context.Context, data *schema.ResourceData, me
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
 	defer cancel()
 
+	if hasNameChanged(&d, data) {
+		return d
+	}
+
 	req := UpdateTokenIntrospectRequest{
 		DisplayName: updateOptionalString(data, displayNameKey),
 		Description: updateOptionalString(data, descriptionKey),
