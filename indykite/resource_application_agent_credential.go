@@ -112,9 +112,11 @@ func resourceApplicationAgentCredential() *schema.Resource {
 				ValidateFunc:     validation.All(validation.StringIsJSON, validation.StringLenBetween(96, 8192)),
 				Description:      "Provide your onw Public key in JWK format, otherwise new pair is generated",
 			},
+			// Computed: when omitted, the API sets a far-future expiry that must not force replacement.
 			expireTimeKey: {
 				Type:             schema.TypeString,
 				Optional:         true,
+				Computed:         true,
 				ForceNew:         true,
 				ValidateFunc:     validation.IsRFC3339Time,
 				DiffSuppressFunc: ExpireTimeDiffSuppress,

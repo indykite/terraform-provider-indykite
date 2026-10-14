@@ -177,19 +177,21 @@ func resAuthorizationPolicyUpdate(ctx context.Context, data *schema.ResourceData
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
 	defer cancel()
 
+	if hasNameChanged(&d, data) {
+		return d
+	}
+
 	policy := data.Get(authzJSONConfigKey).(string)
 	statusValue := data.Get(authzStatusKey).(string)
 	apiStatus := AuthorizationPolicyStatusToAPI[statusValue]
 
+	// Tags are always sent: the API clears them when they are omitted from an update.
 	req := UpdateAuthorizationPolicyRequest{
 		DisplayName: updateOptionalString(data, displayNameKey),
 		Description: updateOptionalString(data, descriptionKey),
 		Policy:      &policy,
 		Status:      &apiStatus,
-	}
-
-	if data.HasChange(authzTagsKey) {
-		req.Tags = rawArrayToTypedArray[string](data.Get(authzTagsKey).([]any))
+		Tags:        rawArrayToTypedArray[string](data.Get(authzTagsKey).([]any)),
 	}
 
 	var resp AuthorizationPolicyResponse

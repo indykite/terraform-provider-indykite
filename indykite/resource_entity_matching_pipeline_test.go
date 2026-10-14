@@ -407,6 +407,56 @@ var _ = Describe("Resource EntityMatchingPipeline", func() {
 			})
 		})
 	})
+
+	It("Test update keeps rerun_interval the API clears when omitted", func() {
+		tfConfigDef := `resource "indykite_entity_matching_pipeline" "development" {
+			project_id = "` + appSpaceID + `"
+			name = "keep-pipeline"
+			description = "%s"
+			source_node_filter = ["Person"]
+			target_node_filter = ["Person"]
+			%s
+		}`
+		const rerun = `rerun_interval = "1h"`
+
+		fake := newFakeConfigAPI("/entity-matching-pipelines", sampleID, map[string]any{"rerun_interval": ""})
+		mockServer = fake.Server
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
+			},
+			Steps: []resource.TestStep{
+				{
+					Config: fmt.Sprintf(tfConfigDef, "first", rerun),
+					Check:  resource.TestCheckResourceAttr(resourceName, "rerun_interval", "1h"),
+				},
+				{
+					// Changing only the description must still send rerun_interval; the implicit plan
+					// after apply fails if it was cleared.
+					Config: fmt.Sprintf(tfConfigDef, "second", rerun),
+					Check: resource.ComposeTestCheckFunc(
+						func(_ *terraform.State) error {
+							return convertOmegaMatcherToError(
+								HaveKeyWithValue("rerun_interval", "1h"), fake.lastPut())
+						},
+						resource.TestCheckResourceAttr(resourceName, "rerun_interval", "1h"),
+					),
+				},
+				{
+					Config: fmt.Sprintf(tfConfigDef, "second", ""),
+					Check:  resource.TestCheckResourceAttr(resourceName, "rerun_interval", ""),
+				},
+			},
+		})
+	})
 })
 
 //nolint:unparam // Test helper function designed to be reusable

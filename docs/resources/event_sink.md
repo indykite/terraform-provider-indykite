@@ -28,13 +28,16 @@ description: |-
   | **BatchDeleteNodeTags** | indykite.audit.capture.delete.node.tag | captureLabel | Car |
   |  |  | captureLabel | Green |
   | **BatchDeleteNodePropertyMetadata** | indykite.audit.capture.delete.node.property.metadata |  |  |
+  | All Capture Events | indykite.audit.capture.* |  |  |
   |  | **Configuration Events** |  |  |
   | Config | indykite.audit.config.create |  |  |
   |  | indykite.audit.config.read |  |  |
   |  | indykite.audit.config.update |  |  |
   |  | indykite.audit.config.delete |  |  |
+  |  | indykite.audit.config.list |  |  |
   |  | indykite.audit.config.permission.assign |  |  |
   |  | indykite.audit.config.permission.revoke |  |  |
+  | All Config Events | indykite.audit.config.* |  |  |
   |  | **Token Events** |  |  |
   | TokenIntrospect | indykite.audit.credentials.token.introspected |  |  |
   |  | **Authorization Events** |  |  |
@@ -43,19 +46,19 @@ description: |-
   |  | indykite.audit.authorization.searchsubject |  |  |
   |  | indykite.audit.authorization.searchresource |  |  |
   |  | indykite.audit.authorization.searchaction |  |  |
-  |  | indykite.audit.authorization.isauthorized |  |  |
-  |  | indykite.audit.authorization.whatauthorized |  |  |
-  |  | indykite.audit.authorization.whoauthorized |  |  |
+  | All Authorization Events | indykite.audit.authorization.* |  |  |
   |  | **Ciq Events** |  |  |
   | Ciq | indykite.audit.ciq.execute |  |  |
   |  | **CDC Events** (requires include_cdc_events = true) |  |  |
-  | CDC | indykite.audit.cdc.node.create |  |  |
-  |  | indykite.audit.cdc.node.update |  |  |
-  |  | indykite.audit.cdc.node.delete |  |  |
+  | CDC | indykite.audit.cdc.node.create | label0 | Person |
+  |  | indykite.audit.cdc.node.update | label0 | Person |
+  |  | indykite.audit.cdc.node.delete | label0 | Person |
   |  | indykite.audit.cdc.relationship.create |  |  |
   |  | indykite.audit.cdc.relationship.update |  |  |
   |  | indykite.audit.cdc.relationship.delete |  |  |
+  | All CDC Events | indykite.audit.cdc.* |  |  |
   |  |  |  |  |
+  CDC node events carry the node labels as keys label0, label1, ... in alphabetical order, one key per label.
 ---
 
 # indykite_event_sink (Resource)
@@ -87,13 +90,16 @@ Event Sink configuration is used to configure outbound events.
 | **BatchDeleteNodeTags** | indykite.audit.capture.delete.node.tag | captureLabel | Car |
 |  |  | captureLabel | Green |
 | **BatchDeleteNodePropertyMetadata** | indykite.audit.capture.delete.node.property.metadata |  |  |
+| All Capture Events | indykite.audit.capture.* |  |  |
 |  | **Configuration Events** |  |  |
 | Config | indykite.audit.config.create |  |  |
 |  | indykite.audit.config.read |  |  |
 |  | indykite.audit.config.update |  |  |
 |  | indykite.audit.config.delete |  |  |
+|  | indykite.audit.config.list |  |  |
 |  | indykite.audit.config.permission.assign |  |  |
 |  | indykite.audit.config.permission.revoke |  |  |
+| All Config Events | indykite.audit.config.* |  |  |
 |  | **Token Events** |  |  |
 | TokenIntrospect | indykite.audit.credentials.token.introspected |  |  |
 |  | **Authorization Events** |  |  |
@@ -102,19 +108,20 @@ Event Sink configuration is used to configure outbound events.
 |  | indykite.audit.authorization.searchsubject |  |  |
 |  | indykite.audit.authorization.searchresource |  |  |
 |  | indykite.audit.authorization.searchaction |  |  |
-|  | indykite.audit.authorization.isauthorized |  |  |
-|  | indykite.audit.authorization.whatauthorized |  |  |
-|  | indykite.audit.authorization.whoauthorized |  |  |
+| All Authorization Events | indykite.audit.authorization.* |  |  |
 |  | **Ciq Events** |  |  |
 | Ciq | indykite.audit.ciq.execute |  |  |
 |  | **CDC Events** (requires include_cdc_events = true) |  |  |
-| CDC | indykite.audit.cdc.node.create |  |  |
-|  | indykite.audit.cdc.node.update |  |  |
-|  | indykite.audit.cdc.node.delete |  |  |
+| CDC | indykite.audit.cdc.node.create | label0 | Person |
+|  | indykite.audit.cdc.node.update | label0 | Person |
+|  | indykite.audit.cdc.node.delete | label0 | Person |
 |  | indykite.audit.cdc.relationship.create |  |  |
 |  | indykite.audit.cdc.relationship.update |  |  |
 |  | indykite.audit.cdc.relationship.delete |  |  |
+| All CDC Events | indykite.audit.cdc.* |  |  |
 |  |  |  |  |
+
+CDC node events carry the node labels as keys label0, label1, ... in alphabetical order, one key per label.
 
 ## Example Usage
 
@@ -501,13 +508,13 @@ Read-Only:
 
 Required:
 
+- `keys_values_filter` (Block List, Min: 1, Max: 1) Filter selecting the events routed to the provider. The API requires it on every route. (see [below for nested schema](#nestedblock--routes--keys_values_filter))
 - `provider_id` (String)
 
 Optional:
 
-- `keys_values_filter` (Block List, Max: 1) (see [below for nested schema](#nestedblock--routes--keys_values_filter))
 - `route_display_name` (String)
-- `route_id` (String)
+- `route_id` (String, Deprecated) Kept in Terraform state only; it is not sent to the API, which has no route identifier.
 - `stop_processing` (Boolean)
 
 <a id="nestedblock--routes--keys_values_filter"></a>

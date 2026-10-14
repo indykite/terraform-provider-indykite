@@ -91,6 +91,53 @@ var _ = Describe("Resource TrustScoreProfile", func() {
 				},
 			})
 		})
+
+		DescribeTable("schedule is validated at plan time",
+			func(schedule string, valid bool) {
+				// Plan only: any request reaching the API fails the test.
+				mockServer = httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+					defer GinkgoRecover()
+					Fail(fmt.Sprintf("unexpected API call %s %s", r.Method, r.URL.Path))
+				}))
+				cfgFunc := provider.ConfigureContextFunc
+				provider.ConfigureContextFunc = func(
+					ctx context.Context, data *schema.ResourceData,
+				) (any, diag.Diagnostics) {
+					client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+					ctx = indykite.WithClient(ctx, client)
+					return cfgFunc(ctx, data)
+				}
+
+				step := resource.TestStep{
+					Config: fmt.Sprintf(tfConfigDef, appSpaceID, "name", fmt.Sprintf(
+						`node_classification = "Person"
+						schedule = %q
+						dimension {
+							name = "NAME_FRESHNESS"
+							weight = 0.6
+						}`, schedule)),
+					PlanOnly:           true,
+					ExpectNonEmptyPlan: true,
+				}
+				if !valid {
+					step.ExpectError = regexp.MustCompile(`expected schedule to be one of`)
+				}
+				resource.Test(GinkgoT(), resource.TestCase{
+					ProviderFactories: map[string]func() (*schema.Provider, error){
+						"indykite": func() (*schema.Provider, error) { return provider, nil },
+					},
+					Steps: []resource.TestStep{step},
+				})
+			},
+			Entry("three hours", "UPDATE_FREQUENCY_THREE_HOURS", true),
+			Entry("six hours", "UPDATE_FREQUENCY_SIX_HOURS", true),
+			Entry("twelve hours", "UPDATE_FREQUENCY_TWELVE_HOURS", true),
+			Entry("daily", "UPDATE_FREQUENCY_DAILY", true),
+			Entry("invalid, rejected by the API", "UPDATE_FREQUENCY_INVALID", false),
+			Entry("hourly, not supported", "UPDATE_FREQUENCY_HOURLY", false),
+			Entry("API value instead of Terraform value", "DAILY", false),
+			Entry("empty", "", false),
+		)
 	})
 
 	Describe("Valid configurations", func() {

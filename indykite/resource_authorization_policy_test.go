@@ -355,6 +355,111 @@ var _ = Describe("Resource Authorization Policy config", func() {
 			},
 		})
 	})
+
+	It("Test rename fails at apply and keeps the prior state", func() {
+		tfConfigDef := `resource "indykite_authorization_policy" "wonka" {
+			project_id = "` + appSpaceID + `"
+			name = "%s"
+			json = "{}"
+			status = "active"
+		}`
+
+		fake := newFakeConfigAPI("/authorization-policies", sampleID, nil)
+		mockServer = fake.Server
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
+			},
+			Steps: []resource.TestStep{
+				{
+					Config: fmt.Sprintf(tfConfigDef, "wonka-policy"),
+					Check:  resource.TestCheckResourceAttr(resourceName, "name", "wonka-policy"),
+				},
+				{
+					// The API ignores names on update, so the rename must fail before any request.
+					Config: fmt.Sprintf(tfConfigDef, "wonka-policy-v2"),
+					ExpectError: regexp.MustCompile(`(?s)name cannot be changed after creation.*` +
+						`current name "wonka-policy".*terraform apply -replace=`),
+				},
+				{
+					// The failed rename is not recorded in state, so it is still planned.
+					Config:             fmt.Sprintf(tfConfigDef, "wonka-policy-v2"),
+					PlanOnly:           true,
+					ExpectNonEmptyPlan: true,
+					Check: func(_ *terraform.State) error {
+						return convertOmegaMatcherToError(BeEmpty(), fake.putBodies)
+					},
+				},
+				{
+					Config:   fmt.Sprintf(tfConfigDef, "wonka-policy"),
+					PlanOnly: true,
+				},
+				{
+					Config: fmt.Sprintf(tfConfigDef, "wonka-policy-v2"),
+					Taint:  []string{resourceName},
+					Check:  resource.TestCheckResourceAttr(resourceName, "name", "wonka-policy-v2"),
+				},
+			},
+		})
+	})
+
+	It("Test update keeps tags the API clears when omitted", func() {
+		tfConfigDef := `resource "indykite_authorization_policy" "wonka" {
+			project_id = "` + appSpaceID + `"
+			name = "wonka-policy"
+			json = "{}"
+			status = "active"
+			description = "%s"
+			%s
+		}`
+		const tags = `tags = ["alpha", "beta"]`
+
+		fake := newFakeConfigAPI("/authorization-policies", sampleID, map[string]any{"tags": nil})
+		mockServer = fake.Server
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
+			},
+			Steps: []resource.TestStep{
+				{
+					Config: fmt.Sprintf(tfConfigDef, "first", tags),
+					Check:  resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+				},
+				{
+					// Changing only the description must still send the tags; the implicit plan
+					// after apply fails if they were cleared.
+					Config: fmt.Sprintf(tfConfigDef, "second", tags),
+					Check: resource.ComposeTestCheckFunc(
+						func(_ *terraform.State) error {
+							return convertOmegaMatcherToError(
+								HaveKeyWithValue("tags", ConsistOf("alpha", "beta")), fake.lastPut())
+						},
+						resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
+					),
+				},
+				{
+					Config: fmt.Sprintf(tfConfigDef, "second", ""),
+					Check:  resource.TestCheckResourceAttr(resourceName, "tags.#", "0"),
+				},
+			},
+		})
+	})
 })
 
 func testAuthorizationPolicyResourceDataExists(

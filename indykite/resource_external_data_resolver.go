@@ -254,23 +254,22 @@ func resExternalDataResolverUpdate(ctx context.Context, data *schema.ResourceDat
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
 	defer cancel()
 
+	if hasNameChanged(&d, data) {
+		return d
+	}
+
+	// Headers and request payload are always sent: the API clears them when they are omitted from an update.
+	requestPayload := data.Get(externalDataResolverRequestPayloadKey).(string)
 	req := UpdateExternalDataResolverRequest{
 		DisplayName:      updateOptionalString(data, displayNameKey),
 		Description:      updateOptionalString(data, descriptionKey),
 		URL:              data.Get(externalDataResolverURLKey).(string),
 		Method:           data.Get(externalDataResolverMethodKey).(string),
+		Headers:          buildHeaders(data),
 		RequestType:      strings.ToUpper(data.Get(externalDataResolverRequestTypeKey).(string)),
+		RequestPayload:   &requestPayload,
 		ResponseType:     strings.ToUpper(data.Get(externalDataResolverResponseTypeKey).(string)),
 		ResponseSelector: data.Get(externalDataResolverResponseSelectorKey).(string),
-	}
-
-	if data.HasChange(externalDataResolverHeadersKey) {
-		req.Headers = buildHeaders(data)
-	}
-
-	if data.HasChange(externalDataResolverRequestPayloadKey) {
-		requestPayload := data.Get(externalDataResolverRequestPayloadKey).(string)
-		req.RequestPayload = &requestPayload
 	}
 
 	var resp ExternalDataResolverResponse

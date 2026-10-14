@@ -69,8 +69,10 @@ resource "indykite_service_account" "viewer_service_account" {
 
 - `customer_id` (String) Identifier of Customer
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
-- `role` (String) Role assigned to the service account.
+- `role` (String) Role assigned to the service account. Changing it replaces the service account.
 		Valid values are: all_editor, all_viewer.
+		The API does not return the role: after import, the first apply records the configured role
+		without verifying it.
 
 ### Optional
 

@@ -105,11 +105,8 @@ func resourceTrustScoreProfile() *schema.Resource {
 				Description: "Schedule sets the time between re-calculations. Possible values are: `" +
 					strings.Join(getMapStringKeys(TrustScoreProfileScheduleFrequencies), "`, `") + "`.",
 				Required: true,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
-					ValidateFunc: validation.StringInSlice(getMapStringKeys(
-						TrustScoreProfileScheduleFrequencies), false),
-				},
+				ValidateFunc: validation.StringInSlice(getMapStringKeys(
+					TrustScoreProfileScheduleFrequencies), false),
 			},
 		},
 	}
@@ -213,6 +210,10 @@ func resTrustScoreProfileUpdate(ctx context.Context, data *schema.ResourceData, 
 	}
 	ctx, cancel := context.WithTimeout(ctx, data.Timeout(schema.TimeoutUpdate))
 	defer cancel()
+
+	if hasNameChanged(&d, data) {
+		return d
+	}
 
 	scheduleValue := data.Get(trustScoreProfileSchedule).(string)
 	apiSchedule := TrustScoreProfileScheduleToAPI[scheduleValue]

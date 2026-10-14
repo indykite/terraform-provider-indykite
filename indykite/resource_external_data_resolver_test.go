@@ -409,7 +409,7 @@ var _ = Describe("Resource ExternalDataResolver", func() {
 			createTime := time.Now()
 			updateTime := time.Now()
 
-			mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				switch {
 				case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/external-data-resolvers"):
 					resp := indykite.ExternalDataResolverResponse{
@@ -468,7 +468,6 @@ var _ = Describe("Resource ExternalDataResolver", func() {
 					w.WriteHeader(http.StatusNotFound)
 				}
 			}))
-			defer mockServer.Close()
 
 			cfgFunc := provider.ConfigureContextFunc
 			provider.ConfigureContextFunc = func(
@@ -511,6 +510,72 @@ var _ = Describe("Resource ExternalDataResolver", func() {
 					},
 				},
 			})
+		})
+	})
+
+	It("Test update keeps headers and request payload the API clears when omitted", func() {
+		tfConfigDef := `resource "indykite_external_data_resolver" "development" {
+			project_id = "` + appSpaceID + `"
+			name = "keep-resolver"
+			description = "%s"
+			url = "https://example.com/source"
+			method = "POST"
+			request_type = "json"
+			response_type = "json"
+			response_selector = "."
+			%s
+		}`
+		const kept = `
+			headers {
+				name   = "Authorization"
+				values = ["Bearer edolkUTY"]
+			}
+			request_payload = "{\"key\": \"value\"}"`
+
+		fake := newFakeConfigAPI("/external-data-resolvers", sampleID,
+			map[string]any{"headers": map[string]any{}, "request_payload": ""})
+		mockServer = fake.Server
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
+			},
+			Steps: []resource.TestStep{
+				{
+					Config: fmt.Sprintf(tfConfigDef, "first", kept),
+					Check:  resource.TestCheckResourceAttr(resourceName, "headers.#", "1"),
+				},
+				{
+					// Changing only the description must still send headers and payload; the implicit
+					// plan after apply fails if they were cleared.
+					Config: fmt.Sprintf(tfConfigDef, "second", kept),
+					Check: resource.ComposeTestCheckFunc(
+						func(_ *terraform.State) error {
+							return convertOmegaMatcherToError(And(
+								HaveKeyWithValue("headers", HaveKeyWithValue("Authorization",
+									ConsistOf("Bearer edolkUTY"))),
+								HaveKeyWithValue("request_payload", `{"key": "value"}`),
+							), fake.lastPut())
+						},
+						resource.TestCheckResourceAttr(resourceName, "headers.#", "1"),
+						resource.TestCheckResourceAttr(resourceName, "request_payload", `{"key": "value"}`),
+					),
+				},
+				{
+					Config: fmt.Sprintf(tfConfigDef, "second", ""),
+					Check: resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttr(resourceName, "headers.#", "0"),
+						resource.TestCheckResourceAttr(resourceName, "request_payload", ""),
+					),
+				},
+			},
 		})
 	})
 })

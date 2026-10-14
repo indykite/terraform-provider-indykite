@@ -90,11 +90,11 @@ resource "indykite_trust_score_profile" "multi_dimension_trust_score" {
   schedule = "UPDATE_FREQUENCY_DAILY"
 }
 
-# Example 4: Trust score with hourly updates
-resource "indykite_trust_score_profile" "hourly_trust_score" {
-  name                = "hourly-trust-score"
-  display_name        = "Hourly Trust Score"
-  description         = "Trust score updated every hour"
+# Example 4: Trust score with three-hour updates
+resource "indykite_trust_score_profile" "three_hour_trust_score" {
+  name                = "three-hour-trust-score"
+  display_name        = "Three-Hour Trust Score"
+  description         = "Trust score updated every three hours"
   project_id          = indykite_application_space.my_space.id
   node_classification = "Asset"
   dimension {
@@ -105,7 +105,7 @@ resource "indykite_trust_score_profile" "hourly_trust_score" {
     name   = "NAME_VALIDITY"
     weight = 0.5
   }
-  schedule = "UPDATE_FREQUENCY_HOURLY"
+  schedule = "UPDATE_FREQUENCY_THREE_HOURS"
 }
 
 # Example 5: Trust score with six-hour updates
@@ -150,6 +150,7 @@ resource "indykite_trust_score_profile" "document_trust_score" {
 
 # Note: The project_id parameter accepts an Application Space ID. location is deprecated, use project_id instead.
 # node_classification specifies the type of nodes this profile applies to.
-# dimension weights must sum to 1.0 across all dimensions.
-# schedule options: UPDATE_FREQUENCY_HOURLY, UPDATE_FREQUENCY_SIX_HOURS, UPDATE_FREQUENCY_DAILY
+# Each dimension weight is between 0 and 1; a weight of 0 disables the dimension.
+# schedule options: UPDATE_FREQUENCY_THREE_HOURS, UPDATE_FREQUENCY_SIX_HOURS, UPDATE_FREQUENCY_TWELVE_HOURS,
+# UPDATE_FREQUENCY_DAILY
 # The profile will automatically populate app_space_id and customer_id as computed fields.

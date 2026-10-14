@@ -332,6 +332,25 @@ func buildPluginErrorWithAttrName(summary, attr string) diag.Diagnostic {
 	return d
 }
 
+// hasNameChanged reports an error when the name of an existing resource is changed. The API does not
+// support renaming and ignores the name on update. Partial state mode keeps the prior state, so the
+// unapplied rename stays visible in the next plan.
+func hasNameChanged(d *diag.Diagnostics, data *schema.ResourceData) bool {
+	if !data.HasChange(nameKey) {
+		return false
+	}
+	oldName, _ := data.GetChange(nameKey)
+	data.Partial(true)
+	*d = append(*d, diag.Diagnostic{
+		Severity: diag.Error,
+		Summary:  "name cannot be changed after creation",
+		Detail: fmt.Sprintf("The API does not support renaming (current name %q). "+
+			"Revert the name, or recreate the resource with: terraform apply -replace=<resource address>", oldName),
+		AttributePath: cty.Path{cty.GetAttrStep{Name: nameKey}},
+	})
+	return true
+}
+
 func buildPluginErrorWithPath(summary string, path cty.Path) diag.Diagnostic {
 	d := buildPluginError(summary)
 	d.AttributePath = path
@@ -422,7 +441,6 @@ var ExternalDataResolverConfigContentType = map[string]string{
 
 // TrustScoreProfileScheduleFrequencies defines all supported frequencies for trust score.
 var TrustScoreProfileScheduleFrequencies = map[string]string{
-	"UPDATE_FREQUENCY_INVALID":      "UPDATE_FREQUENCY_INVALID",
 	"UPDATE_FREQUENCY_THREE_HOURS":  "UPDATE_FREQUENCY_THREE_HOURS",
 	"UPDATE_FREQUENCY_SIX_HOURS":    "UPDATE_FREQUENCY_SIX_HOURS",
 	"UPDATE_FREQUENCY_TWELVE_HOURS": "UPDATE_FREQUENCY_TWELVE_HOURS",
@@ -431,7 +449,6 @@ var TrustScoreProfileScheduleFrequencies = map[string]string{
 
 // TrustScoreProfileScheduleToAPI maps Terraform schedule values to API values.
 var TrustScoreProfileScheduleToAPI = map[string]string{
-	"UPDATE_FREQUENCY_INVALID":      "INVALID",
 	"UPDATE_FREQUENCY_THREE_HOURS":  "THREE_HOURS",
 	"UPDATE_FREQUENCY_SIX_HOURS":    "SIX_HOURS",
 	"UPDATE_FREQUENCY_TWELVE_HOURS": "TWELVE_HOURS",
@@ -440,7 +457,6 @@ var TrustScoreProfileScheduleToAPI = map[string]string{
 
 // TrustScoreProfileScheduleFromAPI maps API schedule values to Terraform values.
 var TrustScoreProfileScheduleFromAPI = map[string]string{
-	"INVALID":      "UPDATE_FREQUENCY_INVALID",
 	"THREE_HOURS":  "UPDATE_FREQUENCY_THREE_HOURS",
 	"SIX_HOURS":    "UPDATE_FREQUENCY_SIX_HOURS",
 	"TWELVE_HOURS": "UPDATE_FREQUENCY_TWELVE_HOURS",

@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -401,6 +402,84 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 
 		// Initial attempt plus the bounded retries.
 		Expect(postAttempts).To(Equal(indykite.CredCreateMaxRetries() + 1))
+	})
+
+	It("Test expire_time omitted does not force replacement", func() {
+		defer indykite.SetCredCreateWaits(time.Millisecond, time.Millisecond, time.Millisecond)()
+
+		tfConfig := `resource "indykite_application_agent_credential" "development" {
+				app_agent_id = "` + appAgentID + `"
+				display_name = "agent-credential"
+			}`
+
+		// Like the Config API, a credential created without expire_time gets farFutureExpireTime,
+		// and application_agent_config is a JSON object returned only on create.
+		var credential map[string]any
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer GinkgoRecover()
+			switch {
+			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/application-agent-credentials"):
+				var req map[string]any
+				Expect(json.NewDecoder(r.Body).Decode(&req)).To(Succeed())
+				Expect(req).NotTo(HaveKey("expire_time"))
+				credential = map[string]any{
+					"id":                   appAgentCredID,
+					"application_agent_id": req["application_agent_id"],
+					"kid":                  "EfUEiFnOzA5PCp8SSksp7iXv7cHRehCsIGo6NAQ9H7w",
+					"display_name":         req["display_name"],
+					"create_time":          "2026-10-14T07:52:53Z",
+					"created_by":           "creator-id",
+					"expire_time":          farFutureExpireTime,
+					"organization_id":      customerID,
+					"project_id":           appSpaceID,
+					"application_id":       applicationID,
+				}
+				created := maps.Clone(credential)
+				created["application_agent_config"] = map[string]any{
+					"appAgentId": appAgentID,
+					"endpoint":   "https://example.com",
+				}
+				w.WriteHeader(http.StatusCreated)
+				_ = json.NewEncoder(w).Encode(created)
+
+			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, appAgentCredID) && credential != nil:
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(credential)
+
+			case r.Method == http.MethodDelete:
+				w.WriteHeader(http.StatusOK)
+
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
+			},
+			Steps: []resource.TestStep{
+				{
+					// Create; the implicit plan after apply fails if the API expiry forces replacement.
+					Config: tfConfig,
+					Check: resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttr(resourceName, "expire_time", farFutureExpireTime),
+						resource.TestCheckResourceAttrSet(resourceName, "agent_config"),
+					),
+				},
+				{
+					Config:   tfConfig,
+					PlanOnly: true,
+				},
+			},
+		})
 	})
 })
 
