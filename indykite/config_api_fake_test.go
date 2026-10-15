@@ -25,6 +25,9 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+// fakeConfigAPIActor is reported by fakeConfigAPI as the creator and last updater of the object.
+const fakeConfigAPIActor = "gid:AAAAEkF4Ym9vdHN0cmFwAAAA"
+
 // fakeConfigAPI mimics the update behaviour of a Config API configuration object: the
 // configuration fields listed in replaced are reset to their zero value when an update omits
 // them, display_name and description keep their value when omitted and are cleared by an
@@ -51,6 +54,8 @@ func newFakeConfigAPI(path, id string, replaced map[string]any) *fakeConfigAPI {
 			fake.stored["organization_id"] = customerID
 			fake.stored["create_time"] = "2026-10-14T08:00:00Z"
 			fake.stored["update_time"] = "2026-10-14T08:00:00Z"
+			fake.stored["created_by"] = fakeConfigAPIActor
+			fake.stored["updated_by"] = fakeConfigAPIActor
 			if v, _ := body["display_name"].(string); v == "" {
 				fake.stored["display_name"] = body["name"]
 			}

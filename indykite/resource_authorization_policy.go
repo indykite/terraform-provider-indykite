@@ -16,6 +16,8 @@ package indykite
 
 import (
 	"context"
+	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -28,7 +30,12 @@ const (
 	authzJSONConfigKey = "json"
 	authzTagsKey       = "tags"
 	authzStatusKey     = "status"
+
+	// maxPolicyLength is the maximum length of an authorization policy or knowledge query.
+	maxPolicyLength = 512000
 )
+
+var authzTagRegex = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
 
 func resourceAuthorizationPolicy() *schema.Resource {
 	return &schema.Resource{
@@ -44,7 +51,8 @@ func resourceAuthorizationPolicy() *schema.Resource {
 			StateContext: projectStateImporter,
 		},
 
-		Timeouts: defaultTimeouts(),
+		Timeouts:      defaultTimeouts(),
+		CustomizeDiff: validateUniqueTags,
 		Schema: map[string]*schema.Schema{
 			locationKey:    locationSchema(),
 			projectIDKey:   projectIDSchema(),
@@ -62,9 +70,11 @@ func resourceAuthorizationPolicy() *schema.Resource {
 				DiffSuppressFunc: structure.SuppressJsonDiff,
 				ValidateFunc: validation.All(
 					validation.StringIsNotEmpty,
+					validateCharLength(1, maxPolicyLength),
 					validation.StringIsJSON,
 				),
-				Description: "Configuration of Authorization Policy in JSON format, the same one exported by The Hub. " +
+				Description: "Configuration of Authorization Policy in JSON format, the same one exported by The Hub, " +
+					"up to 512000 characters. " +
 					"The claims of the request tokens are available to the policy under the reserved names " +
 					"`$token` (the end-user access token from the Authorization header) and `$ik_token` " +
 					"(the IndyKite delegated token from the X-IK-Token header, including its RFC 8693 `act` " +
@@ -86,11 +96,33 @@ func resourceAuthorizationPolicy() *schema.Resource {
 				Optional: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
+					ValidateFunc: validation.All(
+						validateCharLength(1, 20),
+						validation.StringMatch(authzTagRegex, "must contain only letters and digits"),
+					),
 				},
-				Description: "Tags of the Authorization Policy.",
+				Description: "Tags of the Authorization Policy: unique, 1 to 20 letters and digits each.",
 			},
 		},
 	}
+}
+
+// validateUniqueTags rejects repeated tags, which the API does not accept. Validation functions are
+// not supported on lists, so it runs on the diff. Unknown and empty values are left to other checks.
+func validateUniqueTags(_ context.Context, d *schema.ResourceDiff, _ any) error {
+	tags, _ := d.Get(authzTagsKey).([]any)
+	seen := make(map[string]bool, len(tags))
+	for _, raw := range tags {
+		tag, _ := raw.(string)
+		if tag == "" {
+			continue
+		}
+		if seen[tag] {
+			return fmt.Errorf("tags must be unique, %q is repeated", tag)
+		}
+		seen[tag] = true
+	}
+	return nil
 }
 
 func resAuthorizationPolicyCreate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {

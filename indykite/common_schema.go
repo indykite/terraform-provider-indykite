@@ -170,7 +170,9 @@ func displayNameSchema() *schema.Schema {
 		Type:             schema.TypeString,
 		Optional:         true,
 		DiffSuppressFunc: DisplayNameDiffSuppress,
-		Description:      `The display name for the instance. Can be updated without creating a new resource.`,
+		ValidateFunc:     validateOptionalTextLength(254),
+		Description: `The display name for the instance, between 2 and 254 characters. ` +
+			`Can be updated without creating a new resource.`,
 	}
 }
 
@@ -178,8 +180,8 @@ func descriptionSchema() *schema.Schema {
 	return &schema.Schema{
 		Type:         schema.TypeString,
 		Optional:     true,
-		ValidateFunc: validation.StringLenBetween(0, 65000),
-		Description:  `Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.`,
+		ValidateFunc: validateOptionalTextLength(65000),
+		Description:  `Your own description of the resource, between 2 and 65000 characters.`,
 	}
 }
 

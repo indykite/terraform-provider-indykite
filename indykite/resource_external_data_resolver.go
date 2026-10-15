@@ -77,7 +77,7 @@ func resourceExternalDataResolver() *schema.Resource {
 				Required: true,
 				ValidateFunc: validation.All(
 					validation.StringIsNotEmpty,
-					validation.StringInSlice([]string{"GET", "POST", "PUT", "PATCH"}, true),
+					validation.StringInSlice([]string{"GET", "POST", "PUT", "PATCH"}, false),
 				),
 				Description: "HTTP method to be used for the request. Valid values are: GET, POST, PUT, PATCH.",
 			},

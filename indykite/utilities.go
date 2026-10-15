@@ -22,6 +22,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -46,10 +47,10 @@ func ValidateName(i any, path cty.Path) diag.Diagnostics {
 			path,
 		))
 	}
-	if l := len(v); l < 2 || l > 254 {
+	if l := len(v); l < 2 || l > 63 {
 		ret = append(ret, diag.Diagnostic{
 			Severity:      diag.Error,
-			Summary:       fmt.Sprintf("expected string value betweem 2 and 254 runes but received %d", l),
+			Summary:       fmt.Sprintf("expected string value between 2 and 63 characters but received %d", l),
 			AttributePath: path,
 		})
 	}
@@ -62,6 +63,76 @@ func ValidateName(i any, path cty.Path) diag.Diagnostics {
 		})
 	}
 	return ret
+}
+
+// minOptionalTextLength is the minimum length of a non-empty display name or description.
+const minOptionalTextLength = 2
+
+// validateOptionalTextLength accepts an empty string, which clears the value on update, or a value
+// between minOptionalTextLength and maxLen characters. The API counts characters, not bytes.
+func validateOptionalTextLength(maxLen int) func(any, string) ([]string, []error) {
+	return func(i any, k string) ([]string, []error) {
+		v, ok := i.(string)
+		if !ok {
+			return nil, []error{fmt.Errorf("expected type of %s to be string", k)}
+		}
+		if n := utf8.RuneCountInString(v); v != "" && (n < minOptionalTextLength || n > maxLen) {
+			return nil, []error{fmt.Errorf("expected %s to be empty or between %d and %d characters, got %d",
+				k, minOptionalTextLength, maxLen, n)}
+		}
+		return nil, nil
+	}
+}
+
+// validateCharLength checks that a string has between minLen and maxLen characters. Unlike
+// validation.StringLenBetween it counts characters, not bytes, as the API does.
+func validateCharLength(minLen, maxLen int) func(any, string) ([]string, []error) {
+	return func(i any, k string) ([]string, []error) {
+		v, ok := i.(string)
+		if !ok {
+			return nil, []error{fmt.Errorf("expected type of %s to be string", k)}
+		}
+		if n := utf8.RuneCountInString(v); n < minLen || n > maxLen {
+			return nil, []error{fmt.Errorf("expected %s to be between %d and %d characters, got %d",
+				k, minLen, maxLen, n)}
+		}
+		return nil, nil
+	}
+}
+
+// validateMinCharLength checks that a string has at least minLen characters.
+func validateMinCharLength(minLen int) func(any, string) ([]string, []error) {
+	return func(i any, k string) ([]string, []error) {
+		v, ok := i.(string)
+		if !ok {
+			return nil, []error{fmt.Errorf("expected type of %s to be string", k)}
+		}
+		if n := utf8.RuneCountInString(v); n < minLen {
+			return nil, []error{fmt.Errorf("expected %s to be at least %d characters, got %d", k, minLen, n)}
+		}
+		return nil, nil
+	}
+}
+
+// validateMapValueCharLength checks that every value of a string map has between minLen and maxLen
+// characters.
+func validateMapValueCharLength(minLen, maxLen int) func(any, cty.Path) diag.Diagnostics {
+	return func(i any, path cty.Path) diag.Diagnostics {
+		values, ok := i.(map[string]any)
+		if !ok {
+			return diag.Diagnostics{buildPluginErrorWithPath(fmt.Sprintf("expected type to be map, got %T", i), path)}
+		}
+		var d diag.Diagnostics
+		for key, raw := range values {
+			v, _ := raw.(string)
+			if n := utf8.RuneCountInString(v); n < minLen || n > maxLen {
+				summary := fmt.Sprintf("expected value of %q to be between %d and %d characters, got %d",
+					key, minLen, maxLen, n)
+				d = append(d, buildPluginErrorWithPath(summary, path.Index(cty.StringVal(key))))
+			}
+		}
+		return d
+	}
 }
 
 // ValidateEmail is Terraform validation helper to verify value is valid email.

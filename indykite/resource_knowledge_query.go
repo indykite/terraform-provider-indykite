@@ -76,9 +76,11 @@ func resourceKnowledgeQuery() *schema.Resource {
 				DiffSuppressFunc: structure.SuppressJsonDiff,
 				ValidateFunc: validation.All(
 					validation.StringIsNotEmpty,
+					validateCharLength(1, maxPolicyLength),
 					validation.StringIsJSON,
 				),
-				Description: "Configuration of Knowledge Query in JSON format, the same one exported by The Hub. " +
+				Description: "Configuration of Knowledge Query in JSON format, the same one exported by The Hub, " +
+					"up to 512000 characters. " +
 					"A query filter may reference the claims of the request tokens as `$token.<claim>` (end-user " +
 					"access token) or `$ik_token.<claim>` (IndyKite delegated token, including its RFC 8693 `act` " +
 					"delegation chain), e.g. `\"attribute\": \"$ik_token.act.sub\"`. These names are bound by the " +

@@ -78,8 +78,9 @@ func resourceTrustScoreProfile() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						trustScoreProfileName: {
-							Type:     schema.TypeString,
-							Required: true,
+							Type:         schema.TypeString,
+							Required:     true,
+							ValidateFunc: validation.StringInSlice(getMapStringKeys(TrustScoreDimensionNames), false),
 							Description: "Name of the trust score dimensions. Possible values are: `" +
 								strings.Join(getMapStringKeys(TrustScoreDimensionNames), "`, `") + "`.  " +
 								"`Origin`: Identifies where the data comes from, " +

@@ -19,6 +19,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/hashicorp/go-cty/cty"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -63,6 +65,36 @@ func CheckAliasMapping(value any) ([]string, []error) {
 // ConvertServiceAccountConfig exposes serviceAccountConfigString to tests.
 func ConvertServiceAccountConfig(raw json.RawMessage) (string, error) {
 	return serviceAccountConfigString(raw)
+}
+
+// SetUnavailableRetryWaits overrides the 503 retry backoff bounds for tests and returns a function
+// that restores the original values.
+func SetUnavailableRetryWaits(waitMin, waitMax time.Duration) func() {
+	origMin, origMax := unavailableRetryWaitMin, unavailableRetryWaitMax
+	unavailableRetryWaitMin, unavailableRetryWaitMax = waitMin, waitMax
+	return func() {
+		unavailableRetryWaitMin, unavailableRetryWaitMax = origMin, origMax
+	}
+}
+
+// CheckOptionalTextLength exposes validateOptionalTextLength to tests.
+func CheckOptionalTextLength(maxLen int) func(any, string) ([]string, []error) {
+	return validateOptionalTextLength(maxLen)
+}
+
+// CheckCharLength exposes validateCharLength to tests.
+func CheckCharLength(minLen, maxLen int) func(any, string) ([]string, []error) {
+	return validateCharLength(minLen, maxLen)
+}
+
+// CheckMapValueCharLength exposes validateMapValueCharLength to tests.
+func CheckMapValueCharLength(minLen, maxLen int) func(any, cty.Path) diag.Diagnostics {
+	return validateMapValueCharLength(minLen, maxLen)
+}
+
+// UnavailableRetryMax exposes the 503 retry bound to tests.
+func UnavailableRetryMax() int {
+	return unavailableRetryMax
 }
 
 // CredCreateMaxRetries exposes the credential create retry bound to tests.

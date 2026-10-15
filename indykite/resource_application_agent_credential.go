@@ -85,6 +85,7 @@ func resourceApplicationAgentCredential() *schema.Resource {
 				ForceNew:         true,
 				Optional:         true,
 				DiffSuppressFunc: DisplayNameCredentialDiffSuppress,
+				ValidateFunc:     validateOptionalTextLength(254),
 			},
 			publicKeyPEMKey: {
 				Type:          schema.TypeString,
