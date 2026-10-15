@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.48.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.48.0...v0.48.1) (2026-10-15)
+
+
+### Bug Fixes
+
+* 503 management and small validations ([a43e2af](https://github.com/indykite/terraform-provider-indykite/commit/a43e2afe66d7a7cc21069a4d3b4cb433aec25107))
+* 503 management and small validations ([0831395](https://github.com/indykite/terraform-provider-indykite/commit/0831395a537ebfa4133db50d57c1df05ab5485d8))
+* fix event_sink, trust score and credentials ([19c789c](https://github.com/indykite/terraform-provider-indykite/commit/19c789cc474a80106c2bf3c9032204d8a0c7807e))
+* update last_error and last_run ([fac5810](https://github.com/indykite/terraform-provider-indykite/commit/fac58105a0657a6d6cbdf4fb8e6a8a08089ce0fc))
+
+
+### Miscellaneous Chores
+
+* **deps:** update all non-major dependencies ([dc30ded](https://github.com/indykite/terraform-provider-indykite/commit/dc30ded8aea853cc95db17bbfe16558a6f3af3b5))
+* **deps:** update pre-commit hook renovatebot/pre-commit-hooks to v44 ([f9e04ab](https://github.com/indykite/terraform-provider-indykite/commit/f9e04abb30673e6e3cb88fac426288217197060b))
+
 ## [0.48.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.47.0...v0.48.0) (2026-10-08)
 
 
