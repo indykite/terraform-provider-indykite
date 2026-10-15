@@ -17,7 +17,6 @@ package indykite
 import (
 	"context"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -32,6 +31,10 @@ const (
 	expireTimeKey   = "expire_time"
 	kidKey          = "kid"
 	agentConfigKey  = "agent_config"
+
+	// publicKeyDeprecation explains public_key_pem and public_key_jwk, which the API ignores.
+	publicKeyDeprecation = "The API ignores this value and always generates a new key pair; " +
+		"remove it from the configuration. It will be removed in a future major version."
 )
 
 // A freshly created application agent may not be immediately usable by the
@@ -91,7 +94,7 @@ func resourceApplicationAgentCredential() *schema.Resource {
 				Type:          schema.TypeString,
 				Optional:      true,
 				ForceNew:      true,
-				Deprecated:    "This field is deprecated.",
+				Deprecated:    publicKeyDeprecation,
 				ConflictsWith: []string{publicKeyJWKKey},
 				ValidateFunc: validation.All(
 					validation.StringMatch(
@@ -101,17 +104,17 @@ func resourceApplicationAgentCredential() *schema.Resource {
 					),
 					validation.StringLenBetween(256, 8192),
 				),
-				Description: "Provide your onw Public key in PEM format, otherwise new pair is generated",
+				Description: "Has no effect: the API always generates a new key pair. Kept for compatibility.",
 			},
 			publicKeyJWKKey: {
 				Type:             schema.TypeString,
 				Optional:         true,
 				ForceNew:         true,
-				Deprecated:       "This field is deprecated.",
+				Deprecated:       publicKeyDeprecation,
 				ConflictsWith:    []string{publicKeyPEMKey},
 				DiffSuppressFunc: structure.SuppressJsonDiff,
 				ValidateFunc:     validation.All(validation.StringIsJSON, validation.StringLenBetween(96, 8192)),
-				Description:      "Provide your onw Public key in JWK format, otherwise new pair is generated",
+				Description:      "Has no effect: the API always generates a new key pair. Kept for compatibility.",
 			},
 			// Computed: when omitted, the API sets a far-future expiry that must not force replacement.
 			expireTimeKey: {
@@ -172,12 +175,6 @@ func resAppAgentCredCreate(ctx context.Context, data *schema.ResourceData, meta 
 			return append(d, buildPluginErrorWithAttrName(err.Error(), expireTimeKey))
 		}
 		req.ExpireTime = exp.Format(time.RFC3339)
-	}
-
-	if key, ok := data.GetOk(publicKeyPEMKey); ok {
-		req.PublicKeyPEM = strings.TrimSpace(key.(string))
-	} else if key, ok := data.GetOk(publicKeyJWKKey); ok {
-		req.PublicKeyJWK = strings.TrimSpace(key.(string))
 	}
 
 	resp, err := postAppAgentCredentialWithRetry(ctx, clientCtx.GetClient(), &req)

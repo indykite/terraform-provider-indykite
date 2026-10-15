@@ -1,9 +1,16 @@
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_application_space" "my_space" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-project"
+  region      = "us-east1"
+}
+
 # Example - basic entity matching pipeline (still valid)
 resource "indykite_entity_matching_pipeline" "create-pipeline" {
   name               = "terraform-entitymatching-pipeline"
   display_name       = "Terraform entitymatching pipeline"
   description        = "External entitymatching pipeline for terraform"
-  project_id         = "AppSpaceID"
+  project_id         = "gid:ZXhhbXBsZS1wcm9qZWN0"
   source_node_filter = ["Person"]
   target_node_filter = ["Person"]
 }

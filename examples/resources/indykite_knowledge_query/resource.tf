@@ -1,3 +1,10 @@
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_application_space" "my_space" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-project"
+  region      = "us-east1"
+}
+
 # Example - authorization policy for CIQ
 resource "indykite_authorization_policy" "policy_for_ciq" {
   name         = "terraform-pipeline-policy-for-ciq"
@@ -15,7 +22,7 @@ resource "indykite_authorization_policy" "policy_for_ciq" {
       "relationships" : ["r1"]
     }
   })
-  project_id = "AppSpaceID"
+  project_id = "gid:ZXhhbXBsZS1wcm9qZWN0"
   status     = "active"
 }
 
@@ -24,7 +31,7 @@ resource "indykite_knowledge_query" "create-query" {
   name         = "terraform-knowledge-query"
   display_name = "Terraform knowledge-query"
   description  = "Knowledge query for terraform"
-  project_id   = "AppSpaceID"
+  project_id   = "gid:ZXhhbXBsZS1wcm9qZWN0"
   query = jsonencode({
     "nodes" : ["ln.property.value"],
     "relationships" : [],
@@ -66,7 +73,7 @@ resource "indykite_knowledge_query" "query_with_policy" {
   description  = "Knowledge query with authorization policy"
   project_id   = indykite_application_space.my_space.id
   status       = "active"
-  policy_id    = indykite_authorization_policy.my_policy.id
+  policy_id    = indykite_authorization_policy.policy_for_ciq.id
   query = jsonencode({
     "nodes" : ["Document.property.title", "Document.property.content"],
     "relationships" : ["OWNS", "CAN_READ"],
@@ -81,7 +88,7 @@ resource "indykite_knowledge_query" "complex_query" {
   description  = "Query with complex filtering and relationships"
   project_id   = indykite_application_space.my_space.id
   status       = "active"
-  policy_id    = indykite_authorization_policy.my_policy.id
+  policy_id    = indykite_authorization_policy.policy_for_ciq.id
   query = jsonencode({
     "nodes" : [
       "Person.property.name",

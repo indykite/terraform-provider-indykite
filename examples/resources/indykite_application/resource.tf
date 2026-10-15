@@ -1,6 +1,13 @@
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_application_space" "my_space" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-project"
+  region      = "us-east1"
+}
+
 # Example - using app_space_id (still valid)
 resource "indykite_application" "application" {
-  app_space_id = "AppSpaceGID"
+  app_space_id = "gid:ZXhhbXBsZS1wcm9qZWN0"
   name         = "terraform-application"
   display_name = "Terraform application"
   description  = "Application for terraform configuration"
@@ -34,6 +41,7 @@ resource "indykite_application" "app_from_space_old" {
 
 # Example 7: With deletion protection enabled
 resource "indykite_application" "protected_application" {
+  app_space_id        = indykite_application_space.my_space.id
   name                = "protected-application"
   display_name        = "Protected Application"
   description         = "Application with deletion protection enabled"

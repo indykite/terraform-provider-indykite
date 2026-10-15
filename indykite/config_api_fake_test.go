@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -37,6 +38,7 @@ type fakeConfigAPI struct {
 
 	stored    map[string]any
 	putBodies []map[string]any
+	mu        sync.Mutex
 }
 
 // newFakeConfigAPI serves a single configuration object with the given ID under path, e.g.
@@ -45,6 +47,8 @@ func newFakeConfigAPI(path, id string, replaced map[string]any) *fakeConfigAPI {
 	fake := &fakeConfigAPI{}
 	fake.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer GinkgoRecover()
+		fake.mu.Lock()
+		defer fake.mu.Unlock()
 		switch {
 		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, path):
 			var body map[string]any
@@ -100,8 +104,24 @@ func newFakeConfigAPI(path, id string, replaced map[string]any) *fakeConfigAPI {
 
 // lastPut returns the body of the latest update request, or nil when there was none.
 func (f *fakeConfigAPI) lastPut() map[string]any {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if len(f.putBodies) == 0 {
 		return nil
 	}
 	return f.putBodies[len(f.putBodies)-1]
+}
+
+// update changes the stored object, like the API does on its own, e.g. when a run completes.
+func (f *fakeConfigAPI) update(change func(stored map[string]any)) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	change(f.stored)
+}
+
+// puts returns the bodies of all update requests so far.
+func (f *fakeConfigAPI) puts() []map[string]any {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]map[string]any(nil), f.putBodies...)
 }

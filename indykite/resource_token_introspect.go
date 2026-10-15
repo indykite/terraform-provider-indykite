@@ -105,9 +105,10 @@ func resourceTokenIntrospect() *schema.Resource {
 				}},
 			}, tokenIntrospectJWTKey, matcherOneOf),
 			tokenIntrospectOpaqueKey: setExactlyOneOf(&schema.Schema{
-				Type:        schema.TypeList,
-				Description: "Specify opaque token matcher. Currently we support only 1 opaque matcher per application space.",
-				MaxItems:    1,
+				Type: schema.TypeList,
+				Description: "Specify opaque token matcher. A project can have several opaque matchers, " +
+					"each with a different hint.",
+				MaxItems: 1,
 				Elem: &schema.Resource{Schema: map[string]*schema.Schema{
 					tokenIntrospectHintKey: {
 						Type:         schema.TypeString,

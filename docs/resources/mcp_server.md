@@ -17,6 +17,37 @@ MCP Server configuration registers a Model Context Protocol server with the Indy
 ## Example Usage
 
 ```terraform
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_application_space" "my_space" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-project"
+  region      = "us-east1"
+}
+
+resource "indykite_application" "my_application" {
+  app_space_id = indykite_application_space.my_space.id
+  name         = "my-application"
+}
+
+resource "indykite_application_agent" "my_agent" {
+  application_id  = indykite_application.my_application.id
+  name            = "my-agent"
+  api_permissions = ["Authorization"]
+}
+
+resource "indykite_token_introspect" "my_introspect" {
+  project_id    = indykite_application_space.my_space.id
+  name          = "my-token-introspect"
+  ikg_node_type = "Person"
+  jwt_matcher {
+    issuer   = "https://issuer.example.com"
+    audience = "my-audience"
+  }
+  online_validation {
+    cache_ttl = 600
+  }
+}
+
 # Example 1: Minimal MCP Server with hardcoded IDs
 resource "indykite_mcp_server" "minimal" {
   name                = "terraform-mcp-server"
@@ -70,8 +101,8 @@ resource "indykite_mcp_server" "disabled" {
 
 ### Optional
 
-- `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
-- `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
+- `description` (String) Your own description of the resource, between 2 and 65000 characters.
+- `display_name` (String) The display name for the instance, between 2 and 254 characters. Can be updated without creating a new resource.
 - `location` (String, Deprecated) Identifier of Location, where to create resource. Deprecated, use project_id instead
 - `project_id` (String) Identifier of Project, where to create resource
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))

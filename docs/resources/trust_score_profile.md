@@ -13,12 +13,19 @@ The Trust Score Profile helps assess how trustworthy data is. It allows applicat
 ## Example Usage
 
 ```terraform
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_application_space" "my_space" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-project"
+  region      = "us-east1"
+}
+
 # Example - trust score for Person
 resource "indykite_trust_score_profile" "trust-score" {
   name                = "terraform-trust-score"
   display_name        = "Terraform trust score profile"
   description         = "Trust score profile for terraform pipeline"
-  project_id          = "AppSpaceID"
+  project_id          = "gid:ZXhhbXBsZS1wcm9qZWN0"
   node_classification = "Person"
   dimension {
     name   = "NAME_VERIFICATION"
@@ -36,7 +43,7 @@ resource "indykite_trust_score_profile" "trust-score2" {
   name                = "terraform-trust-score2"
   display_name        = "Terraform trust score profile2"
   description         = "Trust score profile for terraform pipeline"
-  project_id          = "AppSpaceID"
+  project_id          = "gid:ZXhhbXBsZS1wcm9qZWN0"
   node_classification = "Resource"
   dimension {
     name   = "NAME_COMPLETENESS"
@@ -183,8 +190,8 @@ resource "indykite_trust_score_profile" "document_trust_score" {
 
 ### Optional
 
-- `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
-- `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
+- `description` (String) Your own description of the resource, between 2 and 65000 characters.
+- `display_name` (String) The display name for the instance, between 2 and 254 characters. Can be updated without creating a new resource.
 - `location` (String, Deprecated) Identifier of Location, where to create resource. Deprecated, use project_id instead
 - `project_id` (String) Identifier of Project, where to create resource
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
@@ -194,7 +201,11 @@ resource "indykite_trust_score_profile" "document_trust_score" {
 - `app_space_id` (String) Identifier of Application Space
 - `create_time` (String) Timestamp when the Resource was created. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
 - `customer_id` (String) Identifier of Customer
+- `dimensions_execution_times` (List of Object) When the calculation of each dimension last ran, sorted by dimension. (see [below for nested schema](#nestedatt--dimensions_execution_times))
 - `id` (String) The ID of this resource.
+- `last_run_end_time` (String) Time when the last calculation run ended.
+- `last_run_id` (String) Identifier of the last calculation run.
+- `last_run_start_time` (String) Time when the last calculation run started.
 - `update_time` (String) Timestamp when the Resource was last updated. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
 
 <a id="nestedblock--dimension"></a>
@@ -216,3 +227,13 @@ Optional:
 - `delete` (String)
 - `read` (String)
 - `update` (String)
+
+
+<a id="nestedatt--dimensions_execution_times"></a>
+### Nested Schema for `dimensions_execution_times`
+
+Read-Only:
+
+- `dimension` (String)
+- `execution_end_time` (String)
+- `execution_start_time` (String)

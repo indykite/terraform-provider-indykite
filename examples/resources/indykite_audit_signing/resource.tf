@@ -1,3 +1,16 @@
+# The external ID of the AWS role trust policy comes from a variable.
+variable "indykite_external_id" {
+  type      = string
+  sensitive = true
+}
+
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_application_space" "my_space" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-project"
+  region      = "us-east1"
+}
+
 # Example 1: Platform managed signing key
 resource "indykite_audit_signing" "platform_managed" {
   name         = "terraform-audit-signing"

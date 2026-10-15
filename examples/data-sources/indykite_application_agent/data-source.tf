@@ -1,7 +1,14 @@
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_application_space" "my_space" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-project"
+  region      = "us-east1"
+}
+
 # Example - all parameters shown (still valid)
 data "indykite_application_agent" "application_agent" {
-  app_space_id = "ApplicationSpaceGID"
-  name         = "AppAgentName"
+  app_space_id = "gid:ZXhhbXBsZS1wcm9qZWN0"
+  name         = "my-agent"
 }
 
 # Example 2: Read application agent by app_agent_id only

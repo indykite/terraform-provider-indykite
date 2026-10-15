@@ -13,6 +13,13 @@ description: |-
 ## Example Usage
 
 ```terraform
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_application_space" "my_space" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-project"
+  region      = "us-east1"
+}
+
 # Example 1: List application agents using app_space_id
 data "indykite_application_agents" "agents_by_app_space_id" {
   app_space_id = "gid:AAAAAmluZHlraURlgAABDwAAAAA"

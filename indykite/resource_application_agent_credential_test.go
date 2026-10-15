@@ -481,6 +481,75 @@ var _ = Describe("Resource ApplicationAgentCredential", func() {
 			},
 		})
 	})
+
+	It("Test public keys are not sent to the API, which ignores them", func() {
+		defer indykite.SetCredCreateWaits(time.Millisecond, time.Millisecond, time.Millisecond)()
+
+		var createBody map[string]any
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer GinkgoRecover()
+			switch {
+			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/application-agent-credentials"):
+				Expect(json.NewDecoder(r.Body).Decode(&createBody)).To(Succeed())
+				w.WriteHeader(http.StatusCreated)
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"id": appAgentCredID, "application_agent_id": appAgentID, "kid": "generated-kid",
+					"expire_time":              farFutureExpireTime,
+					"application_agent_config": map[string]any{"appAgentId": appAgentID},
+				})
+			case r.Method == http.MethodGet && createBody != nil:
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"id": appAgentCredID, "application_agent_id": appAgentID, "kid": "generated-kid",
+					"expire_time": farFutureExpireTime, "organization_id": customerID,
+					"project_id": appSpaceID, "application_id": applicationID,
+				})
+			case r.Method == http.MethodDelete:
+				w.WriteHeader(http.StatusOK)
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
+			},
+			Steps: []resource.TestStep{{
+				Config: `resource "indykite_application_agent_credential" "development" {
+					app_agent_id = "` + appAgentID + `"
+					public_key_jwk = <<-EOT
+					{
+						"kty": "EC",
+						"use": "sig",
+						"crv": "P-256",
+						"kid": "xuyd5-9bT0L09mi810mycfREAxBG3KnpctlGQCYtCdM",
+						"x": "o7LnIMhCPXFV91sE5EKQh8QZ9U6csUqgSENaKt3T0I4",
+						"y": "o1Wwws1ZeoSwh_yN8_jeFOWHwK2n_6ow15SxIHyAnpE",
+						"alg": "ES256"
+					}
+					EOT
+				}`,
+				Check: resource.ComposeTestCheckFunc(
+					func(_ *terraform.State) error {
+						return convertOmegaMatcherToError(And(
+							Not(HaveKey("public_key_jwk")),
+							Not(HaveKey("public_key_pem")),
+							HaveKeyWithValue("application_agent_id", appAgentID),
+						), createBody)
+					},
+					resource.TestCheckResourceAttr(resourceName, "kid", "generated-kid"),
+				),
+			}},
+		})
+	})
 })
 
 //nolint:unparam // Test helper function designed to be reusable

@@ -23,6 +23,7 @@ List Authorization Policies in the given Application Space, filtered by exact na
 ### Optional
 
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
+- `type` (String) Only list policies of this type: `kbac` or `ciq`. All policies are listed when omitted.
 
 ### Read-Only
 

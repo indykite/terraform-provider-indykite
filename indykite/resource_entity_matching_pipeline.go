@@ -28,6 +28,19 @@ const (
 	entityMatchingPipelineTargetNodeFilterKey      = "target_node_filter"
 	entityMatchingPipelineSimilarityScoreCutOffKey = "similarity_score_cutoff"
 	entityMatchingPipelineRerunInterval            = "rerun_interval"
+	entityMatchingPropertyMappingStatusKey         = "property_mapping_status"
+	entityMatchingPropertyMappingMessageKey        = "property_mapping_message"
+	entityMatchingStatusKey                        = "entity_matching_status"
+	entityMatchingMessageKey                       = "entity_matching_message"
+	entityMatchingLastRunTimeKey                   = "last_run_time"
+	entityMatchingMatchedEntitiesKey               = "matched_entities"
+	entityMatchingReportURLKey                     = "report_url"
+	entityMatchingReportTypeKey                    = "report_type"
+	entityMatchingPropertyMappingsKey              = "property_mappings"
+	entityMatchingSourceNodeTypeKey                = "source_node_type"
+	entityMatchingSourceNodePropertyKey            = "source_node_property"
+	entityMatchingTargetNodeTypeKey                = "target_node_type"
+	entityMatchingTargetNodePropertyKey            = "target_node_property"
 )
 
 func resourceEntityMatchingPipeline() *schema.Resource {
@@ -87,6 +100,38 @@ func resourceEntityMatchingPipeline() *schema.Resource {
 				Type:        schema.TypeString,
 				Description: "RerunInterval is the time between scheduled re-runs.",
 				Optional:    true,
+			},
+			entityMatchingPropertyMappingStatusKey: computedStringSchema(
+				"Status of the pipeline step that maps the properties of the node types."),
+			entityMatchingPropertyMappingMessageKey: computedStringSchema(
+				"Error message of the property mapping step, explaining its status."),
+			entityMatchingStatusKey: computedStringSchema(
+				"Status of the pipeline step that matches node entities."),
+			entityMatchingMessageKey: computedStringSchema(
+				"Error message of the entity matching step, explaining its status."),
+			entityMatchingLastRunTimeKey: computedStringSchema("Time when the pipeline was last run."),
+			entityMatchingMatchedEntitiesKey: {
+				Type:        schema.TypeInt,
+				Computed:    true,
+				Description: "Number of entities the pipeline matched in its last run.",
+			},
+			entityMatchingReportURLKey:  computedStringSchema("Location of the analysis report."),
+			entityMatchingReportTypeKey: computedStringSchema("Format in which the analysis report is stored."),
+			entityMatchingPropertyMappingsKey: {
+				Type:        schema.TypeList,
+				Computed:    true,
+				Description: "Rules the pipeline uses to match source nodes with target nodes.",
+				Elem: &schema.Resource{Schema: map[string]*schema.Schema{
+					entityMatchingSourceNodeTypeKey:     computedStringSchema("Type of the source nodes."),
+					entityMatchingSourceNodePropertyKey: computedStringSchema("Property of the source nodes compared."),
+					entityMatchingTargetNodeTypeKey:     computedStringSchema("Type of the target nodes."),
+					entityMatchingTargetNodePropertyKey: computedStringSchema("Property of the target nodes compared."),
+					entityMatchingPipelineSimilarityScoreCutOffKey: {
+						Type:        schema.TypeFloat,
+						Computed:    true,
+						Description: "Threshold above which entities are matched by this rule.",
+					},
+				}},
 			},
 		},
 	}
@@ -162,14 +207,37 @@ func resEntityMatchingPipelineRead(ctx context.Context, data *schema.ResourceDat
 		setData(&d, data, entityMatchingPipelineTargetNodeFilterKey, resp.NodeFilter.TargetNodeTypes)
 	}
 
-	// Round float32 to 4 decimal places for float64 compatibility
-	var ratio float64 = 10000
-	setData(&d, data, entityMatchingPipelineSimilarityScoreCutOffKey,
-		math.Round(float64(resp.SimilarityScoreCutoff)*ratio)/ratio)
+	setData(&d, data, entityMatchingPipelineSimilarityScoreCutOffKey, roundScore(resp.SimilarityScoreCutoff))
 
 	setData(&d, data, entityMatchingPipelineRerunInterval, resp.RerunInterval)
 
+	setData(&d, data, entityMatchingPropertyMappingStatusKey, resp.PropertyMappingStatus)
+	setData(&d, data, entityMatchingPropertyMappingMessageKey, resp.PropertyMappingMessage)
+	setData(&d, data, entityMatchingStatusKey, resp.EntityMatchingStatus)
+	setData(&d, data, entityMatchingMessageKey, resp.EntityMatchingMessage)
+	setData(&d, data, entityMatchingLastRunTimeKey, resp.LastRunTime)
+	setData(&d, data, entityMatchingMatchedEntitiesKey, resp.MatchedEntities)
+	setData(&d, data, entityMatchingReportURLKey, resp.ReportURL)
+	setData(&d, data, entityMatchingReportTypeKey, resp.ReportType)
+	mappings := make([]map[string]any, 0, len(resp.PropertyMappings))
+	for _, m := range resp.PropertyMappings {
+		mappings = append(mappings, map[string]any{
+			entityMatchingSourceNodeTypeKey:                m.SourceNodeType,
+			entityMatchingSourceNodePropertyKey:            m.SourceNodeProperty,
+			entityMatchingTargetNodeTypeKey:                m.TargetNodeType,
+			entityMatchingTargetNodePropertyKey:            m.TargetNodeProperty,
+			entityMatchingPipelineSimilarityScoreCutOffKey: roundScore(m.SimilarityScoreCutoff),
+		})
+	}
+	setData(&d, data, entityMatchingPropertyMappingsKey, mappings)
+
 	return d
+}
+
+// roundScore rounds a float32 score to 4 decimal places for float64 compatibility.
+func roundScore(score float32) float64 {
+	const ratio = 10000
+	return math.Round(float64(score)*ratio) / ratio
 }
 
 func resEntityMatchingPipelineUpdate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {

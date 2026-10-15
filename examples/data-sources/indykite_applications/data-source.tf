@@ -1,3 +1,10 @@
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_application_space" "my_space" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-project"
+  region      = "us-east1"
+}
+
 # Example 1: List applications using app_space_id
 data "indykite_applications" "apps_by_app_space_id" {
   app_space_id = "gid:AAAAAmluZHlraURlgAABDwAAAAA"

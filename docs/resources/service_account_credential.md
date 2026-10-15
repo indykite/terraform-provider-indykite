@@ -13,6 +13,13 @@ Service Account Credential is a JSON configuration file that contains a secret k
 ## Example Usage
 
 ```terraform
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_service_account" "my_service_account" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-service-account"
+  role        = "all_viewer"
+}
+
 # Example 1: Minimal service account credential with hardcoded service_account_id
 resource "indykite_service_account_credential" "minimal_credential" {
   service_account_id = "gid:AAAABGluZHlraURlgAACDwAAAAA"
@@ -33,21 +40,31 @@ resource "indykite_service_account_credential" "credential_with_display_name" {
 resource "indykite_service_account_credential" "credential_with_expiration" {
   service_account_id = indykite_service_account.my_service_account.id
   display_name       = "Temporary Credential"
-  expire_time        = "2025-12-31T23:59:59Z"
+  expire_time        = "2030-12-31T23:59:59Z"
 }
 
-# Example 5: Service account credential with 90-day expiration
+# Example 5: Service account credential expiring 90 days after creation.
+# time_offset keeps the date stable; timeadd(timestamp(), ...) would change on every plan
+# and replace the credential on every apply.
+resource "time_offset" "in_90_days" {
+  offset_days = 90
+}
+
 resource "indykite_service_account_credential" "credential_90_days" {
   service_account_id = indykite_service_account.my_service_account.id
   display_name       = "90-Day Credential"
-  expire_time        = timeadd(timestamp(), "2160h") # 90 days = 2160 hours
+  expire_time        = time_offset.in_90_days.rfc3339
 }
 
-# Example 6: Service account credential with 1-year expiration
+# Example 6: Service account credential expiring one year after creation
+resource "time_offset" "in_1_year" {
+  offset_years = 1
+}
+
 resource "indykite_service_account_credential" "credential_1_year" {
   service_account_id = indykite_service_account.my_service_account.id
   display_name       = "Annual Credential"
-  expire_time        = timeadd(timestamp(), "8760h") # 365 days = 8760 hours
+  expire_time        = time_offset.in_1_year.rfc3339
 }
 
 # Example 7: Multiple credentials for the same service account
@@ -66,13 +83,7 @@ resource "indykite_service_account_credential" "prod_credential" {
   display_name       = "Production Environment"
 }
 
-# Example 8: Credential for service account with reference
-resource "indykite_service_account_credential" "credential_with_service_account_ref" {
-  service_account_id = indykite_service_account.minimal.id
-  display_name       = "Credential for Service Account Reference"
-}
-
-# Example 10: Saving credential to a file (use with caution!)
+# Example 8: Saving credential to a file (use with caution!)
 resource "indykite_service_account_credential" "credential_to_file" {
   service_account_id = indykite_service_account.my_service_account.id
   display_name       = "Credential Saved to File"
@@ -87,7 +98,7 @@ resource "local_file" "service_account_config" {
   file_permission = "0600"
 }
 
-# Example 11: Using credential output in other resources
+# Example 9: Using credential output in other resources
 output "service_account_credential_kid" {
   description = "Key identifier of the service account credential"
   value       = indykite_service_account_credential.credential_with_ref.kid
@@ -101,7 +112,7 @@ output "service_account_credential_id" {
 # Note: The service_account_config is only available after creation and is sensitive.
 # It contains the complete JSON configuration needed to authenticate with IndyKite APIs.
 # customer_id is a computed field automatically populated from the service account.
-# expire_time must be in RFC3339 format (e.g., "2025-12-31T23:59:59Z").
+# expire_time must be in RFC3339 format (e.g., "2030-12-31T23:59:59Z").
 # The credential cannot be updated after creation - all fields are ForceNew.
 ```
 
@@ -114,7 +125,7 @@ output "service_account_credential_id" {
 
 ### Optional
 
-- `display_name` (String) Optional human readable name of the credential.
+- `display_name` (String) Optional human readable name of the credential, between 2 and 254 characters.
 - `expire_time` (String) Optional date-time when credentials are going to expire in RFC3339 format.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 

@@ -13,12 +13,19 @@ ExternalDataResolver is a configuration that allows to fetch data from external 
 ## Example Usage
 
 ```terraform
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_application_space" "my_space" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-project"
+  region      = "us-east1"
+}
+
 # Example - GET resolver (still valid)
 resource "indykite_external_data_resolver" "get-resolver" {
   name         = "terraform-resolver-get"
   display_name = "Terraform external data resolver get"
   description  = "External data resolver for terraform pipeline"
-  project_id   = "AppSpaceID"
+  project_id   = "gid:ZXhhbXBsZS1wcm9qZWN0"
 
   url    = "https://www.example.com/sourceresolver?data=xxx"
   method = "GET"
@@ -36,7 +43,7 @@ resource "indykite_external_data_resolver" "post-resolver" {
   name         = "terraform-resolver-post"
   display_name = "Terraform external data resolver post"
   description  = "External data resolver for terraform pipeline"
-  project_id   = "AppSpaceID"
+  project_id   = "gid:ZXhhbXBsZS1wcm9qZWN0"
 
   url    = "https://example.com/sourceresolver2/where-data"
   method = "POST"
@@ -167,8 +174,8 @@ resource "indykite_external_data_resolver" "post_complex" {
 
 ### Optional
 
-- `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
-- `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
+- `description` (String) Your own description of the resource, between 2 and 65000 characters.
+- `display_name` (String) The display name for the instance, between 2 and 254 characters. Can be updated without creating a new resource.
 - `headers` (Block Set) Headers to be sent with the request, including authorization if needed (see [below for nested schema](#nestedblock--headers))
 - `location` (String, Deprecated) Identifier of Location, where to create resource. Deprecated, use project_id instead
 - `project_id` (String) Identifier of Project, where to create resource

@@ -185,6 +185,15 @@ var _ = Describe("DataSource ApplicationAgent", func() {
 					Check: resource.ComposeTestCheckFunc(
 						testApplicationAgentDataExists(resourceName, &appAgentResp, "")),
 				},
+				{
+					// api_permissions is read from the API; a lookup does not need to set it.
+					Config: `data "indykite_application_agent" "development" {
+						app_agent_id = "` + appAgentID + `"
+					}`,
+					Check: resource.ComposeTestCheckFunc(
+						testApplicationAgentDataExists(resourceName, &appAgentResp, appAgentID),
+					),
+				},
 			},
 		})
 	})

@@ -395,7 +395,7 @@ var _ = Describe("Resource Authorization Policy config", func() {
 					PlanOnly:           true,
 					ExpectNonEmptyPlan: true,
 					Check: func(_ *terraform.State) error {
-						return convertOmegaMatcherToError(BeEmpty(), fake.putBodies)
+						return convertOmegaMatcherToError(BeEmpty(), fake.puts())
 					},
 				},
 				{

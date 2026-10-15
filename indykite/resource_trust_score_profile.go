@@ -16,7 +16,9 @@ package indykite
 
 import (
 	"context"
+	"maps"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -30,6 +32,13 @@ const (
 	trustScoreProfileSchedule           = "schedule"
 	trustScoreProfileName               = "name"
 	trustScoreProfileWeight             = "weight"
+	trustScoreLastRunIDKey              = "last_run_id"
+	trustScoreLastRunStartTimeKey       = "last_run_start_time"
+	trustScoreLastRunEndTimeKey         = "last_run_end_time"
+	trustScoreExecutionTimesKey         = "dimensions_execution_times"
+	trustScoreExecutionDimensionKey     = "dimension"
+	trustScoreExecutionStartTimeKey     = "execution_start_time"
+	trustScoreExecutionEndTimeKey       = "execution_end_time"
 )
 
 func resourceTrustScoreProfile() *schema.Resource {
@@ -108,6 +117,19 @@ func resourceTrustScoreProfile() *schema.Resource {
 				Required: true,
 				ValidateFunc: validation.StringInSlice(getMapStringKeys(
 					TrustScoreProfileScheduleFrequencies), false),
+			},
+			trustScoreLastRunIDKey:        computedStringSchema("Identifier of the last calculation run."),
+			trustScoreLastRunStartTimeKey: computedStringSchema("Time when the last calculation run started."),
+			trustScoreLastRunEndTimeKey:   computedStringSchema("Time when the last calculation run ended."),
+			trustScoreExecutionTimesKey: {
+				Type:        schema.TypeList,
+				Computed:    true,
+				Description: "When the calculation of each dimension last ran, sorted by dimension.",
+				Elem: &schema.Resource{Schema: map[string]*schema.Schema{
+					trustScoreExecutionDimensionKey: computedStringSchema("Name of the trust score dimension."),
+					trustScoreExecutionStartTimeKey: computedStringSchema("Time when the calculation started."),
+					trustScoreExecutionEndTimeKey:   computedStringSchema("Time when the calculation ended."),
+				}},
 			},
 		},
 	}
@@ -200,7 +222,35 @@ func resTrustScoreProfileRead(ctx context.Context, data *schema.ResourceData, me
 	}
 	setData(&d, data, trustScoreProfileSchedule, terraformSchedule)
 
+	setData(&d, data, trustScoreLastRunIDKey, resp.LastRunID)
+	setData(&d, data, trustScoreLastRunStartTimeKey, resp.LastRunStartTime)
+	setData(&d, data, trustScoreLastRunEndTimeKey, resp.LastRunEndTime)
+	setData(&d, data, trustScoreExecutionTimesKey, flattenExecutionTimes(resp.DimensionsExecutionTimes))
+
 	return d
+}
+
+// flattenExecutionTimes converts the API map of execution windows, keyed by dimension, into a list
+// sorted by dimension so its order is stable. Dimensions use the Terraform names, as in dimension.
+func flattenExecutionTimes(windows map[string]*TrustScoreExecutionWindow) []map[string]any {
+	apiNames := slices.Sorted(maps.Keys(windows))
+	result := make([]map[string]any, 0, len(apiNames))
+	for _, apiName := range apiNames {
+		name := TrustScoreDimensionFromAPI[apiName]
+		if name == "" {
+			name = apiName
+		}
+		window := windows[apiName]
+		if window == nil {
+			window = &TrustScoreExecutionWindow{}
+		}
+		result = append(result, map[string]any{
+			trustScoreExecutionDimensionKey: name,
+			trustScoreExecutionStartTimeKey: window.ExecutionStartTime,
+			trustScoreExecutionEndTimeKey:   window.ExecutionEndTime,
+		})
+	}
+	return result
 }
 
 func resTrustScoreProfileUpdate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {

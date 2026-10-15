@@ -113,6 +113,14 @@ func convertToOptional(in *schema.Schema) *schema.Schema {
 	return in
 }
 
+// setOptionalComputed turns a resource input into a data source output that existing configurations
+// may still set.
+func setOptionalComputed(in *schema.Schema) *schema.Schema {
+	in = convertToOptional(in)
+	in.Computed = true
+	return in
+}
+
 func keysWithoutCurrent(currentKey string, allKeys []string) []string {
 	newKeys := make([]string, 0, len(allKeys)-1)
 	for _, k := range allKeys {

@@ -13,12 +13,19 @@ The EntityMatchingPipeline facilitates the setup of a configuration to detect an
 ## Example Usage
 
 ```terraform
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_application_space" "my_space" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-project"
+  region      = "us-east1"
+}
+
 # Example - basic entity matching pipeline (still valid)
 resource "indykite_entity_matching_pipeline" "create-pipeline" {
   name               = "terraform-entitymatching-pipeline"
   display_name       = "Terraform entitymatching pipeline"
   description        = "External entitymatching pipeline for terraform"
-  project_id         = "AppSpaceID"
+  project_id         = "gid:ZXhhbXBsZS1wcm9qZWN0"
   source_node_filter = ["Person"]
   target_node_filter = ["Person"]
 }
@@ -87,8 +94,8 @@ resource "indykite_entity_matching_pipeline" "resource_pipeline" {
 
 ### Optional
 
-- `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
-- `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
+- `description` (String) Your own description of the resource, between 2 and 65000 characters.
+- `display_name` (String) The display name for the instance, between 2 and 254 characters. Can be updated without creating a new resource.
 - `location` (String, Deprecated) Identifier of Location, where to create resource. Deprecated, use project_id instead
 - `project_id` (String) Identifier of Project, where to create resource
 - `rerun_interval` (String) RerunInterval is the time between scheduled re-runs.
@@ -100,7 +107,16 @@ resource "indykite_entity_matching_pipeline" "resource_pipeline" {
 - `app_space_id` (String) Identifier of Application Space
 - `create_time` (String) Timestamp when the Resource was created. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
 - `customer_id` (String) Identifier of Customer
+- `entity_matching_message` (String) Error message of the entity matching step, explaining its status.
+- `entity_matching_status` (String) Status of the pipeline step that matches node entities.
 - `id` (String) The ID of this resource.
+- `last_run_time` (String) Time when the pipeline was last run.
+- `matched_entities` (Number) Number of entities the pipeline matched in its last run.
+- `property_mapping_message` (String) Error message of the property mapping step, explaining its status.
+- `property_mapping_status` (String) Status of the pipeline step that maps the properties of the node types.
+- `property_mappings` (List of Object) Rules the pipeline uses to match source nodes with target nodes. (see [below for nested schema](#nestedatt--property_mappings))
+- `report_type` (String) Format in which the analysis report is stored.
+- `report_url` (String) Location of the analysis report.
 - `update_time` (String) Timestamp when the Resource was last updated. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
 
 <a id="nestedblock--timeouts"></a>
@@ -113,3 +129,15 @@ Optional:
 - `delete` (String)
 - `read` (String)
 - `update` (String)
+
+
+<a id="nestedatt--property_mappings"></a>
+### Nested Schema for `property_mappings`
+
+Read-Only:
+
+- `similarity_score_cutoff` (Number)
+- `source_node_property` (String)
+- `source_node_type` (String)
+- `target_node_property` (String)
+- `target_node_type` (String)

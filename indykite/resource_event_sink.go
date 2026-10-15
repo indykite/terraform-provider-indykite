@@ -721,6 +721,7 @@ func buildKafkaConfig(kafkaData, prior map[string]any) map[string]any {
 		disableTLSKey:      getValue("disable_tls", "disableTls"),
 		tlsSkipVerifyKey:   getValue("tls_skip_verify", "tlsSkipVerify"),
 		providerDisplayKey: getValue("display_name", "displayName"),
+		lastErrorKey:       getValue("last_error", "lastError"),
 	}
 }
 
@@ -741,6 +742,7 @@ func buildAzureEventGridConfig(gridData, prior map[string]any) map[string]any {
 		topicEndpointKey:   getValue("topic_endpoint", "topicEndpoint"),
 		accessKey:          oldAccessKey,
 		providerDisplayKey: getValue("display_name", "displayName"),
+		lastErrorKey:       getValue("last_error", "lastError"),
 	}
 }
 
@@ -761,6 +763,7 @@ func buildAzureServiceBusConfig(busData, prior map[string]any) map[string]any {
 		connectionStringKey: oldConnection,
 		queueKey:            getValue("queue_or_topic_name", "queueOrTopicName"),
 		providerDisplayKey:  getValue("display_name", "displayName"),
+		lastErrorKey:        getValue("last_error", "lastError"),
 	}
 }
 
@@ -782,6 +785,7 @@ func buildPubSubConfig(pubsubData, prior map[string]any) map[string]any {
 		topicNameKey:       getValue("topic_name", "topicName"),
 		credentialsJSONKey: oldCredentials,
 		providerDisplayKey: getValue("display_name", "displayName"),
+		lastErrorKey:       getValue("last_error", "lastError"),
 	}
 }
 

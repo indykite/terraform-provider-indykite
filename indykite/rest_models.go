@@ -157,8 +157,6 @@ type CreateApplicationAgentCredentialRequest struct {
 	ApplicationAgentID string `json:"application_agent_id"`
 	DisplayName        string `json:"display_name,omitempty"`
 	ExpireTime         string `json:"expire_time,omitempty"`
-	PublicKeyPEM       string `json:"public_key_pem,omitempty"`
-	PublicKeyJWK       string `json:"public_key_jwk,omitempty"`
 	DefaultTenantID    string `json:"default_tenant_id,omitempty"` // For backward compatibility with SDK
 }
 
@@ -375,18 +373,37 @@ type CreateEntityMatchingPipelineRequest struct {
 
 // EntityMatchingPipelineResponse represents an entity matching pipeline resource.
 type EntityMatchingPipelineResponse struct {
-	CreateTime            time.Time                 `json:"create_time"`
-	UpdateTime            time.Time                 `json:"update_time"`
-	NodeFilter            *EntityMatchingNodeFilter `json:"node_filter"`
-	ID                    string                    `json:"id"`
-	Name                  string                    `json:"name"`
-	DisplayName           string                    `json:"display_name,omitempty"`
-	Description           string                    `json:"description,omitempty"`
-	CustomerID            string                    `json:"organization_id"`
-	AppSpaceID            string                    `json:"project_id,omitempty"`
-	RerunInterval         string                    `json:"rerun_interval,omitempty"`
-	Etag                  string                    `json:"etag,omitempty"`
-	SimilarityScoreCutoff float32                   `json:"similarity_score_cutoff,omitempty"`
+	CreateTime    time.Time                 `json:"create_time"`
+	UpdateTime    time.Time                 `json:"update_time"`
+	NodeFilter    *EntityMatchingNodeFilter `json:"node_filter"`
+	ID            string                    `json:"id"`
+	Name          string                    `json:"name"`
+	DisplayName   string                    `json:"display_name,omitempty"`
+	Description   string                    `json:"description,omitempty"`
+	CustomerID    string                    `json:"organization_id"`
+	AppSpaceID    string                    `json:"project_id,omitempty"`
+	RerunInterval string                    `json:"rerun_interval,omitempty"`
+	Etag          string                    `json:"etag,omitempty"`
+	// Status of the last run, set by the API.
+	PropertyMappingStatus  string                          `json:"property_mapping_status,omitempty"`
+	PropertyMappingMessage string                          `json:"property_mapping_message,omitempty"`
+	EntityMatchingStatus   string                          `json:"entity_matching_status,omitempty"`
+	EntityMatchingMessage  string                          `json:"entity_matching_message,omitempty"`
+	LastRunTime            string                          `json:"last_run_time,omitempty"`
+	ReportURL              string                          `json:"report_url,omitempty"`
+	ReportType             string                          `json:"report_type,omitempty"`
+	PropertyMappings       []EntityMatchingPropertyMapping `json:"property_mappings,omitempty"`
+	MatchedEntities        int64                           `json:"matched_entities,omitempty"`
+	SimilarityScoreCutoff  float32                         `json:"similarity_score_cutoff,omitempty"`
+}
+
+// EntityMatchingPropertyMapping is a rule the pipeline uses to match source nodes with target nodes.
+type EntityMatchingPropertyMapping struct {
+	SourceNodeType        string  `json:"source_node_type"`
+	SourceNodeProperty    string  `json:"source_node_property"`
+	TargetNodeType        string  `json:"target_node_type"`
+	TargetNodeProperty    string  `json:"target_node_property"`
+	SimilarityScoreCutoff float32 `json:"similarity_score_cutoff"`
 }
 
 // UpdateEntityMatchingPipelineRequest represents the request to update an entity matching pipeline.
@@ -456,18 +473,29 @@ type CreateTrustScoreProfileRequest struct {
 
 // TrustScoreProfileResponse represents a trust score profile resource.
 type TrustScoreProfileResponse struct {
-	CreateTime         time.Time              `json:"create_time"`
-	UpdateTime         time.Time              `json:"update_time"`
-	ID                 string                 `json:"id"`
-	Name               string                 `json:"name"`
-	DisplayName        string                 `json:"display_name,omitempty"`
-	Description        string                 `json:"description,omitempty"`
-	CustomerID         string                 `json:"organization_id"`
-	AppSpaceID         string                 `json:"project_id,omitempty"`
-	NodeClassification string                 `json:"node_classification"`
-	Schedule           string                 `json:"schedule"`
-	Etag               string                 `json:"etag,omitempty"`
-	Dimensions         []*TrustScoreDimension `json:"dimensions"`
+	CreateTime         time.Time `json:"create_time"`
+	UpdateTime         time.Time `json:"update_time"`
+	ID                 string    `json:"id"`
+	Name               string    `json:"name"`
+	DisplayName        string    `json:"display_name,omitempty"`
+	Description        string    `json:"description,omitempty"`
+	CustomerID         string    `json:"organization_id"`
+	AppSpaceID         string    `json:"project_id,omitempty"`
+	NodeClassification string    `json:"node_classification"`
+	Schedule           string    `json:"schedule"`
+	Etag               string    `json:"etag,omitempty"`
+	// Last run of the profile, set by the API.
+	DimensionsExecutionTimes map[string]*TrustScoreExecutionWindow `json:"dimensions_execution_times,omitempty"`
+	LastRunID                string                                `json:"last_run_id,omitempty"`
+	LastRunStartTime         string                                `json:"last_run_start_time,omitempty"`
+	LastRunEndTime           string                                `json:"last_run_end_time,omitempty"`
+	Dimensions               []*TrustScoreDimension                `json:"dimensions"`
+}
+
+// TrustScoreExecutionWindow is when the calculation of a trust score dimension last ran.
+type TrustScoreExecutionWindow struct {
+	ExecutionStartTime string `json:"execution_start_time,omitempty"`
+	ExecutionEndTime   string `json:"execution_end_time,omitempty"`
 }
 
 // UpdateTrustScoreProfileRequest represents the request to update a trust score profile.

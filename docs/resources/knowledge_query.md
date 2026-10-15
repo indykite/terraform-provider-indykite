@@ -13,6 +13,13 @@ description: |-
 ## Example Usage
 
 ```terraform
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_application_space" "my_space" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-project"
+  region      = "us-east1"
+}
+
 # Example - authorization policy for CIQ
 resource "indykite_authorization_policy" "policy_for_ciq" {
   name         = "terraform-pipeline-policy-for-ciq"
@@ -30,7 +37,7 @@ resource "indykite_authorization_policy" "policy_for_ciq" {
       "relationships" : ["r1"]
     }
   })
-  project_id = "AppSpaceID"
+  project_id = "gid:ZXhhbXBsZS1wcm9qZWN0"
   status     = "active"
 }
 
@@ -39,7 +46,7 @@ resource "indykite_knowledge_query" "create-query" {
   name         = "terraform-knowledge-query"
   display_name = "Terraform knowledge-query"
   description  = "Knowledge query for terraform"
-  project_id   = "AppSpaceID"
+  project_id   = "gid:ZXhhbXBsZS1wcm9qZWN0"
   query = jsonencode({
     "nodes" : ["ln.property.value"],
     "relationships" : [],
@@ -81,7 +88,7 @@ resource "indykite_knowledge_query" "query_with_policy" {
   description  = "Knowledge query with authorization policy"
   project_id   = indykite_application_space.my_space.id
   status       = "active"
-  policy_id    = indykite_authorization_policy.my_policy.id
+  policy_id    = indykite_authorization_policy.policy_for_ciq.id
   query = jsonencode({
     "nodes" : ["Document.property.title", "Document.property.content"],
     "relationships" : ["OWNS", "CAN_READ"],
@@ -96,7 +103,7 @@ resource "indykite_knowledge_query" "complex_query" {
   description  = "Query with complex filtering and relationships"
   project_id   = indykite_application_space.my_space.id
   status       = "active"
-  policy_id    = indykite_authorization_policy.my_policy.id
+  policy_id    = indykite_authorization_policy.policy_for_ciq.id
   query = jsonencode({
     "nodes" : [
       "Person.property.name",
@@ -155,13 +162,13 @@ resource "indykite_knowledge_query" "inactive_query" {
 
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 - `policy_id` (String) ID of the Authorization Policy that is used to authorize the query.
-- `query` (String) Configuration of Knowledge Query in JSON format, the same one exported by The Hub. A query filter may reference the claims of the request tokens as `$token.<claim>` (end-user access token) or `$ik_token.<claim>` (IndyKite delegated token, including its RFC 8693 `act` delegation chain), e.g. `"attribute": "$ik_token.act.sub"`. These names are bound by the platform on every execution and must not be supplied as input params; a token that did not arrive binds an empty claim set and the filter matches nothing.
+- `query` (String) Configuration of Knowledge Query in JSON format, the same one exported by The Hub, up to 512000 characters. A query filter may reference the claims of the request tokens as `$token.<claim>` (end-user access token) or `$ik_token.<claim>` (IndyKite delegated token, including its RFC 8693 `act` delegation chain), e.g. `"attribute": "$ik_token.act.sub"`. These names are bound by the platform on every execution and must not be supplied as input params; a token that did not arrive binds an empty claim set and the filter matches nothing.
 - `status` (String) Status of the Knowledge Query. Possible values are: active, draft, inactive.
 
 ### Optional
 
-- `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
-- `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
+- `description` (String) Your own description of the resource, between 2 and 65000 characters.
+- `display_name` (String) The display name for the instance, between 2 and 254 characters. Can be updated without creating a new resource.
 - `location` (String, Deprecated) Identifier of Location, where to create resource. Deprecated, use project_id instead
 - `project_id` (String) Identifier of Project, where to create resource
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
