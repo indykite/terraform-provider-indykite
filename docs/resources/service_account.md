@@ -77,8 +77,8 @@ resource "indykite_service_account" "viewer_service_account" {
 ### Optional
 
 - `deletion_protection` (Boolean) Whether or not to allow Terraform to destroy the instance. Unless this field is set to false in Terraform state, a terraform destroy or terraform apply that would delete the instance will fail.
-- `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
-- `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
+- `description` (String) Your own description of the resource, between 2 and 65000 characters.
+- `display_name` (String) The display name for the instance, between 2 and 254 characters. Can be updated without creating a new resource.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only

@@ -167,8 +167,8 @@ resource "indykite_external_data_resolver" "post_complex" {
 
 ### Optional
 
-- `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
-- `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
+- `description` (String) Your own description of the resource, between 2 and 65000 characters.
+- `display_name` (String) The display name for the instance, between 2 and 254 characters. Can be updated without creating a new resource.
 - `headers` (Block Set) Headers to be sent with the request, including authorization if needed (see [below for nested schema](#nestedblock--headers))
 - `location` (String, Deprecated) Identifier of Location, where to create resource. Deprecated, use project_id instead
 - `project_id` (String) Identifier of Project, where to create resource

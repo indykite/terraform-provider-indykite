@@ -73,8 +73,8 @@ resource "indykite_audit_signing" "aws_kms" {
 ### Optional
 
 - `auth_params` (Map of String, Sensitive) Authentication parameters used to access the customer managed key, e.g. a role ARN with its external ID, a service account email, or a tenant and client ID. At most 32 entries; every key and value between 1 and 256 characters, so a key file or a PEM private key cannot be passed. Values are write-only: the API never returns them, so Terraform keeps the values from the configuration and only reconciles the set of keys.
-- `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
-- `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
+- `description` (String) Your own description of the resource, between 2 and 65000 characters.
+- `display_name` (String) The display name for the instance, between 2 and 254 characters. Can be updated without creating a new resource.
 - `key_resource` (String) Resource identifier of the customer managed signing key in the provider's KMS, e.g. the Cloud KMS key version name, the AWS KMS key ARN or the Azure Key Vault key identifier.
 - `kid` (String) Key ID (kid) of the customer managed key. Records will carry it once customer managed keys are used for signing; today they carry the platform key's kid.
 - `location` (String, Deprecated) Identifier of Location, where to create resource. Deprecated, use project_id instead

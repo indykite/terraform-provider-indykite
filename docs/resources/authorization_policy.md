@@ -231,17 +231,17 @@ resource "indykite_authorization_policy" "policy_for_ciq" {
 
 ### Required
 
-- `json` (String) Configuration of Authorization Policy in JSON format, the same one exported by The Hub. The claims of the request tokens are available to the policy under the reserved names `$token` (the end-user access token from the Authorization header) and `$ik_token` (the IndyKite delegated token from the X-IK-Token header, including its RFC 8693 `act` delegation chain). A KBAC condition cypher reads them as parameters, e.g. `resource.delegated_to = $ik_token.act.sub`, and a CIQ policy filter reads them as attribute or value, e.g. `"attribute": "$ik_token.act.sub"`. The platform binds both names on every request, so they must not be listed as input params or supplied by callers; a token that did not arrive binds an empty claim set and the condition fails closed.
+- `json` (String) Configuration of Authorization Policy in JSON format, the same one exported by The Hub, up to 512000 characters. The claims of the request tokens are available to the policy under the reserved names `$token` (the end-user access token from the Authorization header) and `$ik_token` (the IndyKite delegated token from the X-IK-Token header, including its RFC 8693 `act` delegation chain). A KBAC condition cypher reads them as parameters, e.g. `resource.delegated_to = $ik_token.act.sub`, and a CIQ policy filter reads them as attribute or value, e.g. `"attribute": "$ik_token.act.sub"`. The platform binds both names on every request, so they must not be listed as input params or supplied by callers; a token that did not arrive binds an empty claim set and the condition fails closed.
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 - `status` (String) Status of the Authorization Policy. Possible values are: active, draft, inactive.
 
 ### Optional
 
-- `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
-- `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
+- `description` (String) Your own description of the resource, between 2 and 65000 characters.
+- `display_name` (String) The display name for the instance, between 2 and 254 characters. Can be updated without creating a new resource.
 - `location` (String, Deprecated) Identifier of Location, where to create resource. Deprecated, use project_id instead
 - `project_id` (String) Identifier of Project, where to create resource
-- `tags` (List of String) Tags of the Authorization Policy.
+- `tags` (List of String) Tags of the Authorization Policy: unique, 1 to 20 letters and digits each.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only
