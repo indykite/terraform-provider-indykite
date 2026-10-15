@@ -114,7 +114,7 @@ output "service_account_credential_id" {
 
 ### Optional
 
-- `display_name` (String) Optional human readable name of the credential.
+- `display_name` (String) Optional human readable name of the credential, between 2 and 254 characters.
 - `expire_time` (String) Optional date-time when credentials are going to expire in RFC3339 format.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 

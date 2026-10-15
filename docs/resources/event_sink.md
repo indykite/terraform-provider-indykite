@@ -400,8 +400,8 @@ resource "indykite_event_sink" "multi_route" {
 
 ### Optional
 
-- `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
-- `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
+- `description` (String) Your own description of the resource, between 2 and 65000 characters.
+- `display_name` (String) The display name for the instance, between 2 and 254 characters. Can be updated without creating a new resource.
 - `include_cdc_events` (Boolean) When true, CDC (Change Data Capture) events will be emitted to this event sink. When false or unset, CDC events will not be emitted. Defaults to false for backward compatibility.
 - `location` (String, Deprecated) Identifier of Location, where to create resource. Deprecated, use project_id instead
 - `project_id` (String) Identifier of Project, where to create resource
@@ -468,7 +468,7 @@ Read-Only:
 
 Required:
 
-- `brokers` (List of String) Brokers specify Kafka destinations to connect to.
+- `brokers` (List of String) Brokers specify Kafka destinations to connect to, each at least 8 characters.
 - `password` (String, Sensitive)
 - `topic` (String)
 - `username` (String)

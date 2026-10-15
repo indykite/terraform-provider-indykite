@@ -52,8 +52,8 @@ data "indykite_application_agent" "agent_by_name_ref" {
 
 - `app_agent_id` (String) Identifier of Application Agent
 - `app_space_id` (String) Identifier of Application Space
-- `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
-- `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
+- `description` (String) Your own description of the resource, between 2 and 65000 characters.
+- `display_name` (String) The display name for the instance, between 2 and 254 characters. Can be updated without creating a new resource.
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
