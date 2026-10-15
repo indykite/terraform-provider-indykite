@@ -433,7 +433,7 @@ var _ = Describe("Resource TokenIntrospect", func() {
 		//nolint:lll // Long JWK string
 		testJWK := `{"kid":"abc123abc123abc123abc123","use":"sig","alg":"RS256","kty":"RSA","n":"sXchB8A4CkaR3DjDdFUXAYVHx_dWx6gT6tEFc6aOaZ5CPAsqJ8lmwczE6xT74j_xoz1PZtKh6q6tRxX4Mk-GB4KFu0YQH1-WN6uEhEcE0fMtsymrZ1OlN3GhxUAt93Q6zpg3ZD9P4ZtXWr7g6OpkqKAv12v2YKvHtJmEznV0OZPZQj5POj1U0EJp0B98VpTmRtT1K2fKjddAlDq3t35u5xPdkL9l9yLeaMLqGw3tNhxG8amj_Mlq3zEy_QwOmR6OKO5mIF0kCshRsfKj8cMyOrUdxzqaZGuv9KYkgA3ulFjHbInCQwFZ8Z5h7bnQZEkSz94Cz3C4X8hGgSyOShLMuWw","e":"AQAB"}`
 
-		mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch {
 			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/token-introspects"):
 				resp := indykite.TokenIntrospectResponse{
@@ -494,7 +494,6 @@ var _ = Describe("Resource TokenIntrospect", func() {
 				w.WriteHeader(http.StatusNotFound)
 			}
 		}))
-		defer mockServer.Close()
 
 		cfgFunc := provider.ConfigureContextFunc
 		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
@@ -542,6 +541,44 @@ var _ = Describe("Resource TokenIntrospect", func() {
 					ResourceName:  resourceName,
 					ImportState:   true,
 					ImportStateId: "wonka-introspect?location=" + appSpaceID,
+				},
+			},
+		})
+	})
+
+	It("Test created_by and updated_by are read from the API", func() {
+		fake := newFakeConfigAPI("/token-introspects", sampleID, nil)
+		mockServer = fake.Server
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
+			},
+			Steps: []resource.TestStep{
+				{
+					Config: `resource "indykite_token_introspect" "development" {
+						project_id = "` + appSpaceID + `"
+						name = "audit-introspect"
+						jwt_matcher {
+							issuer = "https://example.com"
+							audience = "audience-id"
+						}
+						online_validation {
+							cache_ttl = 600
+						}
+						ikg_node_type = "MyUser"
+					}`,
+					Check: resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttr(resourceName, "created_by", fakeConfigAPIActor),
+						resource.TestCheckResourceAttr(resourceName, "updated_by", fakeConfigAPIActor),
+					),
 				},
 			},
 		})

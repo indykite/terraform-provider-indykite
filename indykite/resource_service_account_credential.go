@@ -55,7 +55,8 @@ func resourceServiceAccountCredential() *schema.Resource {
 				ForceNew:         true,
 				Optional:         true,
 				DiffSuppressFunc: DisplayNameCredentialDiffSuppress,
-				Description:      "Optional human readable name of the credential.",
+				ValidateFunc:     validateOptionalTextLength(254),
+				Description:      "Optional human readable name of the credential, between 2 and 254 characters.",
 			},
 			// Computed: when omitted, the API sets a far-future expiry that must not force replacement.
 			expireTimeKey: {

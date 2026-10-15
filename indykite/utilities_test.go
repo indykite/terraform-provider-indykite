@@ -17,6 +17,7 @@ package indykite_test
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -92,6 +93,90 @@ var _ = Describe("Utilities", func() {
 		Entry("Removing expiry", "2026-12-31T13:34:56Z", "", BeFalse()),
 		// Unparseable value falls back to showing the diff.
 		Entry("Unparseable new value", "2026-12-31T13:34:56Z", "not-a-time", BeFalse()),
+	)
+
+	DescribeTable("ValidateName",
+		func(input any, expectedSummaries ...string) {
+			path := cty.GetAttrPath("name")
+			d := indykite.ValidateName(input, path)
+			summaries := make([]string, 0, len(d))
+			for _, diagnostic := range d {
+				Expect(diagnostic.AttributePath).To(Equal(path))
+				summaries = append(summaries, diagnostic.Summary)
+			}
+			Expect(summaries).To(ConsistOf(expectedSummaries))
+		},
+		Entry("2 characters", "ab"),
+		Entry("63 characters", "a"+strings.Repeat("b", 62)),
+		Entry("Double hyphen", "tf--name"),
+		Entry("64 characters", "a"+strings.Repeat("b", 63),
+			"expected string value between 2 and 63 characters but received 64"),
+		Entry("1 character", "a",
+			"expected string value between 2 and 63 characters but received 1", "Invalid name"),
+		Entry("Uppercase", "tf-Name", "Invalid name"),
+		Entry("Trailing hyphen", "tf-name-", "Invalid name"),
+		Entry("Leading digit", "1tf-name", "Invalid name"),
+		Entry("Not a string", 22, "validateName failed, expected string, got int"),
+	)
+
+	DescribeTable("CheckOptionalTextLength",
+		func(maxLen int, input any, expectedErr OmegaMatcher) {
+			_, errs := indykite.CheckOptionalTextLength(maxLen)(input, "description")
+			if expectedErr == nil {
+				Expect(errs).To(BeEmpty())
+				return
+			}
+			Expect(errs).To(ConsistOf(MatchError(expectedErr)))
+		},
+		Entry("Empty clears the value", 254, "", nil),
+		Entry("2 characters", 254, "ab", nil),
+		Entry("Maximum length", 254, strings.Repeat("d", 254), nil),
+		Entry("1 character", 254, "x",
+			Equal("expected description to be empty or between 2 and 254 characters, got 1")),
+		Entry("Above maximum", 254, strings.Repeat("d", 255),
+			Equal("expected description to be empty or between 2 and 254 characters, got 255")),
+		// The API counts characters: 32500 two-byte characters are 65000 bytes, 32501 are accepted too.
+		Entry("Multi-byte characters count once", 65000, strings.Repeat("é", 32501), nil),
+		Entry("Multi-byte above maximum", 10, strings.Repeat("é", 11),
+			Equal("expected description to be empty or between 2 and 10 characters, got 11")),
+		Entry("Not a string", 254, 22, Equal("expected type of description to be string")),
+	)
+
+	DescribeTable("CheckCharLength",
+		func(input any, expectedErr OmegaMatcher) {
+			_, errs := indykite.CheckCharLength(1, 150)(input, "audience")
+			if expectedErr == nil {
+				Expect(errs).To(BeEmpty())
+				return
+			}
+			Expect(errs).To(ConsistOf(MatchError(expectedErr)))
+		},
+		Entry("Minimum length", "a", nil),
+		Entry("Maximum length", strings.Repeat("a", 150), nil),
+		Entry("Multi-byte characters count once", strings.Repeat("é", 150), nil),
+		Entry("Empty", "", Equal("expected audience to be between 1 and 150 characters, got 0")),
+		Entry("Above maximum", strings.Repeat("a", 151),
+			Equal("expected audience to be between 1 and 150 characters, got 151")),
+		Entry("Not a string", 22, Equal("expected type of audience to be string")),
+	)
+
+	DescribeTable("CheckMapValueCharLength",
+		func(input any, expectedSummary string) {
+			path := cty.GetAttrPath("claims_mapping")
+			d := indykite.CheckMapValueCharLength(1, 200)(input, path)
+			if expectedSummary == "" {
+				Expect(d).To(BeEmpty())
+				return
+			}
+			Expect(d).To(HaveLen(1))
+			Expect(d[0].Summary).To(Equal(expectedSummary))
+		},
+		Entry("Values within limits", map[string]any{"email": "e", "name": strings.Repeat("n", 200)}, ""),
+		Entry("Empty value", map[string]any{"email": ""},
+			`expected value of "email" to be between 1 and 200 characters, got 0`),
+		Entry("Value above maximum", map[string]any{"email": strings.Repeat("e", 201)},
+			`expected value of "email" to be between 1 and 200 characters, got 201`),
+		Entry("Not a map", "email", "expected type to be map, got string"),
 	)
 })
 

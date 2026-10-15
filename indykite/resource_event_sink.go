@@ -188,10 +188,14 @@ func providerSchema() map[string]*schema.Schema {
 			Elem: &schema.Resource{
 				Schema: map[string]*schema.Schema{
 					brokersKey: {
-						Type:        schema.TypeList,
-						Elem:        &schema.Schema{Type: schema.TypeString},
+						Type: schema.TypeList,
+						Elem: &schema.Schema{
+							Type:         schema.TypeString,
+							ValidateFunc: validateMinCharLength(8),
+						},
 						Required:    true,
-						Description: "Brokers specify Kafka destinations to connect to.",
+						MinItems:    1,
+						Description: "Brokers specify Kafka destinations to connect to, each at least 8 characters.",
 					},
 					topicKey: {
 						Type:     schema.TypeString,

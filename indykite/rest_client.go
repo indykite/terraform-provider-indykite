@@ -188,37 +188,105 @@ func generateJWT(privateKey *ecdsa.PrivateKey, kid, subject string) (string, err
 	return tokenString, nil
 }
 
-// Do executes an HTTP request.
-func (c *RestClient) Do(ctx context.Context, method, path string, body, response any) (*http.Response, error) {
-	var reqBody io.Reader
+// The API answers 503 Service Unavailable when it cannot verify the credential token and asks the
+// client to retry the request. Variables so tests can shorten the waits.
+var (
+	unavailableRetryMax     = 4
+	unavailableRetryWaitMin = 1 * time.Second
+	unavailableRetryWaitMax = 8 * time.Second
+)
+
+// credentialVerificationMessage identifies the documented 503 returned before the request is
+// processed, which makes it safe to retry even a create.
+const credentialVerificationMessage = "unable to verify the credential token"
+
+// shouldRetryUnavailable reports whether a response is a 503 that may be retried. Any 503 is retried
+// for GET, PUT and DELETE, which are idempotent. A POST is retried only on the credential verification
+// failure, so a create the backend may have processed is never repeated.
+func shouldRetryUnavailable(method string, resp *http.Response) bool {
+	if resp == nil || resp.StatusCode != http.StatusServiceUnavailable {
+		return false
+	}
+	if method != http.MethodPost {
+		return true
+	}
+	body, err := io.ReadAll(resp.Body)
+	resp.Body.Close() //nolint:errcheck,gosec // Body.Close() error is acceptable
+	resp.Body = io.NopCloser(bytes.NewReader(body))
+	return err == nil && strings.Contains(strings.ToLower(string(body)), credentialVerificationMessage)
+}
+
+// newRetryClient returns a go-retryablehttp client retrying the responses accepted by retryable, with
+// exponential backoff (waitMin doubling per attempt, capped at waitMax). A Retry-After header is
+// honoured up to waitMax. Transport errors are never retried.
+func (c *RestClient) newRetryClient(
+	retryMax int,
+	waitMin, waitMax time.Duration,
+	retryable func(*http.Response) bool,
+) *retryablehttp.Client {
+	retryClient := retryablehttp.NewClient()
+	retryClient.HTTPClient = c.httpClient
+	retryClient.RetryMax = retryMax
+	retryClient.RetryWaitMin = waitMin
+	retryClient.RetryWaitMax = waitMax
+	retryClient.Logger = nil
+	// DefaultBackoff returns Retry-After as is; cap it so a long value cannot stall the apply.
+	retryClient.Backoff = func(minWait, maxWait time.Duration, attempt int, resp *http.Response) time.Duration {
+		return min(retryablehttp.DefaultBackoff(minWait, maxWait, attempt, resp), maxWait)
+	}
+	retryClient.CheckRetry = func(ctx context.Context, resp *http.Response, err error) (bool, error) {
+		if ctx.Err() != nil {
+			return false, ctx.Err()
+		}
+		return err == nil && retryable(resp), nil
+	}
+	// Hand the last response back instead of a "giving up after N attempts" error,
+	// so an exhausted retry keeps flowing through decodeResponse as a RestError.
+	retryClient.ErrorHandler = retryablehttp.PassthroughErrorHandler
+	return retryClient
+}
+
+// send executes the request with retryClient and decodes the response into response.
+func (c *RestClient) send(
+	ctx context.Context,
+	retryClient *retryablehttp.Client,
+	method, path string,
+	body, response any,
+) (*http.Response, error) {
+	var rawBody any
 	if body != nil {
 		data, err := json.Marshal(body)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal request body: %w", err)
 		}
-		reqBody = bytes.NewReader(data)
+		rawBody = data
 	}
 
-	url := c.baseURL + path
-	req, err := http.NewRequestWithContext(ctx, method, url, reqBody)
+	req, err := retryablehttp.NewRequestWithContext(ctx, method, c.baseURL+path, rawBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
-
-	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.token)
 
-	// Execute request
-	resp, err := c.httpClient.Do(req)
+	resp, err := retryClient.Do(req)
 	if err != nil {
+		if resp != nil {
+			resp.Body.Close() //nolint:errcheck,gosec // Body.Close() error is acceptable
+		}
 		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
-	// Always close the body when we're done
 	defer resp.Body.Close() //nolint:errcheck // deferred Body.Close() error is acceptable
 
 	return resp, decodeResponse(resp, response)
+}
+
+// Do executes an HTTP request, retrying 503 responses as allowed by shouldRetryUnavailable.
+func (c *RestClient) Do(ctx context.Context, method, path string, body, response any) (*http.Response, error) {
+	retryClient := c.newRetryClient(unavailableRetryMax, unavailableRetryWaitMin, unavailableRetryWaitMax,
+		func(resp *http.Response) bool { return shouldRetryUnavailable(method, resp) })
+	return c.send(ctx, retryClient, method, path, body, response)
 }
 
 // decodeResponse converts non-2xx responses into a RestError and unmarshals
@@ -241,14 +309,13 @@ func decodeResponse(resp *http.Response, response any) error {
 	return nil
 }
 
-// PostWithRetryOnNotFound executes a POST request through hashicorp/go-retryablehttp,
-// retrying ONLY not-found responses, with exponential backoff (waitMin doubling per
-// attempt, capped at waitMax). Use it when the referenced entity may still be
-// propagating on the backend. Other failures (5xx, transport errors) are never
-// retried: a 404 guarantees nothing was created, while retrying a create whose
-// response was lost could persist a duplicate that Terraform would not track. If all
-// retries are exhausted the last response is classified as usual, so a persistent 404
-// still surfaces as a RestError satisfying IsNotFoundError.
+// PostWithRetryOnNotFound executes a POST request, retrying not-found responses, with exponential
+// backoff (waitMin doubling per attempt, capped at waitMax). Use it when the referenced entity may
+// still be propagating on the backend. Besides 404, only the credential verification 503 is retried
+// (see shouldRetryUnavailable): both guarantee nothing was created, while retrying a create whose
+// response was lost could persist a duplicate that Terraform would not track. If all retries are
+// exhausted the last response is classified as usual, so a persistent 404 still surfaces as a
+// RestError satisfying IsNotFoundError.
 func (c *RestClient) PostWithRetryOnNotFound(
 	ctx context.Context,
 	path string,
@@ -256,49 +323,11 @@ func (c *RestClient) PostWithRetryOnNotFound(
 	retryMax int,
 	waitMin, waitMax time.Duration,
 ) error {
-	var rawBody []byte
-	if body != nil {
-		var err error
-		rawBody, err = json.Marshal(body)
-		if err != nil {
-			return fmt.Errorf("failed to marshal request body: %w", err)
-		}
-	}
-
-	retryClient := retryablehttp.NewClient()
-	retryClient.HTTPClient = c.httpClient
-	retryClient.RetryMax = retryMax
-	retryClient.RetryWaitMin = waitMin
-	retryClient.RetryWaitMax = waitMax
-	retryClient.Logger = nil
-	retryClient.CheckRetry = func(ctx context.Context, resp *http.Response, err error) (bool, error) {
-		if ctx.Err() != nil {
-			return false, ctx.Err()
-		}
-		return err == nil && resp != nil && resp.StatusCode == http.StatusNotFound, nil
-	}
-	// Hand the last response back instead of a "giving up after N attempts" error,
-	// so an exhausted 404 keeps flowing through decodeResponse as a RestError.
-	retryClient.ErrorHandler = retryablehttp.PassthroughErrorHandler
-
-	req, err := retryablehttp.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+path, rawBody)
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.token)
-
-	resp, err := retryClient.Do(req)
-	if err != nil {
-		if resp != nil {
-			resp.Body.Close() //nolint:errcheck,gosec // Body.Close() error is acceptable
-		}
-		return fmt.Errorf("failed to execute request: %w", err)
-	}
-	defer resp.Body.Close() //nolint:errcheck // deferred Body.Close() error is acceptable
-
-	return decodeResponse(resp, response)
+	retryClient := c.newRetryClient(retryMax, waitMin, waitMax, func(resp *http.Response) bool {
+		return resp.StatusCode == http.StatusNotFound || shouldRetryUnavailable(http.MethodPost, resp)
+	})
+	_, err := c.send(ctx, retryClient, http.MethodPost, path, body, response) //nolint:bodyclose // closed in send()
+	return err
 }
 
 // Get executes a GET request.

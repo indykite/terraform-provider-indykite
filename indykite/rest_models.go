@@ -272,7 +272,7 @@ type TokenIntrospectResponse struct {
 	CreateTime    time.Time                        `json:"create_time"`
 	UpdateTime    time.Time                        `json:"update_time"`
 	CreatedBy     string                           `json:"created_by"`
-	UpdatedBy     string                           `json:"update_by"`
+	UpdatedBy     string                           `json:"updated_by"`
 	ID            string                           `json:"id"`
 	Name          string                           `json:"name"`
 	DisplayName   string                           `json:"display_name,omitempty"`

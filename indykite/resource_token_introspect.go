@@ -97,9 +97,10 @@ func resourceTokenIntrospect() *schema.Resource {
 						Description:  "Issuer is used to exact match based on `iss` claim in JWT.",
 					},
 					tokenIntrospectAudienceKey: {
-						Type:        schema.TypeString,
-						Required:    true,
-						Description: "Audience is used to exact match based on `aud` claim in JWT.",
+						Type:         schema.TypeString,
+						Required:     true,
+						ValidateFunc: validateCharLength(1, 150),
+						Description:  "Audience is used to exact match based on `aud` claim in JWT, up to 150 characters.",
 					},
 				}},
 			}, tokenIntrospectJWTKey, matcherOneOf),
@@ -179,7 +180,7 @@ func resourceTokenIntrospect() *schema.Resource {
 				ValidateDiagFunc: validation.AllDiag(
 					validation.MapKeyLenBetween(2, 256),
 					validation.MapKeyMatch(tokenIntrospectIkgPropertyRegex, "invalid IKG property name"),
-					validation.MapValueLenBetween(1, 256),
+					validateMapValueCharLength(1, 200),
 				),
 				Elem: &schema.Schema{Type: schema.TypeString},
 			},
@@ -187,7 +188,7 @@ func resourceTokenIntrospect() *schema.Resource {
 				Type:         schema.TypeString,
 				Description:  `Sub claim is used to match DigitalTwin with external_id. If not specified, standard 'sub' claim will be used. Either 'sub' or specified claim will then also be mapped to 'external_id' claim.`,
 				Optional:     true,
-				ValidateFunc: validation.StringLenBetween(1, 256),
+				ValidateFunc: validateCharLength(1, 200),
 			},
 			tokenIntrospectIKGNodeTypeKey: {
 				Type:        schema.TypeString,
