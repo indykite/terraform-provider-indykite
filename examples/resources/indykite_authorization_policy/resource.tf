@@ -1,3 +1,10 @@
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_application_space" "my_space" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-project"
+  region      = "us-east1"
+}
+
 # Example - basic authorization policy (still valid)
 resource "indykite_authorization_policy" "policy_drive_car" {
   name         = "terraform-pipeline-policy-drive-car"
@@ -18,7 +25,7 @@ resource "indykite_authorization_policy" "policy_drive_car" {
       cypher = "MATCH (subject:Person)-[:OWNS]->(resource:Car)"
     }
   })
-  project_id = "AppSpaceID"
+  project_id = "gid:ZXhhbXBsZS1wcm9qZWN0"
   status     = "active"
 }
 
@@ -202,7 +209,7 @@ resource "indykite_authorization_policy" "policy_for_ciq" {
       "relationships" : ["<string>"]
     },
   })
-  project_id = indykite_application_space.appspace.id
+  project_id = indykite_application_space.my_space.id
   status     = "active"
 }
 

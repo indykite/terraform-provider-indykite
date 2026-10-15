@@ -126,25 +126,77 @@ CDC node events carry the node labels as keys label0, label1, ... in alphabetica
 ## Example Usage
 
 ```terraform
-# Note: This file uses variables for sensitive values like passwords and access keys.
-# Define these variables in your terraform.tfvars or pass them via environment variables:
-# - var.kafka_password_01
-# - var.kafka_password_02
-# - var.azure_event_grid_access_key
-# - var.azure_service_bus_connection_string
-# - var.kafka_password
-# - var.kafka_prod_password
-# - var.azure_grid_access_key
-# - var.azure_bus_connection_string
-# - var.kafka_audit_password
-# - var.kafka_capture_password
+# Sensitive values like passwords and access keys come from variables; set them in
+# terraform.tfvars or through TF_VAR_* environment variables.
+variable "kafka_password_01" {
+  type      = string
+  sensitive = true
+}
+
+variable "kafka_password_02" {
+  type      = string
+  sensitive = true
+}
+
+variable "azure_event_grid_access_key" {
+  type      = string
+  sensitive = true
+}
+
+variable "azure_service_bus_connection_string" {
+  type      = string
+  sensitive = true
+}
+
+variable "kafka_password" {
+  type      = string
+  sensitive = true
+}
+
+variable "kafka_prod_password" {
+  type      = string
+  sensitive = true
+}
+
+variable "azure_grid_access_key" {
+  type      = string
+  sensitive = true
+}
+
+variable "azure_bus_connection_string" {
+  type      = string
+  sensitive = true
+}
+
+variable "kafka_audit_password" {
+  type      = string
+  sensitive = true
+}
+
+variable "kafka_capture_password" {
+  type      = string
+  sensitive = true
+}
+
+variable "gcp_pubsub_credentials_json" {
+  type      = string
+  sensitive = true
+}
+
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_application_space" "my_space" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-project"
+  region      = "us-east1"
+}
+
 
 # Original example - comprehensive event sink with all provider types (still valid)
 resource "indykite_event_sink" "create-event" {
-  name         = "terraform-event-sink-${time_static.example.unix}"
-  display_name = "Terraform event sink  ${time_static.example.unix}"
+  name         = "terraform-event-sink"
+  display_name = "Terraform event sink"
   description  = "Event sink for terraform"
-  project_id   = indykite_application_space.appspace.id
+  project_id   = indykite_application_space.my_space.id
   providers {
     provider_name = "kafka-provider-01"
     kafka {
@@ -185,7 +237,6 @@ resource "indykite_event_sink" "create-event" {
       event_type = "indykite.audit.config.create"
     }
     route_display_name = "route-display-name"
-    route_id           = "route-id"
   }
   routes {
     provider_id     = "kafka-provider-02"
@@ -262,7 +313,6 @@ resource "indykite_event_sink" "kafka_with_ref" {
     provider_id        = "kafka-prod"
     stop_processing    = true
     route_display_name = "Production Events Route"
-    route_id           = "prod-route-01"
     keys_values_filter {
       event_type = "indykite.audit.*"
     }
@@ -362,7 +412,6 @@ resource "indykite_event_sink" "multi_route" {
     provider_id        = "kafka-audit"
     stop_processing    = false
     route_display_name = "Audit Events"
-    route_id           = "audit-route"
     keys_values_filter {
       event_type = "indykite.audit.config.*"
     }
@@ -371,7 +420,6 @@ resource "indykite_event_sink" "multi_route" {
     provider_id        = "kafka-capture"
     stop_processing    = true
     route_display_name = "Capture Events with Label"
-    route_id           = "capture-route"
     keys_values_filter {
       key_value_pairs {
         key   = "captureLabel"
@@ -400,8 +448,8 @@ resource "indykite_event_sink" "multi_route" {
 
 ### Optional
 
-- `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
-- `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
+- `description` (String) Your own description of the resource, between 2 and 65000 characters.
+- `display_name` (String) The display name for the instance, between 2 and 254 characters. Can be updated without creating a new resource.
 - `include_cdc_events` (Boolean) When true, CDC (Change Data Capture) events will be emitted to this event sink. When false or unset, CDC events will not be emitted. Defaults to false for backward compatibility.
 - `location` (String, Deprecated) Identifier of Location, where to create resource. Deprecated, use project_id instead
 - `project_id` (String) Identifier of Project, where to create resource
@@ -468,7 +516,7 @@ Read-Only:
 
 Required:
 
-- `brokers` (List of String) Brokers specify Kafka destinations to connect to.
+- `brokers` (List of String) Brokers specify Kafka destinations to connect to, each at least 8 characters.
 - `password` (String, Sensitive)
 - `topic` (String)
 - `username` (String)

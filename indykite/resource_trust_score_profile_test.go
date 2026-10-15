@@ -303,7 +303,7 @@ var _ = Describe("Resource TrustScoreProfile", func() {
 			createTime := time.Now()
 			updateTime := time.Now()
 
-			mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				switch {
 				case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/trust-score-profiles"):
 					resp := indykite.TrustScoreProfileResponse{
@@ -350,7 +350,6 @@ var _ = Describe("Resource TrustScoreProfile", func() {
 					w.WriteHeader(http.StatusNotFound)
 				}
 			}))
-			defer mockServer.Close()
 
 			cfgFunc := provider.ConfigureContextFunc
 			provider.ConfigureContextFunc = func(
@@ -405,7 +404,7 @@ var _ = Describe("Resource TrustScoreProfile", func() {
 			createTime := time.Now()
 			updateTime := time.Now()
 
-			mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				switch {
 				case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/trust-score-profiles"):
 					resp := indykite.TrustScoreProfileResponse{
@@ -462,7 +461,6 @@ var _ = Describe("Resource TrustScoreProfile", func() {
 					w.WriteHeader(http.StatusNotFound)
 				}
 			}))
-			defer mockServer.Close()
 
 			cfgFunc := provider.ConfigureContextFunc
 			provider.ConfigureContextFunc = func(
@@ -505,6 +503,85 @@ var _ = Describe("Resource TrustScoreProfile", func() {
 					},
 				},
 			})
+		})
+	})
+
+	It("Test last run fields are read from the API", func() {
+		fake := newFakeConfigAPI("/trust-score-profiles", sampleID, nil)
+		mockServer = fake.Server
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		tfConfig := `resource "indykite_trust_score_profile" "development" {
+			project_id = "` + appSpaceID + `"
+			name = "run-profile"
+			node_classification = "Person"
+			schedule = "UPDATE_FREQUENCY_DAILY"
+			dimension {
+				name = "NAME_FRESHNESS"
+				weight = 0.5
+			}
+		}`
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
+			},
+			Steps: []resource.TestStep{
+				{
+					Config: tfConfig,
+					Check: resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttr(resourceName, "last_run_id", ""),
+						resource.TestCheckResourceAttr(resourceName, "dimensions_execution_times.#", "0"),
+					),
+				},
+				{
+					// The API runs the profile; the next refresh reads the run without any diff. The
+					// windows come back as a map, so they are sorted and use the Terraform dimension names.
+					PreConfig: func() {
+						fake.update(func(stored map[string]any) {
+							stored["last_run_id"] = "run-1"
+							stored["last_run_start_time"] = "2026-10-15T08:00:00Z"
+							stored["last_run_end_time"] = "2026-10-15T08:05:00Z"
+							stored["dimensions_execution_times"] = map[string]any{
+								"VERIFICATION": map[string]any{
+									"execution_start_time": "2026-10-15T08:03:00Z",
+									"execution_end_time":   "2026-10-15T08:05:00Z",
+								},
+								"FRESHNESS": map[string]any{
+									"execution_start_time": "2026-10-15T08:00:00Z",
+									"execution_end_time":   "2026-10-15T08:02:00Z",
+								},
+								"ORIGIN": nil,
+							}
+						})
+					},
+					Config: tfConfig,
+					Check: resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttr(resourceName, "last_run_id", "run-1"),
+						resource.TestCheckResourceAttr(resourceName, "last_run_start_time", "2026-10-15T08:00:00Z"),
+						resource.TestCheckResourceAttr(resourceName, "last_run_end_time", "2026-10-15T08:05:00Z"),
+						resource.TestCheckResourceAttr(resourceName, "dimensions_execution_times.#", "3"),
+						resource.TestCheckResourceAttr(resourceName,
+							"dimensions_execution_times.0.dimension", "NAME_FRESHNESS"),
+						resource.TestCheckResourceAttr(resourceName,
+							"dimensions_execution_times.0.execution_end_time", "2026-10-15T08:02:00Z"),
+						resource.TestCheckResourceAttr(resourceName,
+							"dimensions_execution_times.1.dimension", "NAME_ORIGIN"),
+						resource.TestCheckResourceAttr(resourceName,
+							"dimensions_execution_times.1.execution_start_time", ""),
+						resource.TestCheckResourceAttr(resourceName,
+							"dimensions_execution_times.2.dimension", "NAME_VERIFICATION"),
+						resource.TestCheckResourceAttr(resourceName,
+							"dimensions_execution_times.2.execution_start_time", "2026-10-15T08:03:00Z"),
+					),
+				},
+			},
 		})
 	})
 })

@@ -1,9 +1,16 @@
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_application_space" "my_space" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-project"
+  region      = "us-east1"
+}
+
 # Example - JWT with online validation
 resource "indykite_token_introspect" "token1" {
   name         = "terraform-token-introspect"
   display_name = "Terraform token introspect"
   description  = "Token introspect for terraform pipeline"
-  project_id   = "AppSpaceID"
+  project_id   = "gid:ZXhhbXBsZS1wcm9qZWN0"
   jwt_matcher {
     issuer   = "https://example.com"
     audience = "audience-id"
@@ -24,7 +31,7 @@ resource "indykite_token_introspect" "token2" {
   name         = "terraform-token-introspect-offline"
   display_name = "Terraform token introspect offline"
   description  = "Token introspect for terraform pipeline with offline validation"
-  project_id   = "AppSpaceID"
+  project_id   = "gid:ZXhhbXBsZS1wcm9qZWN0"
   jwt_matcher {
     issuer   = "https://example.com"
     audience = "audience-id"
@@ -104,7 +111,7 @@ resource "indykite_token_introspect" "offline_with_ref" {
         "kid" : "key-1",
         "use" : "sig",
         "alg" : "RS256",
-        "n" : "--public-key-modulus-here--",
+        "n" : "sXchB8A4CkaR3DjDdFUXAYVHx_dWx6gT6tEFc6aOaZ5CPAsqJ8lmwczE6xT74j_xoz1PZtKh6q6tRxX4Mk-GB4KFu0YQH1-WN6uEhEcE0fMtsymrZ1OlN3GhxUAt93Q6zpg3ZD9P4ZtXWr7g6OpkqKAv12v2YKvHtJmEznV0OZPZQj5POj1U0EJp0B98VpTmRtT1K2fKjddAlDq3t35u5xPdkL9l9yLeaMLqGw3tNhxG8amj_Mlq3zEy_QwOmR6OKO5mIF0kCshRsfKj8cMyOrUdxzqaZGuv9KYkgA3ulFjHbInCQwFZ8Z5h7bnQZEkSz94Cz3C4X8hGgSyOShLMuWw",
         "kty" : "RSA"
       })
     ]

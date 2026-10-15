@@ -40,7 +40,7 @@ func dataSourceAppAgent() *schema.Resource {
 			appSpaceIDKey:     convertToOptional(appSpaceIDSchema()),
 			displayNameKey:    displayNameSchema(),
 			descriptionKey:    descriptionSchema(),
-			apiPermissionsKey: apiPermissionsSchema(),
+			apiPermissionsKey: setOptionalComputed(apiPermissionsSchema()),
 			createTimeKey:     createTimeSchema(),
 			updateTimeKey:     updateTimeSchema(),
 		},

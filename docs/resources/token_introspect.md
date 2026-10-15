@@ -19,12 +19,19 @@ Token introspect configuration adds support for 3rd party tokens to identify the
 ## Example Usage
 
 ```terraform
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_application_space" "my_space" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-project"
+  region      = "us-east1"
+}
+
 # Example - JWT with online validation
 resource "indykite_token_introspect" "token1" {
   name         = "terraform-token-introspect"
   display_name = "Terraform token introspect"
   description  = "Token introspect for terraform pipeline"
-  project_id   = "AppSpaceID"
+  project_id   = "gid:ZXhhbXBsZS1wcm9qZWN0"
   jwt_matcher {
     issuer   = "https://example.com"
     audience = "audience-id"
@@ -45,7 +52,7 @@ resource "indykite_token_introspect" "token2" {
   name         = "terraform-token-introspect-offline"
   display_name = "Terraform token introspect offline"
   description  = "Token introspect for terraform pipeline with offline validation"
-  project_id   = "AppSpaceID"
+  project_id   = "gid:ZXhhbXBsZS1wcm9qZWN0"
   jwt_matcher {
     issuer   = "https://example.com"
     audience = "audience-id"
@@ -125,7 +132,7 @@ resource "indykite_token_introspect" "offline_with_ref" {
         "kid" : "key-1",
         "use" : "sig",
         "alg" : "RS256",
-        "n" : "--public-key-modulus-here--",
+        "n" : "sXchB8A4CkaR3DjDdFUXAYVHx_dWx6gT6tEFc6aOaZ5CPAsqJ8lmwczE6xT74j_xoz1PZtKh6q6tRxX4Mk-GB4KFu0YQH1-WN6uEhEcE0fMtsymrZ1OlN3GhxUAt93Q6zpg3ZD9P4ZtXWr7g6OpkqKAv12v2YKvHtJmEznV0OZPZQj5POj1U0EJp0B98VpTmRtT1K2fKjddAlDq3t35u5xPdkL9l9yLeaMLqGw3tNhxG8amj_Mlq3zEy_QwOmR6OKO5mIF0kCshRsfKj8cMyOrUdxzqaZGuv9KYkgA3ulFjHbInCQwFZ8Z5h7bnQZEkSz94Cz3C4X8hGgSyOShLMuWw",
         "kty" : "RSA"
       })
     ]
@@ -182,13 +189,13 @@ resource "indykite_token_introspect" "custom_claims" {
 
     Key specifies the new name and also the name of the property in IKG.
     Value specifies which claim to map and how.
-- `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
-- `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
+- `description` (String) Your own description of the resource, between 2 and 65000 characters.
+- `display_name` (String) The display name for the instance, between 2 and 254 characters. Can be updated without creating a new resource.
 - `jwt_matcher` (Block List, Max: 1) Specifies all attributes required to match a JWT token. (see [below for nested schema](#nestedblock--jwt_matcher))
 - `location` (String, Deprecated) Identifier of Location, where to create resource. Deprecated, use project_id instead
 - `offline_validation` (Block List, Max: 1) Offline validation works only with JWT and checks token locally. (see [below for nested schema](#nestedblock--offline_validation))
 - `online_validation` (Block List, Max: 1) Online validation works with both JWT and Opaque tokens. It will call userinfo endpoint to validate token and fetch user claims. (see [below for nested schema](#nestedblock--online_validation))
-- `opaque_matcher` (Block List, Max: 1) Specify opaque token matcher. Currently we support only 1 opaque matcher per application space. (see [below for nested schema](#nestedblock--opaque_matcher))
+- `opaque_matcher` (Block List, Max: 1) Specify opaque token matcher. A project can have several opaque matchers, each with a different hint. (see [below for nested schema](#nestedblock--opaque_matcher))
 - `perform_upsert` (Boolean) Perform Upsert specify, if we should create and/or update DigitalTwin in IKG if it doesn't exist with.
 	In future this will perform upsert also on properties that are derived from token.
 - `project_id` (String) Identifier of Project, where to create resource
@@ -210,7 +217,7 @@ resource "indykite_token_introspect" "custom_claims" {
 
 Required:
 
-- `audience` (String) Audience is used to exact match based on `aud` claim in JWT.
+- `audience` (String) Audience is used to exact match based on `aud` claim in JWT, up to 150 characters.
 - `issuer` (String) Issuer is used to exact match based on `iss` claim in JWT.
 
 

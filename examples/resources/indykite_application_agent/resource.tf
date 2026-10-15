@@ -1,15 +1,29 @@
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_application_space" "my_space" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-project"
+  region      = "us-east1"
+}
+
+resource "indykite_application" "my_application" {
+  app_space_id = indykite_application_space.my_space.id
+  name         = "my-application"
+}
+
 # Example - basic application agent (still valid)
 resource "indykite_application_agent" "agent" {
-  application_id = "ApplicationGID"
-  name           = "terraform-agent"
-  display_name   = "Terraform agent"
-  description    = "Agent for terraform configuration"
+  application_id  = "gid:ZXhhbXBsZS1hcHBsaWNhdGlvbg"
+  name            = "terraform-agent"
+  display_name    = "Terraform agent"
+  description     = "Agent for terraform configuration"
+  api_permissions = ["Authorization"]
 }
 
 # Example 1: Minimal configuration with hardcoded application_id
 resource "indykite_application_agent" "minimal_agent" {
-  application_id = "gid:AAAABGluZHlraURlgAACDwAAAAA"
-  name           = "minimal-agent"
+  application_id  = "gid:AAAABGluZHlraURlgAACDwAAAAA"
+  name            = "minimal-agent"
+  api_permissions = ["Authorization"]
 }
 
 # Example 2: Full configuration with all optional fields

@@ -1,9 +1,16 @@
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_application_space" "my_space" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-project"
+  region      = "us-east1"
+}
+
 # Example - GET resolver (still valid)
 resource "indykite_external_data_resolver" "get-resolver" {
   name         = "terraform-resolver-get"
   display_name = "Terraform external data resolver get"
   description  = "External data resolver for terraform pipeline"
-  project_id   = "AppSpaceID"
+  project_id   = "gid:ZXhhbXBsZS1wcm9qZWN0"
 
   url    = "https://www.example.com/sourceresolver?data=xxx"
   method = "GET"
@@ -21,7 +28,7 @@ resource "indykite_external_data_resolver" "post-resolver" {
   name         = "terraform-resolver-post"
   display_name = "Terraform external data resolver post"
   description  = "External data resolver for terraform pipeline"
-  project_id   = "AppSpaceID"
+  project_id   = "gid:ZXhhbXBsZS1wcm9qZWN0"
 
   url    = "https://example.com/sourceresolver2/where-data"
   method = "POST"

@@ -1,3 +1,8 @@
+# Prerequisites: resources referenced by the examples below.
+data "indykite_customer" "my_customer" {
+  name = "my-organization"
+}
+
 # Example 1: List application spaces using customer_id
 data "indykite_application_spaces" "spaces_by_customer_id" {
   customer_id = "gid:AAAAAWluZHlraURlgAAAAAAAAA8"

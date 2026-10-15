@@ -1,10 +1,20 @@
-# Note: This file uses variables for sensitive values.
-# Define var.db_password in your terraform.tfvars or pass it via environment variables.
+# The database password comes from a variable; set it in terraform.tfvars or through
+# the TF_VAR_db_password environment variable.
+variable "db_password" {
+  type      = string
+  sensitive = true
+}
+
+# Prerequisites: resources referenced by the examples below.
+data "indykite_customer" "my_customer" {
+  name = "my-organization"
+}
+
 
 # Original example - using customer_id (still valid)
 resource "indykite_application_space" "appspace" {
-  customer_id    = "CustomerGID"
-  name           = "AppSpaceName"
+  customer_id    = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name           = "my-project"
   display_name   = "Terraform appspace"
   description    = "Application space for terraform configuration"
   region         = "us-east1"

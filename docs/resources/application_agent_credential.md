@@ -13,11 +13,29 @@ App agent credentials is a JSON configuration file that contains a secret key or
 ## Example Usage
 
 ```terraform
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_application_space" "my_space" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-project"
+  region      = "us-east1"
+}
+
+resource "indykite_application" "my_application" {
+  app_space_id = indykite_application_space.my_space.id
+  name         = "my-application"
+}
+
+resource "indykite_application_agent" "my_agent" {
+  application_id  = indykite_application.my_application.id
+  name            = "my-agent"
+  api_permissions = ["Authorization"]
+}
+
 # Example - basic credential (still valid)
 resource "indykite_application_agent_credential" "with_public" {
-  app_agent_id = "ApplicationAgentGID"
+  app_agent_id = "gid:ZXhhbXBsZS1hcHBsaWNhdGlvbi1hZ2VudA"
   display_name = "Key with custom private-public key pair"
-  expire_time  = "2026-12-31T12:34:56-01:00"
+  expire_time  = "2030-12-31T12:34:56-01:00"
 }
 
 # Example 1: Minimal configuration with hardcoded app_agent_id
@@ -46,13 +64,6 @@ resource "indykite_application_agent_credential" "long_lived_credential" {
   expire_time  = "2030-01-01T00:00:00Z"
 }
 
-# Example 5: Credential for agent created with app_space_id
-resource "indykite_application_agent_credential" "credential_for_new_agent" {
-  app_agent_id = indykite_application_agent.agent_from_new_app.id
-  display_name = "Credential for New Agent"
-  expire_time  = "2028-06-30T12:00:00Z"
-}
-
 # Note: The credential's kid (key ID) and other details are automatically
 # generated and can be referenced in outputs:
 #
@@ -76,8 +87,8 @@ resource "indykite_application_agent_credential" "credential_for_new_agent" {
 
 - `display_name` (String)
 - `expire_time` (String) Optional date-time when credentials are going to expire
-- `public_key_jwk` (String, Deprecated) Provide your onw Public key in JWK format, otherwise new pair is generated
-- `public_key_pem` (String, Deprecated) Provide your onw Public key in PEM format, otherwise new pair is generated
+- `public_key_jwk` (String, Deprecated) Has no effect: the API always generates a new key pair. Kept for compatibility.
+- `public_key_pem` (String, Deprecated) Has no effect: the API always generates a new key pair. Kept for compatibility.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only

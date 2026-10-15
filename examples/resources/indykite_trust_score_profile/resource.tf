@@ -1,9 +1,16 @@
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_application_space" "my_space" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-project"
+  region      = "us-east1"
+}
+
 # Example - trust score for Person
 resource "indykite_trust_score_profile" "trust-score" {
   name                = "terraform-trust-score"
   display_name        = "Terraform trust score profile"
   description         = "Trust score profile for terraform pipeline"
-  project_id          = "AppSpaceID"
+  project_id          = "gid:ZXhhbXBsZS1wcm9qZWN0"
   node_classification = "Person"
   dimension {
     name   = "NAME_VERIFICATION"
@@ -21,7 +28,7 @@ resource "indykite_trust_score_profile" "trust-score2" {
   name                = "terraform-trust-score2"
   display_name        = "Terraform trust score profile2"
   description         = "Trust score profile for terraform pipeline"
-  project_id          = "AppSpaceID"
+  project_id          = "gid:ZXhhbXBsZS1wcm9qZWN0"
   node_classification = "Resource"
   dimension {
     name   = "NAME_COMPLETENESS"

@@ -13,9 +13,16 @@ An application represents the center of the solution, and is also the legal enti
 ## Example Usage
 
 ```terraform
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_application_space" "my_space" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-project"
+  region      = "us-east1"
+}
+
 # Example - using app_space_id (still valid)
 resource "indykite_application" "application" {
-  app_space_id = "AppSpaceGID"
+  app_space_id = "gid:ZXhhbXBsZS1wcm9qZWN0"
   name         = "terraform-application"
   display_name = "Terraform application"
   description  = "Application for terraform configuration"
@@ -49,6 +56,7 @@ resource "indykite_application" "app_from_space_old" {
 
 # Example 7: With deletion protection enabled
 resource "indykite_application" "protected_application" {
+  app_space_id        = indykite_application_space.my_space.id
   name                = "protected-application"
   display_name        = "Protected Application"
   description         = "Application with deletion protection enabled"
@@ -67,8 +75,8 @@ resource "indykite_application" "protected_application" {
 ### Optional
 
 - `deletion_protection` (Boolean) Whether or not to allow Terraform to destroy the instance. Unless this field is set to false in Terraform state, a terraform destroy or terraform apply that would delete the instance will fail.
-- `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
-- `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
+- `description` (String) Your own description of the resource, between 2 and 65000 characters.
+- `display_name` (String) The display name for the instance, between 2 and 254 characters. Can be updated without creating a new resource.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only

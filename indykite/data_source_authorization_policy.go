@@ -16,6 +16,7 @@ package indykite
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
 func dataSourceAuthorizationPolicyList() *schema.Resource {
@@ -36,8 +37,16 @@ func dataSourceAuthorizationPolicyList() *schema.Resource {
 		listAttrName:    "authorization_policies",
 		fullFetch:       true,
 		withFilter:      true,
-		description:     "List Authorization Policies in the given Application Space, filtered by exact name match.",
-		entrySchema:     entrySchema,
+		queryArgs: map[string]*schema.Schema{
+			"type": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"kbac", "ciq"}, false),
+				Description:  "Only list policies of this type: `kbac` or `ciq`. All policies are listed when omitted.",
+			},
+		},
+		description: "List Authorization Policies in the given Application Space, filtered by exact name match.",
+		entrySchema: entrySchema,
 		flatten: func(policy *AuthorizationPolicyResponse) map[string]any {
 			return map[string]any{
 				"id":               policy.ID,

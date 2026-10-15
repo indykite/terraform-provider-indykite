@@ -1471,6 +1471,64 @@ var _ = Describe("Resource EventSink", func() {
 			},
 		})
 	})
+
+	It("Test provider last_error is read from the API", func() {
+		fake := newFakeConfigAPI("/event-sinks", sampleID, nil)
+		mockServer = fake.Server
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		tfConfig := `resource "indykite_event_sink" "development" {
+			project_id = "` + appSpaceID + `"
+			name = "error-sink"
+			providers {
+				provider_name = "kafka-a"
+				kafka {
+					brokers = ["kafka-a.example.com:9092"]
+					topic = "topic-a"
+					username = "user-a"
+					password = "password-a"
+				}
+			}
+			routes {
+				provider_id = "kafka-a"
+				keys_values_filter {
+					event_type = "indykite.audit.config.*"
+				}
+			}
+		}`
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
+			},
+			Steps: []resource.TestStep{
+				{
+					Config: tfConfig,
+					Check:  resource.TestCheckResourceAttr(resourceName, "providers.0.kafka.0.last_error", ""),
+				},
+				{
+					// A delivery fails; the next refresh reads the error without any diff.
+					PreConfig: func() {
+						fake.update(func(stored map[string]any) {
+							providers, _ := stored["providers"].(map[string]any)
+							provider, _ := providers["kafka-a"].(map[string]any)
+							kafka, _ := provider["kafka"].(map[string]any)
+							kafka["last_error"] = "dial tcp: lookup kafka-a.example.com: no such host"
+						})
+					},
+					Config: tfConfig,
+					Check: resource.TestCheckResourceAttr(resourceName, "providers.0.kafka.0.last_error",
+						"dial tcp: lookup kafka-a.example.com: no such host"),
+				},
+			},
+		})
+	})
 })
 
 // eventSinkAPIReadResponse builds an event sink read response the way the Config API does:

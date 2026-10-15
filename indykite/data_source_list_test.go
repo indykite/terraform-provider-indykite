@@ -17,15 +17,19 @@ package indykite_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
 	"github.com/indykite/terraform-provider-indykite/indykite"
 
@@ -552,6 +556,84 @@ var _ = Describe("DataSource config collection lists", func() {
 						filter = ["acme"]
 					}`,
 					ExpectError: regexp.MustCompile("Communication with IndyKite failed"),
+				},
+			},
+		})
+	})
+
+	It("Test indykite_authorization_policies type filter", func() {
+		var (
+			mu      sync.Mutex
+			queries []url.Values
+		)
+		policy := func(name string) map[string]any {
+			return map[string]any{"id": sampleID, "name": name, "project_id": appSpaceID, "status": "ACTIVE"}
+		}
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			mu.Lock()
+			queries = append(queries, r.URL.Query())
+			mu.Unlock()
+			// Like the API, the type parameter narrows the list.
+			data := []any{policy("kbac-policy"), policy("ciq-policy")}
+			switch r.URL.Query().Get("type") {
+			case "kbac":
+				data = data[:1]
+			case "ciq":
+				data = data[1:]
+			}
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]any{"data": data})
+		}))
+		configureTestClient()
+
+		configDef := `data "indykite_authorization_policies" "test" {
+			app_space_id = "` + appSpaceID + `"
+			filter = ["kbac-policy", "ciq-policy"]
+			%s
+		}`
+		lastType := func(expected string) resource.TestCheckFunc {
+			return func(_ *terraform.State) error {
+				mu.Lock()
+				defer mu.Unlock()
+				last := queries[len(queries)-1]
+				if got := last.Get("type"); got != expected || last.Has("type") != (expected != "") {
+					return fmt.Errorf("expected type query %q, got %q", expected, got)
+				}
+				return nil
+			}
+		}
+		const resName = "data.indykite_authorization_policies.test"
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
+			},
+			Steps: []resource.TestStep{
+				{
+					Config:      fmt.Sprintf(configDef, `type = "KBAC"`),
+					ExpectError: regexp.MustCompile(`expected type to be one of \["kbac" "ciq"\], got KBAC`),
+				},
+				{
+					Config: fmt.Sprintf(configDef, ""),
+					Check: resource.ComposeTestCheckFunc(
+						lastType(""),
+						resource.TestCheckResourceAttr(resName, "authorization_policies.#", "2"),
+					),
+				},
+				{
+					Config: fmt.Sprintf(configDef, `type = "kbac"`),
+					Check: resource.ComposeTestCheckFunc(
+						lastType("kbac"),
+						resource.TestCheckResourceAttr(resName, "authorization_policies.#", "1"),
+						resource.TestCheckResourceAttr(resName, "authorization_policies.0.name", "kbac-policy"),
+					),
+				},
+				{
+					Config: fmt.Sprintf(configDef, `type = "ciq"`),
+					Check: resource.ComposeTestCheckFunc(
+						lastType("ciq"),
+						resource.TestCheckResourceAttr(resName, "authorization_policies.0.name", "ciq-policy"),
+					),
 				},
 			},
 		})

@@ -457,6 +457,80 @@ var _ = Describe("Resource EntityMatchingPipeline", func() {
 			},
 		})
 	})
+
+	It("Test read-only status fields are read from the API", func() {
+		fake := newFakeConfigAPI("/entity-matching-pipelines", sampleID, nil)
+		mockServer = fake.Server
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		tfConfig := `resource "indykite_entity_matching_pipeline" "development" {
+			project_id = "` + appSpaceID + `"
+			name = "status-pipeline"
+			source_node_filter = ["Person"]
+			target_node_filter = ["Person"]
+		}`
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
+			},
+			Steps: []resource.TestStep{
+				{
+					Config: tfConfig,
+					Check: resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttr(resourceName, "entity_matching_status", ""),
+						resource.TestCheckResourceAttr(resourceName, "matched_entities", "0"),
+						resource.TestCheckResourceAttr(resourceName, "property_mappings.#", "0"),
+					),
+				},
+				{
+					// The API completes a run; the next refresh reads its results without any diff.
+					PreConfig: func() {
+						fake.update(func(stored map[string]any) {
+							stored["property_mapping_status"] = "SUCCESS"
+							stored["property_mapping_message"] = ""
+							stored["entity_matching_status"] = "SUCCESS"
+							stored["entity_matching_message"] = "matched"
+							stored["last_run_time"] = "2026-10-15T08:00:00Z"
+							stored["matched_entities"] = 3
+							stored["report_url"] = "https://example.com/report.csv"
+							stored["report_type"] = "csv"
+							stored["property_mappings"] = []any{map[string]any{
+								"source_node_type":        "Person",
+								"source_node_property":    "email",
+								"target_node_type":        "Person",
+								"target_node_property":    "mail",
+								"similarity_score_cutoff": 0.85,
+							}}
+						})
+					},
+					Config: tfConfig,
+					Check: resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttr(resourceName, "property_mapping_status", "SUCCESS"),
+						resource.TestCheckResourceAttr(resourceName, "entity_matching_status", "SUCCESS"),
+						resource.TestCheckResourceAttr(resourceName, "entity_matching_message", "matched"),
+						resource.TestCheckResourceAttr(resourceName, "last_run_time", "2026-10-15T08:00:00Z"),
+						resource.TestCheckResourceAttr(resourceName, "matched_entities", "3"),
+						resource.TestCheckResourceAttr(resourceName, "report_url", "https://example.com/report.csv"),
+						resource.TestCheckResourceAttr(resourceName, "report_type", "csv"),
+						resource.TestCheckResourceAttr(resourceName, "property_mappings.#", "1"),
+						resource.TestCheckResourceAttr(resourceName,
+							"property_mappings.0.source_node_property", "email"),
+						resource.TestCheckResourceAttr(resourceName,
+							"property_mappings.0.target_node_property", "mail"),
+						resource.TestCheckResourceAttr(resourceName,
+							"property_mappings.0.similarity_score_cutoff", "0.85"),
+					),
+				},
+			},
+		})
+	})
 })
 
 //nolint:unparam // Test helper function designed to be reusable

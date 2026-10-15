@@ -13,18 +13,32 @@ Application agents are the profiles that contain the credentials used by applica
 ## Example Usage
 
 ```terraform
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_application_space" "my_space" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-project"
+  region      = "us-east1"
+}
+
+resource "indykite_application" "my_application" {
+  app_space_id = indykite_application_space.my_space.id
+  name         = "my-application"
+}
+
 # Example - basic application agent (still valid)
 resource "indykite_application_agent" "agent" {
-  application_id = "ApplicationGID"
-  name           = "terraform-agent"
-  display_name   = "Terraform agent"
-  description    = "Agent for terraform configuration"
+  application_id  = "gid:ZXhhbXBsZS1hcHBsaWNhdGlvbg"
+  name            = "terraform-agent"
+  display_name    = "Terraform agent"
+  description     = "Agent for terraform configuration"
+  api_permissions = ["Authorization"]
 }
 
 # Example 1: Minimal configuration with hardcoded application_id
 resource "indykite_application_agent" "minimal_agent" {
-  application_id = "gid:AAAABGluZHlraURlgAACDwAAAAA"
-  name           = "minimal-agent"
+  application_id  = "gid:AAAABGluZHlraURlgAACDwAAAAA"
+  name            = "minimal-agent"
+  api_permissions = ["Authorization"]
 }
 
 # Example 2: Full configuration with all optional fields
@@ -92,8 +106,8 @@ resource "indykite_application_agent" "protected_agent" {
 ### Optional
 
 - `deletion_protection` (Boolean) Whether or not to allow Terraform to destroy the instance. Unless this field is set to false in Terraform state, a terraform destroy or terraform apply that would delete the instance will fail.
-- `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
-- `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
+- `description` (String) Your own description of the resource, between 2 and 65000 characters.
+- `display_name` (String) The display name for the instance, between 2 and 254 characters. Can be updated without creating a new resource.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 
 ### Read-Only

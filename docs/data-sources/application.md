@@ -13,10 +13,17 @@ An application represents the center of the solution, and is also the legal enti
 ## Example Usage
 
 ```terraform
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_application_space" "my_space" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-project"
+  region      = "us-east1"
+}
+
 # Example - all parameters shown (still valid)
 data "indykite_application" "application" {
-  app_space_id = "ApplicationSpaceGID"
-  name         = "AppName"
+  app_space_id = "gid:ZXhhbXBsZS1wcm9qZWN0"
+  name         = "my-application"
 }
 
 # Example 2: Read application by application_id only
@@ -44,8 +51,8 @@ data "indykite_application" "application_by_name_ref" {
 
 - `app_space_id` (String) Identifier of Application Space
 - `application_id` (String) Identifier of Application
-- `description` (String) Your own description of the resource. Must be less than or equal to 65000 UTF-8 bytes.
-- `display_name` (String) The display name for the instance. Can be updated without creating a new resource.
+- `description` (String) Your own description of the resource, between 2 and 65000 characters.
+- `display_name` (String) The display name for the instance, between 2 and 254 characters. Can be updated without creating a new resource.
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 - `timeouts` (Block, Optional) (see [below for nested schema](#nestedblock--timeouts))
 

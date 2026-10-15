@@ -1,3 +1,34 @@
+# Prerequisites: resources referenced by the examples below.
+resource "indykite_application_space" "my_space" {
+  customer_id = "gid:ZXhhbXBsZS1vcmdhbml6YXRpb24"
+  name        = "my-project"
+  region      = "us-east1"
+}
+
+resource "indykite_application" "my_application" {
+  app_space_id = indykite_application_space.my_space.id
+  name         = "my-application"
+}
+
+resource "indykite_application_agent" "my_agent" {
+  application_id  = indykite_application.my_application.id
+  name            = "my-agent"
+  api_permissions = ["Authorization"]
+}
+
+resource "indykite_token_introspect" "my_introspect" {
+  project_id    = indykite_application_space.my_space.id
+  name          = "my-token-introspect"
+  ikg_node_type = "Person"
+  jwt_matcher {
+    issuer   = "https://issuer.example.com"
+    audience = "my-audience"
+  }
+  online_validation {
+    cache_ttl = 600
+  }
+}
+
 # Example 1: Minimal MCP Server with hardcoded IDs
 resource "indykite_mcp_server" "minimal" {
   name                = "terraform-mcp-server"

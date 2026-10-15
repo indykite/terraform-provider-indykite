@@ -16,6 +16,7 @@ package indykite
 
 import (
 	"context"
+	"net/url"
 	"strings"
 	"time"
 
@@ -28,6 +29,8 @@ import (
 // returning {"data": [...]}; entries are optionally filtered client-side by exact name match.
 type restListDataSource[T any] struct {
 	entrySchema map[string]*schema.Schema
+	// queryArgs are optional arguments sent as query parameters of the same name when set.
+	queryArgs map[string]*schema.Schema
 	// flatten converts one API response entry into a listAttrName element;
 	// its nameKey value is matched against the filter.
 	flatten func(item *T) map[string]any
@@ -65,6 +68,9 @@ func (l *restListDataSource[T]) dataSource() *schema.Resource {
 	if l.withFilter {
 		dataSchema[filterKey] = exactNameFilterSchema()
 	}
+	for name, argSchema := range l.queryArgs {
+		dataSchema[name] = argSchema
+	}
 	return &schema.Resource{
 		Description: l.description,
 		ReadContext: l.readContext,
@@ -92,10 +98,16 @@ func (l *restListDataSource[T]) readContext(ctx context.Context, data *schema.Re
 	defer cancel()
 
 	scopeID := data.Get(l.scopeKey).(string)
-	path := l.path + "?" + l.scopeQueryParam + "=" + scopeID
+	query := url.Values{l.scopeQueryParam: {scopeID}}
 	if l.fullFetch {
-		path += "&full_fetch=true"
+		query.Set("full_fetch", "true")
 	}
+	for name := range l.queryArgs {
+		if v, ok := data.Get(name).(string); ok && v != "" {
+			query.Set(name, v)
+		}
+	}
+	path := l.path + "?" + query.Encode()
 	var resp ListResponse[T]
 	err := clientCtx.GetClient().Get(ctx, path, &resp)
 	if HasFailed(&d, err) {

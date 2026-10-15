@@ -535,7 +535,7 @@ var _ = Describe("Resource ServiceAccount Import by Name", func() {
 					Config:   fmt.Sprintf(tfConfigDef, "rename-account", false),
 					PlanOnly: true,
 					Check: func(_ *terraform.State) error {
-						return convertOmegaMatcherToError(BeEmpty(), fake.putBodies)
+						return convertOmegaMatcherToError(BeEmpty(), fake.puts())
 					},
 				},
 			},
