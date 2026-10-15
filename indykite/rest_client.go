@@ -201,13 +201,13 @@ var (
 const credentialVerificationMessage = "unable to verify the credential token"
 
 // shouldRetryUnavailable reports whether a response is a 503 that may be retried. Any 503 is retried
-// for GET, PUT and DELETE, which are idempotent. A POST is retried only on the credential verification
-// failure, so a create the backend may have processed is never repeated.
+// for GET, PUT and DELETE, which are idempotent. Other methods, such as POST or PATCH, are retried only
+// on the credential verification failure, so a change the backend may have applied is never repeated.
 func shouldRetryUnavailable(method string, resp *http.Response) bool {
 	if resp == nil || resp.StatusCode != http.StatusServiceUnavailable {
 		return false
 	}
-	if method != http.MethodPost {
+	if method == http.MethodGet || method == http.MethodPut || method == http.MethodDelete {
 		return true
 	}
 	body, err := io.ReadAll(resp.Body)

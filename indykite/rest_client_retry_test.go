@@ -136,6 +136,22 @@ var _ = Describe("REST client retries on 503", func() {
 		Expect(server.attempts()).To(HaveLen(1))
 	})
 
+	It("does not retry a PATCH on any other 503", func() {
+		server = newScriptedServer(unavailable, ok)
+		_, err := server.client().Do(context.Background(), http.MethodPatch,
+			"/projects/gid:x", map[string]any{"description": "d"}, nil)
+		Expect(indykite.IsServiceError(err)).To(BeTrue(), "error: %v", err)
+		Expect(server.attempts()).To(HaveLen(1))
+	})
+
+	It("retries a PATCH on the credential verification 503", func() {
+		server = newScriptedServer(authUnavailable, ok)
+		_, err := server.client().Do(context.Background(), http.MethodPatch,
+			"/projects/gid:x", map[string]any{"description": "d"}, nil)
+		Expect(err).To(Succeed())
+		Expect(server.attempts()).To(HaveLen(2))
+	})
+
 	DescribeTable("PostWithRetryOnNotFound",
 		func(first scriptedResponse, expectedAttempts int, expectSuccess bool) {
 			server = newScriptedServer(first, scriptedResponse{status: http.StatusCreated, body: `{"id":"gid:x"}`})
