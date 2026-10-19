@@ -1169,3 +1169,66 @@ data "indykite_mcp_servers" "list_mcp_servers" {
     }
   }
 }
+
+# -----------------------------------------------------------------------------
+# Test: Service account and credential, with the list data sources
+# -----------------------------------------------------------------------------
+
+resource "indykite_service_account" "service_account" {
+  customer_id         = data.indykite_customer.customer.id
+  name                = "automation-terraform-sa-${time_static.example.unix}"
+  display_name        = "Automation Terraform service account ${time_static.example.unix}"
+  description         = "Service account for terraform pipeline"
+  role                = "all_viewer"
+  deletion_protection = false
+  lifecycle {
+    postcondition {
+      condition     = self.role == "all_viewer"
+      error_message = "role must stay in state, although the API does not return it"
+    }
+  }
+}
+
+resource "indykite_service_account_credential" "service_account_credential" {
+  service_account_id = indykite_service_account.service_account.id
+  display_name       = "Automation Terraform service account credential ${time_static.example.unix}"
+  lifecycle {
+    postcondition {
+      condition     = self.service_account_config != "" && can(jsondecode(self.service_account_config))
+      error_message = "service_account_config must hold the credential JSON returned on create"
+    }
+    postcondition {
+      condition     = self.expire_time != ""
+      error_message = "expire_time must be filled in by the API when it is omitted"
+    }
+  }
+}
+
+data "indykite_service_accounts" "service_accounts" {
+  customer_id = data.indykite_customer.customer.id
+  filter      = [indykite_service_account.service_account.name]
+  depends_on  = [indykite_service_account.service_account]
+  lifecycle {
+    postcondition {
+      condition = (
+        length(self.service_accounts) == 1 &&
+        self.service_accounts[0].id == indykite_service_account.service_account.id
+      )
+      error_message = "indykite_service_accounts must list the service account by name"
+    }
+  }
+}
+
+data "indykite_service_account_credentials" "service_account_credentials" {
+  customer_id = data.indykite_customer.customer.id
+  depends_on  = [indykite_service_account_credential.service_account_credential]
+  lifecycle {
+    postcondition {
+      condition = contains(
+        [for c in self.service_account_credentials : c.id],
+        indykite_service_account_credential.service_account_credential.id
+      )
+      error_message = "indykite_service_account_credentials must list the credential"
+    }
+  }
+}

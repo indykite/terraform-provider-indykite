@@ -43,10 +43,10 @@ func SignAuthJWT(privateKey *ecdsa.PrivateKey, kid, subject string) (string, err
 // wait and retry backoff bounds for tests and returns a function that restores
 // the original values. This keeps tests that exercise the propagation retry fast.
 func SetCredCreateWaits(initial, waitMin, waitMax time.Duration) func() {
-	origInitial, origMin, origMax := credCreateInitialWait, credCreateRetryWaitMin, credCreateRetryWaitMax
-	credCreateInitialWait, credCreateRetryWaitMin, credCreateRetryWaitMax = initial, waitMin, waitMax
+	origInitial, origMin, origMax := credCreateInitialWait, credCreateRetryMinWait, credCreateRetryMaxWait
+	credCreateInitialWait, credCreateRetryMinWait, credCreateRetryMaxWait = initial, waitMin, waitMax
 	return func() {
-		credCreateInitialWait, credCreateRetryWaitMin, credCreateRetryWaitMax = origInitial, origMin, origMax
+		credCreateInitialWait, credCreateRetryMinWait, credCreateRetryMaxWait = origInitial, origMin, origMax
 	}
 }
 
@@ -70,10 +70,10 @@ func ConvertServiceAccountConfig(raw json.RawMessage) (string, error) {
 // SetUnavailableRetryWaits overrides the 503 retry backoff bounds for tests and returns a function
 // that restores the original values.
 func SetUnavailableRetryWaits(waitMin, waitMax time.Duration) func() {
-	origMin, origMax := unavailableRetryWaitMin, unavailableRetryWaitMax
-	unavailableRetryWaitMin, unavailableRetryWaitMax = waitMin, waitMax
+	origMin, origMax := unavailableRetryMinWait, unavailableRetryMaxWait
+	unavailableRetryMinWait, unavailableRetryMaxWait = waitMin, waitMax
 	return func() {
-		unavailableRetryWaitMin, unavailableRetryWaitMax = origMin, origMax
+		unavailableRetryMinWait, unavailableRetryMaxWait = origMin, origMax
 	}
 }
 

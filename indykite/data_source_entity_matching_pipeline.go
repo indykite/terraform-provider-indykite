@@ -15,6 +15,8 @@
 package indykite
 
 import (
+	"maps"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -26,6 +28,7 @@ func dataSourceEntityMatchingPipelineList() *schema.Resource {
 		Description: "Similarity score cutoff of the pipeline",
 	}
 	entrySchema[entityMatchingPipelineRerunInterval] = computedStringSchema("Rerun interval of the pipeline")
+	maps.Copy(entrySchema, entityMatchingRunSchema())
 
 	list := &restListDataSource[EntityMatchingPipelineResponse]{
 		path:            "/entity-matching-pipelines",
@@ -38,7 +41,7 @@ func dataSourceEntityMatchingPipelineList() *schema.Resource {
 			"filtered by exact name match.",
 		entrySchema: entrySchema,
 		flatten: func(pipeline *EntityMatchingPipelineResponse) map[string]any {
-			return map[string]any{
+			entry := map[string]any{
 				"id":           pipeline.ID,
 				customerIDKey:  pipeline.CustomerID,
 				appSpaceIDKey:  pipeline.AppSpaceID,
@@ -48,6 +51,8 @@ func dataSourceEntityMatchingPipelineList() *schema.Resource {
 				entityMatchingPipelineSimilarityScoreCutOffKey: float64(pipeline.SimilarityScoreCutoff),
 				entityMatchingPipelineRerunInterval:            pipeline.RerunInterval,
 			}
+			maps.Copy(entry, flattenEntityMatchingRun(pipeline))
+			return entry
 		},
 	}
 	return list.dataSource()

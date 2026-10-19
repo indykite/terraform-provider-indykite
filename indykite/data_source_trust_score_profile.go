@@ -15,6 +15,8 @@
 package indykite
 
 import (
+	"maps"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -22,7 +24,11 @@ func dataSourceTrustScoreProfileList() *schema.Resource {
 	entrySchema := listEntryCommonSchema(true)
 	entrySchema[trustScoreProfileNodeClassification] = computedStringSchema(
 		"Node classification the profile applies to")
-	entrySchema[trustScoreProfileSchedule] = computedStringSchema("Update frequency of the trust score")
+	entrySchema[trustScoreProfileSchedule] = computedStringSchema(
+		"Update frequency of the trust score, as returned by the API: `THREE_HOURS`, `SIX_HOURS`, " +
+			"`TWELVE_HOURS` or `DAILY`. The `indykite_trust_score_profile` resource takes the same values " +
+			"prefixed with `UPDATE_FREQUENCY_`, for example `UPDATE_FREQUENCY_DAILY`.")
+	maps.Copy(entrySchema, trustScoreRunSchema())
 
 	list := &restListDataSource[TrustScoreProfileResponse]{
 		path:            "/trust-score-profiles",
@@ -34,7 +40,7 @@ func dataSourceTrustScoreProfileList() *schema.Resource {
 		description:     "List Trust Score Profiles in the given Application Space, filtered by exact name match.",
 		entrySchema:     entrySchema,
 		flatten: func(profile *TrustScoreProfileResponse) map[string]any {
-			return map[string]any{
+			entry := map[string]any{
 				"id":                                profile.ID,
 				customerIDKey:                       profile.CustomerID,
 				appSpaceIDKey:                       profile.AppSpaceID,
@@ -44,6 +50,8 @@ func dataSourceTrustScoreProfileList() *schema.Resource {
 				trustScoreProfileNodeClassification: profile.NodeClassification,
 				trustScoreProfileSchedule:           profile.Schedule,
 			}
+			maps.Copy(entry, flattenTrustScoreRun(profile))
+			return entry
 		},
 	}
 	return list.dataSource()

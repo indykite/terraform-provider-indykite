@@ -19,10 +19,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -511,6 +513,90 @@ var _ = Describe("Resource Application Space", func() {
 				// destroys with the final step's config, which must plan cleanly.
 				{
 					Config: fmt.Sprintf(tfConfigDef, "Some new display name", "", dbConnConfig, turnOffDelProtection),
+				},
+			},
+		})
+	})
+
+	It("Test ikg_size uses the environment default when omitted", func() {
+		var (
+			mu           sync.Mutex
+			createBodies []map[string]any
+			project      map[string]any
+		)
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer GinkgoRecover()
+			mu.Lock()
+			defer mu.Unlock()
+			switch {
+			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/projects"):
+				var body map[string]any
+				Expect(json.NewDecoder(r.Body).Decode(&body)).To(Succeed())
+				createBodies = append(createBodies, body)
+				project = maps.Clone(body)
+				project["id"] = appSpaceID
+				project["display_name"] = body["name"]
+				project["ikg_status"] = "ACTIVE"
+				project["create_time"] = "2026-10-19T08:00:00Z"
+				project["update_time"] = "2026-10-19T08:00:00Z"
+				if _, ok := body["ikg_size"]; !ok {
+					project["ikg_size"] = "2GB" // like the API: the environment default
+				}
+				w.WriteHeader(http.StatusCreated)
+				_ = json.NewEncoder(w).Encode(map[string]any{"id": appSpaceID})
+			case r.Method == http.MethodGet && project != nil:
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(project)
+			case r.Method == http.MethodDelete:
+				project = nil
+				w.WriteHeader(http.StatusOK)
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		configDef := `resource "indykite_application_space" "development" {
+			customer_id = "` + customerID + `"
+			name = "default-size"
+			region = "us-east1"
+			deletion_protection = false
+			%s
+		}`
+		lastCreate := func(matcher OmegaMatcher) resource.TestCheckFunc {
+			return func(_ *terraform.State) error {
+				mu.Lock()
+				defer mu.Unlock()
+				return convertOmegaMatcherToError(matcher, createBodies[len(createBodies)-1])
+			}
+		}
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
+			},
+			Steps: []resource.TestStep{
+				{
+					// Omitted: not sent, the API default is stored and the next plan is empty.
+					Config: fmt.Sprintf(configDef, ""),
+					Check: resource.ComposeTestCheckFunc(
+						lastCreate(Not(HaveKey("ikg_size"))),
+						resource.TestCheckResourceAttr(resourceName, "ikg_size", "2GB"),
+					),
+				},
+				{
+					// An explicit size is still sent; changing it replaces the project.
+					Config: fmt.Sprintf(configDef, `ikg_size = "4GB"`),
+					Check: resource.ComposeTestCheckFunc(
+						lastCreate(HaveKeyWithValue("ikg_size", "4GB")),
+						resource.TestCheckResourceAttr(resourceName, "ikg_size", "4GB"),
+					),
 				},
 			},
 		})

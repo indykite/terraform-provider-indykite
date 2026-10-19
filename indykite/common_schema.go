@@ -78,11 +78,13 @@ func regionSchema() *schema.Schema {
 
 func ikgSizeSchema() *schema.Schema {
 	return &schema.Schema{
-		Type:     schema.TypeString,
+		Type: schema.TypeString,
+		// Computed: when omitted, the API applies the default size of the environment.
 		Optional: true,
-		Default:  "2GB",
+		Computed: true,
 		ForceNew: true,
-		Description: `IKG size that will be allocated, which corresponds also to number of CPU nodes (default 2GB).
+		Description: `IKG size that will be allocated, which corresponds also to number of CPU nodes.
+		When omitted, the default size of the environment is used.
 		Valid values are defined by the environment, see IndyKite documentation for available sizes.`,
 	}
 }

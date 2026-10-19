@@ -192,8 +192,8 @@ func generateJWT(privateKey *ecdsa.PrivateKey, kid, subject string) (string, err
 // client to retry the request. Variables so tests can shorten the waits.
 var (
 	unavailableRetryMax     = 4
-	unavailableRetryWaitMin = 1 * time.Second
-	unavailableRetryWaitMax = 8 * time.Second
+	unavailableRetryMinWait = 1 * time.Second
+	unavailableRetryMaxWait = 8 * time.Second
 )
 
 // credentialVerificationMessage identifies the documented 503 returned before the request is
@@ -211,7 +211,7 @@ func shouldRetryUnavailable(method string, resp *http.Response) bool {
 		return true
 	}
 	body, err := io.ReadAll(resp.Body)
-	resp.Body.Close() //nolint:errcheck,gosec // Body.Close() error is acceptable
+	_ = resp.Body.Close() // the body is fully read; a close error does not change the decision
 	resp.Body = io.NopCloser(bytes.NewReader(body))
 	return err == nil && strings.Contains(strings.ToLower(string(body)), credentialVerificationMessage)
 }
@@ -284,7 +284,7 @@ func (c *RestClient) send(
 
 // Do executes an HTTP request, retrying 503 responses as allowed by shouldRetryUnavailable.
 func (c *RestClient) Do(ctx context.Context, method, path string, body, response any) (*http.Response, error) {
-	retryClient := c.newRetryClient(unavailableRetryMax, unavailableRetryWaitMin, unavailableRetryWaitMax,
+	retryClient := c.newRetryClient(unavailableRetryMax, unavailableRetryMinWait, unavailableRetryMaxWait,
 		func(resp *http.Response) bool { return shouldRetryUnavailable(method, resp) })
 	return c.send(ctx, retryClient, method, path, body, response)
 }
