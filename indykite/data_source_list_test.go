@@ -638,4 +638,105 @@ var _ = Describe("DataSource config collection lists", func() {
 			},
 		})
 	})
+
+	It("Test list data sources expose the read-only fields", func() {
+		lists := map[string]any{
+			"/entity-matching-pipelines": []any{map[string]any{
+				"id": sampleID, "name": "pipeline-one", "project_id": appSpaceID,
+				"entity_matching_status": "SUCCESS", "matched_entities": 4,
+				"property_mappings": []any{map[string]any{
+					"source_node_type": "Person", "source_node_property": "email",
+					"target_node_type": "Person", "target_node_property": "mail", "similarity_score_cutoff": 0.9,
+				}},
+			}},
+			"/trust-score-profiles": []any{map[string]any{
+				"id": sampleID, "name": "profile-one", "project_id": appSpaceID, "schedule": "DAILY",
+				"last_run_id": "run-1",
+				"dimensions_execution_times": map[string]any{
+					"VALIDITY":  map[string]any{"execution_start_time": "2026-10-19T08:01:00Z"},
+					"FRESHNESS": map[string]any{"execution_start_time": "2026-10-19T08:00:00Z"},
+				},
+			}},
+			"/event-sinks": []any{map[string]any{
+				"id": sampleID, "name": "sink-one", "project_id": appSpaceID,
+				"providers": map[string]any{
+					"z-kafka": map[string]any{"kafka": map[string]any{
+						"brokers": []any{"kafka.example.com:9092"}, "topic": "t", "password": "secret-password",
+						"last_error": "dial tcp: no such host",
+					}},
+					"a-grid": map[string]any{"azure_event_grid": map[string]any{
+						"topic_endpoint": "https://grid.example.com", "display_name": "Grid",
+					}},
+				},
+			}},
+		}
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			for path, data := range lists {
+				if strings.HasSuffix(r.URL.Path, path) {
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(map[string]any{"data": data})
+					return
+				}
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		configureTestClient()
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
+			},
+			Steps: []resource.TestStep{{
+				Config: `
+				data "indykite_entity_matching_pipelines" "test" {
+					app_space_id = "` + appSpaceID + `"
+					filter = ["pipeline-one"]
+				}
+				data "indykite_trust_score_profiles" "test" {
+					app_space_id = "` + appSpaceID + `"
+					filter = ["profile-one"]
+				}
+				data "indykite_event_sinks" "test" {
+					app_space_id = "` + appSpaceID + `"
+					filter = ["sink-one"]
+				}`,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("data.indykite_entity_matching_pipelines.test",
+						"entity_matching_pipelines.0.entity_matching_status", "SUCCESS"),
+					resource.TestCheckResourceAttr("data.indykite_entity_matching_pipelines.test",
+						"entity_matching_pipelines.0.matched_entities", "4"),
+					resource.TestCheckResourceAttr("data.indykite_entity_matching_pipelines.test",
+						"entity_matching_pipelines.0.property_mappings.0.target_node_property", "mail"),
+					resource.TestCheckResourceAttr("data.indykite_trust_score_profiles.test",
+						"trust_score_profiles.0.last_run_id", "run-1"),
+					resource.TestCheckResourceAttr("data.indykite_trust_score_profiles.test",
+						"trust_score_profiles.0.dimensions_execution_times.0.dimension", "NAME_FRESHNESS"),
+					resource.TestCheckResourceAttr("data.indykite_trust_score_profiles.test",
+						"trust_score_profiles.0.dimensions_execution_times.1.dimension", "NAME_VALIDITY"),
+					resource.TestCheckResourceAttr("data.indykite_event_sinks.test",
+						"event_sinks.0.providers.#", "2"),
+					resource.TestCheckResourceAttr("data.indykite_event_sinks.test",
+						"event_sinks.0.providers.0.provider_name", "a-grid"),
+					resource.TestCheckResourceAttr("data.indykite_event_sinks.test",
+						"event_sinks.0.providers.0.type", "azure_event_grid"),
+					resource.TestCheckResourceAttr("data.indykite_event_sinks.test",
+						"event_sinks.0.providers.0.provider_display_name", "Grid"),
+					resource.TestCheckResourceAttr("data.indykite_event_sinks.test",
+						"event_sinks.0.providers.1.type", "kafka"),
+					resource.TestCheckResourceAttr("data.indykite_event_sinks.test",
+						"event_sinks.0.providers.1.last_error", "dial tcp: no such host"),
+					func(s *terraform.State) error {
+						// No credential may reach the state of the list data source.
+						attrs := s.RootModule().Resources["data.indykite_event_sinks.test"].Primary.Attributes
+						for key, value := range attrs {
+							if value == "secret-password" {
+								return fmt.Errorf("credential stored in state under %q", key)
+							}
+						}
+						return nil
+					},
+				),
+			}},
+		})
+	})
 })

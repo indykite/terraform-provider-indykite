@@ -16,6 +16,7 @@ package indykite
 
 import (
 	"context"
+	"maps"
 	"math"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -44,7 +45,7 @@ const (
 )
 
 func resourceEntityMatchingPipeline() *schema.Resource {
-	return &schema.Resource{
+	resource := &schema.Resource{
 		Description: "The EntityMatchingPipeline facilitates the setup of a configuration to detect " +
 			"and match identical nodes in the Identity Knowledge Graph. ",
 
@@ -101,40 +102,10 @@ func resourceEntityMatchingPipeline() *schema.Resource {
 				Description: "RerunInterval is the time between scheduled re-runs.",
 				Optional:    true,
 			},
-			entityMatchingPropertyMappingStatusKey: computedStringSchema(
-				"Status of the pipeline step that maps the properties of the node types."),
-			entityMatchingPropertyMappingMessageKey: computedStringSchema(
-				"Error message of the property mapping step, explaining its status."),
-			entityMatchingStatusKey: computedStringSchema(
-				"Status of the pipeline step that matches node entities."),
-			entityMatchingMessageKey: computedStringSchema(
-				"Error message of the entity matching step, explaining its status."),
-			entityMatchingLastRunTimeKey: computedStringSchema("Time when the pipeline was last run."),
-			entityMatchingMatchedEntitiesKey: {
-				Type:        schema.TypeInt,
-				Computed:    true,
-				Description: "Number of entities the pipeline matched in its last run.",
-			},
-			entityMatchingReportURLKey:  computedStringSchema("Location of the analysis report."),
-			entityMatchingReportTypeKey: computedStringSchema("Format in which the analysis report is stored."),
-			entityMatchingPropertyMappingsKey: {
-				Type:        schema.TypeList,
-				Computed:    true,
-				Description: "Rules the pipeline uses to match source nodes with target nodes.",
-				Elem: &schema.Resource{Schema: map[string]*schema.Schema{
-					entityMatchingSourceNodeTypeKey:     computedStringSchema("Type of the source nodes."),
-					entityMatchingSourceNodePropertyKey: computedStringSchema("Property of the source nodes compared."),
-					entityMatchingTargetNodeTypeKey:     computedStringSchema("Type of the target nodes."),
-					entityMatchingTargetNodePropertyKey: computedStringSchema("Property of the target nodes compared."),
-					entityMatchingPipelineSimilarityScoreCutOffKey: {
-						Type:        schema.TypeFloat,
-						Computed:    true,
-						Description: "Threshold above which entities are matched by this rule.",
-					},
-				}},
-			},
 		},
 	}
+	maps.Copy(resource.Schema, entityMatchingRunSchema())
+	return resource
 }
 
 func resEntityMatchingPipelineCreate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
@@ -211,14 +182,54 @@ func resEntityMatchingPipelineRead(ctx context.Context, data *schema.ResourceDat
 
 	setData(&d, data, entityMatchingPipelineRerunInterval, resp.RerunInterval)
 
-	setData(&d, data, entityMatchingPropertyMappingStatusKey, resp.PropertyMappingStatus)
-	setData(&d, data, entityMatchingPropertyMappingMessageKey, resp.PropertyMappingMessage)
-	setData(&d, data, entityMatchingStatusKey, resp.EntityMatchingStatus)
-	setData(&d, data, entityMatchingMessageKey, resp.EntityMatchingMessage)
-	setData(&d, data, entityMatchingLastRunTimeKey, resp.LastRunTime)
-	setData(&d, data, entityMatchingMatchedEntitiesKey, resp.MatchedEntities)
-	setData(&d, data, entityMatchingReportURLKey, resp.ReportURL)
-	setData(&d, data, entityMatchingReportTypeKey, resp.ReportType)
+	for key, value := range flattenEntityMatchingRun(&resp) {
+		setData(&d, data, key, value)
+	}
+
+	return d
+}
+
+// entityMatchingRunSchema returns the computed attributes describing the last run of a pipeline,
+// shared by the resource and the list data source.
+func entityMatchingRunSchema() map[string]*schema.Schema {
+	return map[string]*schema.Schema{
+		entityMatchingPropertyMappingStatusKey: computedStringSchema(
+			"Status of the pipeline step that maps the properties of the node types."),
+		entityMatchingPropertyMappingMessageKey: computedStringSchema(
+			"Error message of the property mapping step, explaining its status."),
+		entityMatchingStatusKey: computedStringSchema(
+			"Status of the pipeline step that matches node entities."),
+		entityMatchingMessageKey: computedStringSchema(
+			"Error message of the entity matching step, explaining its status."),
+		entityMatchingLastRunTimeKey: computedStringSchema("Time when the pipeline was last run."),
+		entityMatchingMatchedEntitiesKey: {
+			Type:        schema.TypeInt,
+			Computed:    true,
+			Description: "Number of entities the pipeline matched in its last run.",
+		},
+		entityMatchingReportURLKey:  computedStringSchema("Location of the analysis report."),
+		entityMatchingReportTypeKey: computedStringSchema("Format in which the analysis report is stored."),
+		entityMatchingPropertyMappingsKey: {
+			Type:        schema.TypeList,
+			Computed:    true,
+			Description: "Rules the pipeline uses to match source nodes with target nodes.",
+			Elem: &schema.Resource{Schema: map[string]*schema.Schema{
+				entityMatchingSourceNodeTypeKey:     computedStringSchema("Type of the source nodes."),
+				entityMatchingSourceNodePropertyKey: computedStringSchema("Property of the source nodes compared."),
+				entityMatchingTargetNodeTypeKey:     computedStringSchema("Type of the target nodes."),
+				entityMatchingTargetNodePropertyKey: computedStringSchema("Property of the target nodes compared."),
+				entityMatchingPipelineSimilarityScoreCutOffKey: {
+					Type:        schema.TypeFloat,
+					Computed:    true,
+					Description: "Threshold above which entities are matched by this rule.",
+				},
+			}},
+		},
+	}
+}
+
+// flattenEntityMatchingRun returns the values of entityMatchingRunSchema from an API response.
+func flattenEntityMatchingRun(resp *EntityMatchingPipelineResponse) map[string]any {
 	mappings := make([]map[string]any, 0, len(resp.PropertyMappings))
 	for _, m := range resp.PropertyMappings {
 		mappings = append(mappings, map[string]any{
@@ -229,9 +240,17 @@ func resEntityMatchingPipelineRead(ctx context.Context, data *schema.ResourceDat
 			entityMatchingPipelineSimilarityScoreCutOffKey: roundScore(m.SimilarityScoreCutoff),
 		})
 	}
-	setData(&d, data, entityMatchingPropertyMappingsKey, mappings)
-
-	return d
+	return map[string]any{
+		entityMatchingPropertyMappingStatusKey:  resp.PropertyMappingStatus,
+		entityMatchingPropertyMappingMessageKey: resp.PropertyMappingMessage,
+		entityMatchingStatusKey:                 resp.EntityMatchingStatus,
+		entityMatchingMessageKey:                resp.EntityMatchingMessage,
+		entityMatchingLastRunTimeKey:            resp.LastRunTime,
+		entityMatchingMatchedEntitiesKey:        resp.MatchedEntities,
+		entityMatchingReportURLKey:              resp.ReportURL,
+		entityMatchingReportTypeKey:             resp.ReportType,
+		entityMatchingPropertyMappingsKey:       mappings,
+	}
 }
 
 // roundScore rounds a float32 score to 4 decimal places for float64 compatibility.

@@ -43,7 +43,7 @@ const (
 // and the agent may not be visible to the credential endpoint yet. So the
 // credential create always waits credCreateInitialWait up front, then retries
 // not-found responses via hashicorp/go-retryablehttp with exponential backoff
-// (waits doubling from credCreateRetryWaitMin up to credCreateRetryWaitMax),
+// (waits doubling from credCreateRetryMinWait up to credCreateRetryMaxWait),
 // giving roughly 5 + (2+4+8+16+30) ≈ 70 seconds of total wait before giving up.
 const credCreateMaxRetries = 5
 
@@ -57,8 +57,8 @@ const credCreateMaxRetries = 5
 // (see the backend bug ticket for the IKG node race).
 var (
 	credCreateInitialWait  = 2 * time.Second
-	credCreateRetryWaitMin = 2 * time.Second
-	credCreateRetryWaitMax = 2 * time.Second
+	credCreateRetryMinWait = 2 * time.Second
+	credCreateRetryMaxWait = 2 * time.Second
 )
 
 func resourceApplicationAgentCredential() *schema.Resource {
@@ -151,7 +151,7 @@ func postAppAgentCredentialWithRetry(
 		return resp, ctx.Err()
 	}
 	err := client.PostWithRetryOnNotFound(ctx, "/application-agent-credentials", req, &resp,
-		credCreateMaxRetries, credCreateRetryWaitMin, credCreateRetryWaitMax)
+		credCreateMaxRetries, credCreateRetryMinWait, credCreateRetryMaxWait)
 	return resp, err
 }
 

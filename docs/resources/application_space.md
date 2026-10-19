@@ -127,7 +127,8 @@ resource "indykite_application_space" "appspace_with_composite_db" {
 - `deletion_protection` (Boolean) Whether or not to allow Terraform to destroy the instance. Unless this field is set to false in Terraform state, a terraform destroy or terraform apply that would delete the instance will fail.
 - `description` (String) Your own description of the resource, between 2 and 65000 characters.
 - `display_name` (String) The display name for the instance, between 2 and 254 characters. Can be updated without creating a new resource.
-- `ikg_size` (String) IKG size that will be allocated, which corresponds also to number of CPU nodes (default 2GB).
+- `ikg_size` (String) IKG size that will be allocated, which corresponds also to number of CPU nodes.
+		When omitted, the default size of the environment is used.
 		Valid values are defined by the environment, see IndyKite documentation for available sizes.
 - `replica_region` (String) Replica region specifies where the replica IKG is created.
 		Replica must be a different region than the master, but also on the same geographical continent.

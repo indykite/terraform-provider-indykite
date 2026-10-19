@@ -217,13 +217,15 @@ func providerSchema() map[string]*schema.Schema {
 						Description: "Skip TLS certificate verification. NOT RECOMMENDED.",
 					},
 					usernameKey: {
-						Type:     schema.TypeString,
-						Required: true,
+						Type:        schema.TypeString,
+						Optional:    true,
+						Description: "Username for brokers that require authentication.",
 					},
 					passwordKey: {
-						Type:      schema.TypeString,
-						Required:  true,
-						Sensitive: true,
+						Type:        schema.TypeString,
+						Optional:    true,
+						Sensitive:   true,
+						Description: "Password for brokers that require authentication.",
 					},
 					providerDisplayKey: {
 						Type:     schema.TypeString,
@@ -604,17 +606,20 @@ func buildProviderConfig(item map[string]any) map[string]any {
 
 // buildKafkaProviderMap builds Kafka provider configuration map.
 func buildKafkaProviderMap(kafkaData map[string]any) map[string]any {
-	return map[string]any{
-		"kafka": map[string]any{
-			"brokers":         kafkaData[brokersKey],
-			"topic":           kafkaData[topicKey],
-			"username":        kafkaData[usernameKey],
-			"password":        kafkaData[passwordKey],
-			"disable_tls":     kafkaData[disableTLSKey],
-			"tls_skip_verify": kafkaData[tlsSkipVerifyKey],
-			"display_name":    kafkaData[providerDisplayKey],
-		},
+	kafka := map[string]any{
+		"brokers":         kafkaData[brokersKey],
+		"topic":           kafkaData[topicKey],
+		"disable_tls":     kafkaData[disableTLSKey],
+		"tls_skip_verify": kafkaData[tlsSkipVerifyKey],
+		"display_name":    kafkaData[providerDisplayKey],
 	}
+	// Credentials are optional: brokers without authentication need neither.
+	for apiKey, key := range map[string]string{"username": usernameKey, "password": passwordKey} {
+		if v, _ := kafkaData[key].(string); v != "" {
+			kafka[apiKey] = v
+		}
+	}
+	return map[string]any{"kafka": kafka}
 }
 
 // buildAzureEventGridMap builds Azure Event Grid configuration map.

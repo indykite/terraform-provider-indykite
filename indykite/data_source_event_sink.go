@@ -15,12 +15,31 @@
 package indykite
 
 import (
+	"maps"
+	"slices"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
+const providerTypeKey = "type"
+
 func dataSourceEventSinkList() *schema.Resource {
-	// Note: provider/route configuration is intentionally omitted from the
-	// list view because providers carry credentials (passwords, access keys).
+	// Provider configurations are not listed because they carry credentials (passwords, access keys);
+	// only a summary of each provider is exposed.
+	entrySchema := listEntryCommonSchema(true)
+	entrySchema[providersKey] = &schema.Schema{
+		Type:        schema.TypeList,
+		Computed:    true,
+		Description: "Providers of the event sink, sorted by name, without their credentials.",
+		Elem: &schema.Resource{Schema: map[string]*schema.Schema{
+			providerNameKey: computedStringSchema("Name of the provider, referenced by the routes."),
+			providerTypeKey: computedStringSchema(
+				"Type of the provider: `kafka`, `azure_event_grid`, `azure_service_bus` or `pubsub`."),
+			providerDisplayKey: computedStringSchema("Display name of the provider."),
+			lastErrorKey:       computedStringSchema("Last delivery error of the provider, empty when none."),
+		}},
+	}
+
 	list := &restListDataSource[EventSinkResponse]{
 		path:            "/event-sinks",
 		scopeQueryParam: "project_id",
@@ -29,8 +48,9 @@ func dataSourceEventSinkList() *schema.Resource {
 		fullFetch:       false,
 		withFilter:      true,
 		description:     "List Event Sinks in the given Application Space, filtered by exact name match.",
-		entrySchema:     listEntryCommonSchema(true),
+		entrySchema:     entrySchema,
 		flatten: func(sink *EventSinkResponse) map[string]any {
+			providers, _ := eventSinkConfigFromResponse(sink)["providers"].(map[string]any)
 			return map[string]any{
 				"id":           sink.ID,
 				customerIDKey:  sink.CustomerID,
@@ -38,8 +58,37 @@ func dataSourceEventSinkList() *schema.Resource {
 				nameKey:        sink.Name,
 				displayNameKey: sink.DisplayName,
 				descriptionKey: sink.Description,
+				providersKey:   summarizeEventSinkProviders(providers),
 			}
 		},
 	}
 	return list.dataSource()
+}
+
+// summarizeEventSinkProviders returns the name, type, display name and last error of each provider,
+// sorted by name. Credentials are never copied.
+func summarizeEventSinkProviders(providers map[string]any) []map[string]any {
+	providerTypes := map[string]string{
+		"kafka": kafkaKey, "azure_event_grid": azureEventGridKey, "azureEventGrid": azureEventGridKey,
+		"azure_service_bus": azureServiceBusKey, "azureServiceBus": azureServiceBusKey,
+		"pubsub": pubsubKey, "pubSub": pubsubKey,
+	}
+	summaries := make([]map[string]any, 0, len(providers))
+	for _, name := range slices.Sorted(maps.Keys(providers)) {
+		provider, _ := providers[name].(map[string]any)
+		for apiType, providerType := range providerTypes {
+			cfg, ok := provider[apiType].(map[string]any)
+			if !ok {
+				continue
+			}
+			summaries = append(summaries, map[string]any{
+				providerNameKey:    name,
+				providerTypeKey:    providerType,
+				providerDisplayKey: getEither(cfg, "display_name", "displayName"),
+				lastErrorKey:       getEither(cfg, "last_error", "lastError"),
+			})
+			break
+		}
+	}
+	return summaries
 }

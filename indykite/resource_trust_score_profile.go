@@ -42,7 +42,7 @@ const (
 )
 
 func resourceTrustScoreProfile() *schema.Resource {
-	return &schema.Resource{
+	resource := &schema.Resource{
 		Description: "The Trust Score Profile helps assess how trustworthy data is. " +
 			"It allows applications, authorization policies, and AI systems to define and check  " +
 			"whether data meets specific reliability requirements. " +
@@ -118,21 +118,10 @@ func resourceTrustScoreProfile() *schema.Resource {
 				ValidateFunc: validation.StringInSlice(getMapStringKeys(
 					TrustScoreProfileScheduleFrequencies), false),
 			},
-			trustScoreLastRunIDKey:        computedStringSchema("Identifier of the last calculation run."),
-			trustScoreLastRunStartTimeKey: computedStringSchema("Time when the last calculation run started."),
-			trustScoreLastRunEndTimeKey:   computedStringSchema("Time when the last calculation run ended."),
-			trustScoreExecutionTimesKey: {
-				Type:        schema.TypeList,
-				Computed:    true,
-				Description: "When the calculation of each dimension last ran, sorted by dimension.",
-				Elem: &schema.Resource{Schema: map[string]*schema.Schema{
-					trustScoreExecutionDimensionKey: computedStringSchema("Name of the trust score dimension."),
-					trustScoreExecutionStartTimeKey: computedStringSchema("Time when the calculation started."),
-					trustScoreExecutionEndTimeKey:   computedStringSchema("Time when the calculation ended."),
-				}},
-			},
 		},
 	}
+	maps.Copy(resource.Schema, trustScoreRunSchema())
+	return resource
 }
 
 func resTrustScoreProfileCreate(ctx context.Context, data *schema.ResourceData, meta any) diag.Diagnostics {
@@ -222,12 +211,41 @@ func resTrustScoreProfileRead(ctx context.Context, data *schema.ResourceData, me
 	}
 	setData(&d, data, trustScoreProfileSchedule, terraformSchedule)
 
-	setData(&d, data, trustScoreLastRunIDKey, resp.LastRunID)
-	setData(&d, data, trustScoreLastRunStartTimeKey, resp.LastRunStartTime)
-	setData(&d, data, trustScoreLastRunEndTimeKey, resp.LastRunEndTime)
-	setData(&d, data, trustScoreExecutionTimesKey, flattenExecutionTimes(resp.DimensionsExecutionTimes))
+	for key, value := range flattenTrustScoreRun(&resp) {
+		setData(&d, data, key, value)
+	}
 
 	return d
+}
+
+// trustScoreRunSchema returns the computed attributes describing the last run of a profile,
+// shared by the resource and the list data source.
+func trustScoreRunSchema() map[string]*schema.Schema {
+	return map[string]*schema.Schema{
+		trustScoreLastRunIDKey:        computedStringSchema("Identifier of the last calculation run."),
+		trustScoreLastRunStartTimeKey: computedStringSchema("Time when the last calculation run started."),
+		trustScoreLastRunEndTimeKey:   computedStringSchema("Time when the last calculation run ended."),
+		trustScoreExecutionTimesKey: {
+			Type:        schema.TypeList,
+			Computed:    true,
+			Description: "When the calculation of each dimension last ran, sorted by dimension.",
+			Elem: &schema.Resource{Schema: map[string]*schema.Schema{
+				trustScoreExecutionDimensionKey: computedStringSchema("Name of the trust score dimension."),
+				trustScoreExecutionStartTimeKey: computedStringSchema("Time when the calculation started."),
+				trustScoreExecutionEndTimeKey:   computedStringSchema("Time when the calculation ended."),
+			}},
+		},
+	}
+}
+
+// flattenTrustScoreRun returns the values of trustScoreRunSchema from an API response.
+func flattenTrustScoreRun(resp *TrustScoreProfileResponse) map[string]any {
+	return map[string]any{
+		trustScoreLastRunIDKey:        resp.LastRunID,
+		trustScoreLastRunStartTimeKey: resp.LastRunStartTime,
+		trustScoreLastRunEndTimeKey:   resp.LastRunEndTime,
+		trustScoreExecutionTimesKey:   flattenExecutionTimes(resp.DimensionsExecutionTimes),
+	}
 }
 
 // flattenExecutionTimes converts the API map of execution windows, keyed by dimension, into a list

@@ -1529,6 +1529,56 @@ var _ = Describe("Resource EventSink", func() {
 			},
 		})
 	})
+
+	It("Test Kafka provider without credentials", func() {
+		fake := newFakeConfigAPI("/event-sinks", sampleID, nil)
+		mockServer = fake.Server
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
+			},
+			Steps: []resource.TestStep{{
+				// Brokers without authentication need no username or password.
+				Config: `resource "indykite_event_sink" "development" {
+					project_id = "` + appSpaceID + `"
+					name = "no-auth-sink"
+					providers {
+						provider_name = "kafka-a"
+						kafka {
+							brokers = ["kafka-a.example.com:9092"]
+							topic = "topic-a"
+						}
+					}
+					routes {
+						provider_id = "kafka-a"
+						keys_values_filter {
+							event_type = "indykite.audit.config.*"
+						}
+					}
+				}`,
+				Check: func(_ *terraform.State) error {
+					var kafka map[string]any
+					fake.update(func(stored map[string]any) {
+						providers, _ := stored["providers"].(map[string]any)
+						provider, _ := providers["kafka-a"].(map[string]any)
+						kafka, _ = provider["kafka"].(map[string]any)
+					})
+					return convertOmegaMatcherToError(And(
+						Not(HaveKey("username")), Not(HaveKey("password")),
+						HaveKeyWithValue("topic", "topic-a"),
+					), kafka)
+				},
+			}},
+		})
+	})
 })
 
 // eventSinkAPIReadResponse builds an event sink read response the way the Config API does:

@@ -517,15 +517,15 @@ Read-Only:
 Required:
 
 - `brokers` (List of String) Brokers specify Kafka destinations to connect to, each at least 8 characters.
-- `password` (String, Sensitive)
 - `topic` (String)
-- `username` (String)
 
 Optional:
 
 - `disable_tls` (Boolean) Disable TLS for communication. Highly NOT RECOMMENDED.
+- `password` (String, Sensitive) Password for brokers that require authentication.
 - `provider_display_name` (String)
 - `tls_skip_verify` (Boolean) Skip TLS certificate verification. NOT RECOMMENDED.
+- `username` (String) Username for brokers that require authentication.
 
 Read-Only:
 
