@@ -70,7 +70,7 @@ linters:
     exhaustive:
       check:
         - switch
-        - map
+        - mapliteral
       default-signifies-exhaustive: true
 
     ginkgolinter:

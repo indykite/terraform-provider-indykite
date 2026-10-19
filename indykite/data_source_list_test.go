@@ -177,6 +177,7 @@ var _ = Describe("DataSource config collection lists", func() {
 			scopeID:        appSpaceID,
 			scopeParam:     "project_id",
 			path:           "/event-sinks",
+			fullFetch:      true,
 			withFilter:     true,
 			respBody: indykite.ListResponse[indykite.EventSinkResponse]{
 				Data: []indykite.EventSinkResponse{
@@ -673,6 +674,11 @@ var _ = Describe("DataSource config collection lists", func() {
 		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			for path, data := range lists {
 				if strings.HasSuffix(r.URL.Path, path) {
+					// Like the API, configuration such as event sink providers is only returned with
+					// full_fetch; otherwise the list holds metadata only.
+					if path == "/event-sinks" && r.URL.Query().Get("full_fetch") != "true" {
+						data = []any{map[string]any{"id": sampleID, "name": "sink-one", "project_id": appSpaceID}}
+					}
 					w.WriteHeader(http.StatusOK)
 					_ = json.NewEncoder(w).Encode(map[string]any{"data": data})
 					return

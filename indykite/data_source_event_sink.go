@@ -45,7 +45,7 @@ func dataSourceEventSinkList() *schema.Resource {
 		scopeQueryParam: "project_id",
 		scopeKey:        appSpaceIDKey,
 		listAttrName:    "event_sinks",
-		fullFetch:       false,
+		fullFetch:       true, // providers are configuration, returned only with full_fetch
 		withFilter:      true,
 		description:     "List Event Sinks in the given Application Space, filtered by exact name match.",
 		entrySchema:     entrySchema,
