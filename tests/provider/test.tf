@@ -824,47 +824,18 @@ resource "indykite_mcp_server" "create-mcp-server" {
 
 # -----------------------------------------------------------------------------
 # Test: Audit signing configuration
+# The platform allows only one audit signing configuration per project, so this test
+# creates a single one. It uses project_id and a customer managed key to cover the most
+# attributes. The Config API stores CUSTOMER_* configurations but the platform does not
+# use them for signing yet, so the key below is never contacted and can be fictitious.
+# There is no create_before_destroy: a replacement would create a second configuration
+# in the project before the first one is deleted.
 # -----------------------------------------------------------------------------
 
 resource "indykite_audit_signing" "create-audit-signing" {
   name         = "automation-terraform-audit-signing-${time_static.example.unix}"
   display_name = "Automation Terraform audit signing ${time_static.example.unix}"
   description  = "Audit signing for terraform pipeline"
-  location     = indykite_application_space.appspace.id
-  key_provider = "PLATFORM_MANAGED"
-  lifecycle {
-    create_before_destroy = true
-    postcondition {
-      condition     = self.app_space_id == indykite_application_space.appspace.id
-      error_message = "app_space_id must be populated from the appspace after creation"
-    }
-  }
-}
-
-data "indykite_audit_signings" "audit-signings" {
-  app_space_id = indykite_application_space.appspace.id
-  filter       = [indykite_audit_signing.create-audit-signing.name]
-  lifecycle {
-    postcondition {
-      condition = try(
-        length(self.audit_signings) == 1 &&
-        self.audit_signings[0].id == indykite_audit_signing.create-audit-signing.id &&
-        self.audit_signings[0].key_provider == "PLATFORM_MANAGED",
-        false
-      )
-      error_message = "audit signing list must return exactly the created PLATFORM_MANAGED config"
-    }
-  }
-}
-
-# -----------------------------------------------------------------------------
-# Test: Customer managed audit signing configuration
-# The Config API stores CUSTOMER_* configurations but the platform does not use them
-# for signing yet, so the key below is never contacted and can be fictitious.
-# -----------------------------------------------------------------------------
-
-resource "indykite_audit_signing" "audit_signing_customer_aws" {
-  name         = "automation-terraform-audit-signing-aws-${time_static.example.unix}"
   project_id   = indykite_application_space.appspace.id
   key_provider = "CUSTOMER_AWS_KMS"
   key_resource = "arn:aws:kms:eu-west-1:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab"
@@ -874,7 +845,14 @@ resource "indykite_audit_signing" "audit_signing_customer_aws" {
     external_id = "automation-terraform-external-id" # checkov:skip=CKV_SECRET_6:acceptance test
   }
   lifecycle {
-    create_before_destroy = true
+    postcondition {
+      condition = (
+        self.app_space_id == indykite_application_space.appspace.id &&
+        self.project_id == indykite_application_space.appspace.id &&
+        self.location == self.project_id
+      )
+      error_message = "app_space_id, project_id and location must be read back as the appspace"
+    }
     postcondition {
       condition = (
         self.key_provider == "CUSTOMER_AWS_KMS" &&
@@ -891,12 +869,28 @@ resource "indykite_audit_signing" "audit_signing_customer_aws" {
   }
 }
 
+data "indykite_audit_signings" "audit-signings" {
+  app_space_id = indykite_application_space.appspace.id
+  filter       = [indykite_audit_signing.create-audit-signing.name]
+  lifecycle {
+    postcondition {
+      condition = try(
+        length(self.audit_signings) == 1 &&
+        self.audit_signings[0].id == indykite_audit_signing.create-audit-signing.id &&
+        self.audit_signings[0].key_provider == "CUSTOMER_AWS_KMS",
+        false
+      )
+      error_message = "audit signing list must return exactly the created CUSTOMER_AWS_KMS config"
+    }
+  }
+}
+
 # -----------------------------------------------------------------------------
 # Test: project_id instead of the deprecated location
 # The blocks above keep using location; each block below creates the same kind of
 # configuration with project_id and checks that both attributes are read back.
-# indykite_mcp_server and indykite_event_sink have no twin: the platform allows only one
-# MCP server and one event sink per project, and the blocks above already create them.
+# indykite_mcp_server, indykite_event_sink and indykite_audit_signing have no twin: the
+# platform allows only one of each per project, and the blocks above already create them.
 # -----------------------------------------------------------------------------
 
 resource "indykite_authorization_policy" "policy_project_id" {
@@ -1006,19 +1000,6 @@ resource "indykite_token_introspect" "token_introspect_project_id" {
     cache_ttl = 600
   }
   ikg_node_type = "Person"
-  lifecycle {
-    create_before_destroy = true
-    postcondition {
-      condition     = self.project_id == indykite_application_space.appspace.id && self.location == self.project_id
-      error_message = "project_id and location must be read back as the appspace"
-    }
-  }
-}
-
-resource "indykite_audit_signing" "audit_signing_project_id" {
-  name         = "automation-terraform-audit-signing-project-id-${time_static.example.unix}"
-  project_id   = indykite_application_space.appspace.id
-  key_provider = "PLATFORM_MANAGED"
   lifecycle {
     create_before_destroy = true
     postcondition {

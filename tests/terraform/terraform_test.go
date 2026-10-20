@@ -115,19 +115,12 @@ var _ = Describe("Terraform", func() {
 		Expect(resp.APIPermissions).To(ConsistOf("Audit", "ReadAuthZConfigs"))
 	})
 
+	// Only one audit signing configuration is allowed per project.
 	It("ReadAuditSigning", func() {
 		var resp indykite.AuditSigningResponse
 		err := client.Get(context.Background(), "/audit-signings/"+myResult["create-audit-signing"], &resp)
 		Expect(err).To(Succeed())
 		Expect(resp.ID).To(Equal(myResult["create-audit-signing"]))
-		Expect(resp.Provider).To(Equal("PLATFORM_MANAGED"))
-	})
-
-	It("ReadAuditSigningCustomerManaged", func() {
-		var resp indykite.AuditSigningResponse
-		err := client.Get(context.Background(), "/audit-signings/"+myResult["audit_signing_customer_aws"], &resp)
-		Expect(err).To(Succeed())
-		Expect(resp.ID).To(Equal(myResult["audit_signing_customer_aws"]))
 		Expect(resp.AppSpaceID).To(Equal(myResult["appspace"]))
 		Expect(resp.Provider).To(Equal("CUSTOMER_AWS_KMS"))
 		Expect(resp.KeyResource).To(HaveValue(
@@ -184,14 +177,5 @@ var _ = Describe("Terraform", func() {
 		Expect(err).To(Succeed())
 		Expect(resp.ID).To(Equal(myResult["token_introspect_project_id"]))
 		Expect(resp.AppSpaceID).To(Equal(myResult["appspace"]))
-	})
-
-	It("ReadAuditSigningWithProjectID", func() {
-		var resp indykite.AuditSigningResponse
-		err := client.Get(context.Background(), "/audit-signings/"+myResult["audit_signing_project_id"], &resp)
-		Expect(err).To(Succeed())
-		Expect(resp.ID).To(Equal(myResult["audit_signing_project_id"]))
-		Expect(resp.AppSpaceID).To(Equal(myResult["appspace"]))
-		Expect(resp.Provider).To(Equal("PLATFORM_MANAGED"))
 	})
 })
