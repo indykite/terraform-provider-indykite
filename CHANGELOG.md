@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.2](https://github.com/indykite/terraform-provider-indykite/compare/v0.48.1...v0.48.2) (2026-10-20)
+
+
+### Bug Fixes
+
+* update test to match new AuditSigning rules ([#394](https://github.com/indykite/terraform-provider-indykite/issues/394)) ([175e7ae](https://github.com/indykite/terraform-provider-indykite/commit/175e7ae28abd7340d6aff8fd7f6e0c57f48e2854))
+
 ## [0.48.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.48.0...v0.48.1) (2026-10-19)
 
 
