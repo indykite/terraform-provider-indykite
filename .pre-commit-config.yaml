@@ -66,7 +66,7 @@ repos:
   #
   # Renovate
   - repo: https://github.com/renovatebot/pre-commit-hooks # ci:ignore:OK to validate locally only, otherwise it adds 850MB+ to unpacked cache
-    rev: "44.168.2" # frozen: 44.139.0
+    rev: "44.181.11" # frozen: 44.139.0
     hooks:
       - id: renovate-config-validator
         args: [--strict]
@@ -241,7 +241,7 @@ repos:
   #
   # Terraform & Terragrunt
   - repo: https://github.com/antonbabenko/pre-commit-terraform
-    rev: 80c8033123f6d6b9ccd1a9458562ea4180742af7 # frozen: v1.109.2
+    rev: 443ffdff1cc1663b701ae73e7459029fe883455a # frozen: v1.109.3
     hooks:
       # - id: tfupdate      # done via 'validate -upgrade' below
       - id: terraform_fmt
