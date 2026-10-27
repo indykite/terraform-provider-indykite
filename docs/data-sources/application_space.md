@@ -36,6 +36,7 @@ data "indykite_application_space" "application_space" {
 - `create_time` (String) Timestamp when the Resource was created. Assigned by the server. A timestamp in RFC3339 UTC "Zulu" format, accurate to nanoseconds. Example: "2014-10-02T15:01:23.045123456Z".
 - `db_connection` (List of Object) DBConnection (see [below for nested schema](#nestedatt--db_connection))
 - `id` (String) The ID of this resource.
+- `ikg_schema_version` (String) Schema version of the IKG.
 - `ikg_size` (String) IKG size that will be allocated, which corresponds also to number of CPU nodes.
 		Valid values are defined by the environment, see IndyKite documentation for available sizes.
 - `region` (String) Region where the application space is located.

@@ -83,31 +83,33 @@ type DBConnection struct {
 
 // CreateApplicationSpaceRequest represents the request to create an application space.
 type CreateApplicationSpaceRequest struct {
-	DBConnection  *DBConnection `json:"db_connection,omitempty"`
-	CustomerID    string        `json:"organization_id"`
-	Name          string        `json:"name"`
-	DisplayName   string        `json:"display_name,omitempty"`
-	Description   string        `json:"description,omitempty"`
-	Region        string        `json:"region,omitempty"`
-	IKGSize       string        `json:"ikg_size,omitempty"`
-	ReplicaRegion string        `json:"replica_region,omitempty"`
+	DBConnection     *DBConnection `json:"db_connection,omitempty"`
+	CustomerID       string        `json:"organization_id"`
+	Name             string        `json:"name"`
+	DisplayName      string        `json:"display_name,omitempty"`
+	Description      string        `json:"description,omitempty"`
+	Region           string        `json:"region,omitempty"`
+	IKGSize          string        `json:"ikg_size,omitempty"`
+	IKGSchemaVersion string        `json:"ikg_schema_version,omitempty"`
+	ReplicaRegion    string        `json:"replica_region,omitempty"`
 }
 
 // ApplicationSpaceResponse represents an application space resource.
 type ApplicationSpaceResponse struct {
-	ID            string        `json:"id"`
-	Name          string        `json:"name"`
-	DisplayName   string        `json:"display_name,omitempty"`
-	Description   string        `json:"description,omitempty"`
-	CustomerID    string        `json:"organization_id"`
-	Region        string        `json:"region,omitempty"`
-	IKGSize       string        `json:"ikg_size,omitempty"`
-	ReplicaRegion string        `json:"replica_region,omitempty"`
-	IKGStatus     string        `json:"ikg_status,omitempty"`
-	DBConnection  *DBConnection `json:"db_connection,omitempty"`
-	CreateTime    time.Time     `json:"create_time"`
-	UpdateTime    time.Time     `json:"update_time"`
-	Etag          string        `json:"etag,omitempty"`
+	ID               string        `json:"id"`
+	Name             string        `json:"name"`
+	DisplayName      string        `json:"display_name,omitempty"`
+	Description      string        `json:"description,omitempty"`
+	CustomerID       string        `json:"organization_id"`
+	Region           string        `json:"region,omitempty"`
+	IKGSize          string        `json:"ikg_size,omitempty"`
+	IKGSchemaVersion string        `json:"ikg_schema_version,omitempty"`
+	ReplicaRegion    string        `json:"replica_region,omitempty"`
+	IKGStatus        string        `json:"ikg_status,omitempty"`
+	DBConnection     *DBConnection `json:"db_connection,omitempty"`
+	CreateTime       time.Time     `json:"create_time"`
+	UpdateTime       time.Time     `json:"update_time"`
+	Etag             string        `json:"etag,omitempty"`
 }
 
 // UpdateApplicationSpaceRequest represents the request to update an application space.
@@ -229,6 +231,7 @@ type TokenIntrospectOpaque struct {
 
 // TokenIntrospectOffline represents offline validation configuration.
 type TokenIntrospectOffline struct {
+	Discovery  string   `json:"discovery,omitempty"`
 	PublicJWKs []string `json:"public_jwks,omitempty"`
 }
 
@@ -236,6 +239,20 @@ type TokenIntrospectOffline struct {
 type TokenIntrospectOnline struct {
 	UserinfoEndpoint string `json:"userinfo_endpoint,omitempty"`
 	CacheTTL         int    `json:"cache_ttl,omitempty"` // In seconds
+}
+
+// TokenIntrospectOnlineOAuth2 represents RFC 7662 token introspection validation configuration.
+type TokenIntrospectOnlineOAuth2 struct {
+	SecretBasic           *TokenIntrospectSecretBasic `json:"secret_basic,omitempty"`
+	IntrospectionEndpoint string                      `json:"introspection_endpoint"`
+	CacheTTL              int                         `json:"cache_ttl,omitempty"` // In seconds
+}
+
+// TokenIntrospectSecretBasic represents HTTP Basic client authentication at the introspection endpoint.
+// ClientSecret is write-only and never returned by the API.
+type TokenIntrospectSecretBasic struct {
+	ClientID     string `json:"client_id"`
+	ClientSecret string `json:"client_secret,omitempty"`
 }
 
 // TokenIntrospectClaim represents a claim mapping configuration.
@@ -253,6 +270,7 @@ type CreateTokenIntrospectRequest struct {
 	Opaque        *TokenIntrospectOpaque           `json:"opaque_matcher,omitempty"`
 	Offline       *TokenIntrospectOffline          `json:"offline_validation,omitempty"`
 	Online        *TokenIntrospectOnline           `json:"online_validation,omitempty"`
+	OnlineOAuth2  *TokenIntrospectOnlineOAuth2     `json:"online_oauth2_validation,omitempty"`
 	ClaimsMapping map[string]*TokenIntrospectClaim `json:"claims_mapping,omitempty"`
 	SubClaim      *TokenIntrospectClaim            `json:"sub_claim,omitempty"`
 	IKGNodeType   string                           `json:"ikg_node_type"`
@@ -266,6 +284,7 @@ type TokenIntrospectResponse struct {
 	Opaque        *TokenIntrospectOpaque           `json:"opaque_matcher,omitempty"`
 	Offline       *TokenIntrospectOffline          `json:"offline_validation,omitempty"`
 	Online        *TokenIntrospectOnline           `json:"online_validation,omitempty"`
+	OnlineOAuth2  *TokenIntrospectOnlineOAuth2     `json:"online_oauth2_validation,omitempty"`
 	SubClaim      *TokenIntrospectClaim            `json:"sub_claim,omitempty"`
 	CreateTime    time.Time                        `json:"create_time"`
 	UpdateTime    time.Time                        `json:"update_time"`
@@ -290,6 +309,7 @@ type UpdateTokenIntrospectRequest struct {
 	Opaque        *TokenIntrospectOpaque           `json:"opaque_matcher,omitempty"`
 	Offline       *TokenIntrospectOffline          `json:"offline_validation,omitempty"`
 	Online        *TokenIntrospectOnline           `json:"online_validation,omitempty"`
+	OnlineOAuth2  *TokenIntrospectOnlineOAuth2     `json:"online_oauth2_validation,omitempty"`
 	ClaimsMapping map[string]*TokenIntrospectClaim `json:"claims_mapping,omitempty"`
 	SubClaim      *TokenIntrospectClaim            `json:"sub_claim,omitempty"`
 	IKGNodeType   string                           `json:"ikg_node_type"`

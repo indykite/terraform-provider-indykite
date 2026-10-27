@@ -44,6 +44,7 @@ const (
 	regionKey             = "region"
 	apiPermissionsKey     = "api_permissions"
 	ikgSizeKey            = "ikg_size"
+	ikgSchemaVersionKey   = "ikg_schema_version"
 	replicaRegionKey      = "replica_region"
 	dbConnectionKey       = "db_connection"
 	dbURLKey              = "url"
@@ -95,6 +96,28 @@ func ikgSizeComputedSchema() *schema.Schema {
 		Computed: true,
 		Description: `IKG size that will be allocated, which corresponds also to number of CPU nodes.
 		Valid values are defined by the environment, see IndyKite documentation for available sizes.`,
+	}
+}
+
+func ikgSchemaVersionSchema() *schema.Schema {
+	return &schema.Schema{
+		Type: schema.TypeString,
+		// Computed: when omitted, the API applies the default version v1.
+		Optional: true,
+		Computed: true,
+		ForceNew: true,
+		// v2 is defined by the API but not supported yet, so it is refused.
+		ValidateFunc: validation.StringInSlice([]string{"v1"}, false),
+		Description: `Schema version of the IKG. Defaults to v1 when omitted.
+		It cannot be changed after the application space is created. v1 is currently the only supported value.`,
+	}
+}
+
+func ikgSchemaVersionComputedSchema() *schema.Schema {
+	return &schema.Schema{
+		Type:        schema.TypeString,
+		Computed:    true,
+		Description: `Schema version of the IKG.`,
 	}
 }
 

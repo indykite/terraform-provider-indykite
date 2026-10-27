@@ -35,15 +35,16 @@ func dataSourceAppSpace() *schema.Resource {
 					nameKey,
 					appSpaceIdentifier),
 				customerIDKey),
-			customerIDKey:    setRequiredWith(customerIDSchema(), nameKey),
-			displayNameKey:   displayNameSchema(),
-			descriptionKey:   descriptionSchema(),
-			createTimeKey:    createTimeSchema(),
-			updateTimeKey:    updateTimeSchema(),
-			regionKey:        setComputed(regionSchema()),
-			ikgSizeKey:       ikgSizeComputedSchema(),
-			replicaRegionKey: setComputed(replicaRegionSchema()),
-			dbConnectionKey:  dbConnectionComputedSchema(),
+			customerIDKey:       setRequiredWith(customerIDSchema(), nameKey),
+			displayNameKey:      displayNameSchema(),
+			descriptionKey:      descriptionSchema(),
+			createTimeKey:       createTimeSchema(),
+			updateTimeKey:       updateTimeSchema(),
+			regionKey:           setComputed(regionSchema()),
+			ikgSizeKey:          ikgSizeComputedSchema(),
+			ikgSchemaVersionKey: ikgSchemaVersionComputedSchema(),
+			replicaRegionKey:    setComputed(replicaRegionSchema()),
+			dbConnectionKey:     dbConnectionComputedSchema(),
 		},
 		Timeouts: defaultDataTimeouts(),
 	}
@@ -60,14 +61,15 @@ func dataSourceAppSpaceList() *schema.Resource {
 				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						customerIDKey:    setComputed(customerIDSchema()),
-						"id":             setComputed(appSpaceIDSchema()),
-						nameKey:          nameSchema(),
-						displayNameKey:   displayNameSchema(),
-						descriptionKey:   descriptionSchema(),
-						regionKey:        setComputed(regionSchema()),
-						ikgSizeKey:       ikgSizeComputedSchema(),
-						replicaRegionKey: setComputed(replicaRegionSchema()),
+						customerIDKey:       setComputed(customerIDSchema()),
+						"id":                setComputed(appSpaceIDSchema()),
+						nameKey:             nameSchema(),
+						displayNameKey:      displayNameSchema(),
+						descriptionKey:      descriptionSchema(),
+						regionKey:           setComputed(regionSchema()),
+						ikgSizeKey:          ikgSizeComputedSchema(),
+						ikgSchemaVersionKey: ikgSchemaVersionComputedSchema(),
+						replicaRegionKey:    setComputed(replicaRegionSchema()),
 						// Note: db_connection is intentionally omitted from list view for security
 						// Users should query individual app spaces to get db connection details
 					},
@@ -123,6 +125,7 @@ func dataAppSpaceFlatten(data *schema.ResourceData, resp *ApplicationSpaceRespon
 	setData(&d, data, updateTimeKey, resp.UpdateTime)
 	setData(&d, data, regionKey, resp.Region)
 	setData(&d, data, ikgSizeKey, resp.IKGSize)
+	setData(&d, data, ikgSchemaVersionKey, resp.IKGSchemaVersion)
 	setData(&d, data, replicaRegionKey, resp.ReplicaRegion)
 	setDBConnectionData(&d, data, resp.DBConnection)
 	return d
@@ -166,14 +169,15 @@ func dataAppSpaceListContext(ctx context.Context, data *schema.ResourceData, met
 		}
 
 		allAppSpaces = append(allAppSpaces, map[string]any{
-			customerIDKey:    appSpace.CustomerID,
-			"id":             appSpace.ID,
-			nameKey:          appSpace.Name,
-			displayNameKey:   appSpace.DisplayName,
-			descriptionKey:   appSpace.Description,
-			regionKey:        appSpace.Region,
-			ikgSizeKey:       appSpace.IKGSize,
-			replicaRegionKey: appSpace.ReplicaRegion,
+			customerIDKey:       appSpace.CustomerID,
+			"id":                appSpace.ID,
+			nameKey:             appSpace.Name,
+			displayNameKey:      appSpace.DisplayName,
+			descriptionKey:      appSpace.Description,
+			regionKey:           appSpace.Region,
+			ikgSizeKey:          appSpace.IKGSize,
+			ikgSchemaVersionKey: appSpace.IKGSchemaVersion,
+			replicaRegionKey:    appSpace.ReplicaRegion,
 			// db_connection intentionally omitted from list view for security
 		})
 	}

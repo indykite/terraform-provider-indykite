@@ -16,6 +16,7 @@ package indykite
 
 import (
 	"context"
+	"errors"
 	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -34,9 +35,19 @@ const (
 
 	tokenIntrospectOfflineKey    = "offline_validation"
 	tokenIntrospectPublicJWKsKey = "public_jwks"
+	tokenIntrospectDiscoveryKey  = "discovery"
 	tokenIntrospectOnlineKey     = "online_validation"
 	tokenIntrospectUserInfoEPKey = "user_info_endpoint"
 	tokenIntrospectCacheTTLKey   = "cache_ttl"
+
+	tokenIntrospectOnlineOAuth2Key    = "online_oauth2_validation"
+	tokenIntrospectIntrospectionEPKey = "introspection_endpoint"
+	tokenIntrospectSecretBasicKey     = "secret_basic"
+	tokenIntrospectClientIDKey        = "client_id"
+	tokenIntrospectClientSecretKey    = "client_secret"
+
+	tokenIntrospectDiscoveryOIDC    = "oidc"
+	tokenIntrospectDiscoveryRFC8414 = "rfc8414"
 
 	tokenIntrospectClaimsMappingKey  = "claims_mapping"
 	tokenIntrospectSubClaimKey       = "sub_claim"
@@ -54,7 +65,7 @@ var (
 
 func resourceTokenIntrospect() *schema.Resource {
 	matcherOneOf := []string{tokenIntrospectJWTKey, tokenIntrospectOpaqueKey}
-	validationOneOf := []string{tokenIntrospectOfflineKey, tokenIntrospectOnlineKey}
+	validationOneOf := []string{tokenIntrospectOfflineKey, tokenIntrospectOnlineKey, tokenIntrospectOnlineOAuth2Key}
 
 	return &schema.Resource{
 		Description: `Token introspect configuration adds support for 3rd party tokens to identify the user within IndyKite APIs.
@@ -62,6 +73,7 @@ func resourceTokenIntrospect() *schema.Resource {
 		validate these tokens, and use their content in the IndyKite platform.
 		To verify these tokens, you need to create a configuration that describes how to do the token introspection.
 		`,
+		CustomizeDiff: validateTokenIntrospectOpaqueValidation,
 		CreateContext: resTokenIntrospectCreate,
 		ReadContext:   resTokenIntrospectRead,
 		UpdateContext: resTokenIntrospectUpdate,
@@ -117,7 +129,6 @@ func resourceTokenIntrospect() *schema.Resource {
 						ValidateFunc: validation.StringLenBetween(1, 50),
 					},
 				}},
-				RequiredWith: []string{tokenIntrospectOnlineKey + ".0." + tokenIntrospectUserInfoEPKey},
 			}, tokenIntrospectOpaqueKey, matcherOneOf),
 
 			tokenIntrospectOfflineKey: setExactlyOneOf(&schema.Schema{
@@ -127,7 +138,7 @@ func resourceTokenIntrospect() *schema.Resource {
 				Elem: &schema.Resource{Schema: map[string]*schema.Schema{
 					tokenIntrospectPublicJWKsKey: {
 						Type:        schema.TypeList,
-						Description: "Public JWKs to validate signature of JWT. If there are no public keys specified, they will be fetched and cached from jwks_uri at https://jwt-issuer.tld/.well-known/openid-configuration",
+						Description: "Public JWKs to validate signature of JWT. If there are no public keys specified, they will be fetched and cached from the jwks_uri of the metadata document selected by `discovery`.",
 						Optional:    true,
 						MinItems:    0,
 						MaxItems:    10,
@@ -136,6 +147,18 @@ func resourceTokenIntrospect() *schema.Resource {
 							ValidateFunc:     validation.StringLenBetween(96, 8192),
 							DiffSuppressFunc: structure.SuppressJsonDiff,
 						},
+					},
+					tokenIntrospectDiscoveryKey: {
+						Type: schema.TypeString,
+						Description: `Metadata document used to find the issuer's jwks_uri when no public_jwks are specified.
+    "oidc" (default) reads https://jwt-issuer.tld/.well-known/openid-configuration.
+    "rfc8414" reads the RFC 8414 document https://jwt-issuer.tld/.well-known/oauth-authorization-server,
+    with the well-known suffix inserted between the host and the path of the issuer.
+    Not used when public_jwks are specified.`,
+						Optional: true,
+						ValidateFunc: validation.StringInSlice(
+							[]string{tokenIntrospectDiscoveryOIDC, tokenIntrospectDiscoveryRFC8414}, false),
+						DiffSuppressFunc: suppressTokenIntrospectDiscoveryDiff,
 					},
 				}},
 			}, tokenIntrospectOfflineKey, validationOneOf),
@@ -167,6 +190,57 @@ func resourceTokenIntrospect() *schema.Resource {
 					},
 				}},
 			}, tokenIntrospectOnlineKey, validationOneOf),
+			tokenIntrospectOnlineOAuth2Key: setExactlyOneOf(&schema.Schema{
+				Type:     schema.TypeList,
+				MaxItems: 1,
+				Description: "OAuth 2.0 online validation works with both JWT and Opaque tokens. " +
+					"It will call an RFC 7662 token introspection endpoint to validate token and fetch token claims. " +
+					"The token is accepted only when the endpoint answers with `\"active\": true`.",
+				Elem: &schema.Resource{Schema: map[string]*schema.Schema{
+					tokenIntrospectIntrospectionEPKey: {
+						Type:         schema.TypeString,
+						Required:     true,
+						Description:  "URI of the RFC 7662 token introspection endpoint, must be https. There is no discovery for it.",
+						ValidateFunc: validation.IsURLWithHTTPS,
+					},
+					tokenIntrospectSecretBasicKey: {
+						Type:     schema.TypeList,
+						Required: true,
+						MinItems: 1,
+						MaxItems: 1,
+						Description: "HTTP Basic authentication against the introspection endpoint " +
+							"(`client_secret_basic`).",
+						Elem: &schema.Resource{Schema: map[string]*schema.Schema{
+							tokenIntrospectClientIDKey: {
+								Type:         schema.TypeString,
+								Required:     true,
+								Description:  "Client ID used for HTTP Basic authentication, up to 256 characters.",
+								ValidateFunc: validation.StringLenBetween(1, 256),
+							},
+							tokenIntrospectClientSecretKey: {
+								Type:      schema.TypeString,
+								Required:  true,
+								Sensitive: true,
+								Description: "Client secret used for HTTP Basic authentication, up to 1024 characters. " +
+									"It is write-only: the API never returns it, " +
+									"so the value is kept from the Terraform state.",
+								ValidateFunc: validation.StringLenBetween(1, 1024),
+							},
+						}},
+					},
+					tokenIntrospectCacheTTLKey: {
+						Type: schema.TypeInt,
+						Description: `Cache TTL of token validity can be used to minimize calls to introspection endpoint.
+    The final cache TTL will be set to lower limit of this value and exp claim of JWT token.
+    If not set, token will not be cached and call to introspection endpoint will be made on every request.
+
+    However, token validity will be checked first if possible (JWT tokens).
+    If token is expired, introspection endpoint will not be called, nor cache checked.`,
+						ValidateFunc: validation.IntBetween(0, 3600),
+						Optional:     true,
+					},
+				}},
+			}, tokenIntrospectOnlineOAuth2Key, validationOneOf),
 
 			tokenIntrospectClaimsMappingKey: {
 				Type: schema.TypeMap,
@@ -268,29 +342,40 @@ func resTokenIntrospectRead(ctx context.Context, data *schema.ResourceData, meta
 	setData(&d, data, createdByKey, resp.CreatedBy)
 	setData(&d, data, updatedByKey, resp.UpdatedBy)
 
-	// Set token matcher (JWT or Opaque)
+	// Set token matcher (JWT or Opaque), clearing the one the API did not return
+	var jwtMatcher, opaqueMatcher []map[string]any
 	if resp.JWT != nil {
-		setData(&d, data, tokenIntrospectJWTKey, []map[string]any{{
+		jwtMatcher = []map[string]any{{
 			tokenIntrospectIssuerKey:   resp.JWT.Issuer,
 			tokenIntrospectAudienceKey: resp.JWT.Audience,
-		}})
+		}}
 	} else if resp.Opaque != nil {
-		setData(&d, data, tokenIntrospectOpaqueKey, []map[string]any{{
+		opaqueMatcher = []map[string]any{{
 			tokenIntrospectHintKey: resp.Opaque.Hint,
-		}})
+		}}
 	}
+	setData(&d, data, tokenIntrospectJWTKey, jwtMatcher)
+	setData(&d, data, tokenIntrospectOpaqueKey, opaqueMatcher)
 
-	// Set validation (Offline or Online)
-	if resp.Offline != nil {
-		setData(&d, data, tokenIntrospectOfflineKey, []map[string]any{{
+	// Set validation (Offline, Online or OnlineOAuth2), clearing the ones the API did not return
+	var offline, online, onlineOAuth2 []map[string]any
+	switch {
+	case resp.Offline != nil:
+		offline = []map[string]any{{
 			tokenIntrospectPublicJWKsKey: resp.Offline.PublicJWKs,
-		}})
-	} else if resp.Online != nil {
-		setData(&d, data, tokenIntrospectOnlineKey, []map[string]any{{
+			tokenIntrospectDiscoveryKey:  resp.Offline.Discovery,
+		}}
+	case resp.Online != nil:
+		online = []map[string]any{{
 			tokenIntrospectUserInfoEPKey: resp.Online.UserinfoEndpoint,
 			tokenIntrospectCacheTTLKey:   resp.Online.CacheTTL,
-		}})
+		}}
+	case resp.OnlineOAuth2 != nil:
+		onlineOAuth2 = flattenTokenIntrospectOnlineOAuth2(data, resp.OnlineOAuth2)
 	}
+	setData(&d, data, tokenIntrospectOfflineKey, offline)
+	setData(&d, data, tokenIntrospectOnlineKey, online)
+	setData(&d, data, tokenIntrospectOnlineOAuth2Key, onlineOAuth2)
 
 	// Set claims mapping
 	claimsMapping := make(map[string]any, len(resp.ClaimsMapping))
@@ -340,6 +425,7 @@ func resTokenIntrospectUpdate(ctx context.Context, data *schema.ResourceData, me
 	req.Opaque = tokenReq.Opaque
 	req.Offline = tokenReq.Offline
 	req.Online = tokenReq.Online
+	req.OnlineOAuth2 = tokenReq.OnlineOAuth2
 	req.ClaimsMapping = tokenReq.ClaimsMapping
 	req.SubClaim = tokenReq.SubClaim
 
@@ -394,8 +480,10 @@ func buildTokenIntrospectRequest(data *schema.ResourceData) CreateTokenIntrospec
 		if len(listVal) > 0 && listVal[0] != nil {
 			mapVal := listVal[0].(map[string]any)
 			publicJWKs := rawArrayToTypedArray[string](mapVal[tokenIntrospectPublicJWKsKey])
+			discovery, _ := mapVal[tokenIntrospectDiscoveryKey].(string)
 			req.Offline = &TokenIntrospectOffline{
 				PublicJWKs: publicJWKs,
+				Discovery:  discovery,
 			}
 		} else {
 			// Empty offline validation
@@ -408,6 +496,23 @@ func buildTokenIntrospectRequest(data *schema.ResourceData) CreateTokenIntrospec
 			req.Online = &TokenIntrospectOnline{
 				UserinfoEndpoint: mapVal[tokenIntrospectUserInfoEPKey].(string),
 				CacheTTL:         mapVal[tokenIntrospectCacheTTLKey].(int),
+			}
+		}
+	}
+	if val, ok := data.GetOk(tokenIntrospectOnlineOAuth2Key); ok {
+		if listVal := val.([]any); len(listVal) > 0 && listVal[0] != nil {
+			mapVal := listVal[0].(map[string]any)
+			req.OnlineOAuth2 = &TokenIntrospectOnlineOAuth2{
+				IntrospectionEndpoint: mapVal[tokenIntrospectIntrospectionEPKey].(string),
+				CacheTTL:              mapVal[tokenIntrospectCacheTTLKey].(int),
+			}
+			secretList, _ := mapVal[tokenIntrospectSecretBasicKey].([]any)
+			if len(secretList) > 0 && secretList[0] != nil {
+				secretVal := secretList[0].(map[string]any)
+				req.OnlineOAuth2.SecretBasic = &TokenIntrospectSecretBasic{
+					ClientID:     secretVal[tokenIntrospectClientIDKey].(string),
+					ClientSecret: secretVal[tokenIntrospectClientSecretKey].(string),
+				}
 			}
 		}
 	}
@@ -428,4 +533,54 @@ func buildTokenIntrospectRequest(data *schema.ResourceData) CreateTokenIntrospec
 	}
 
 	return req
+}
+
+// flattenTokenIntrospectOnlineOAuth2 converts the API OAuth 2.0 validation into a Terraform block.
+// The API never returns client_secret, so it is preserved from the current state.
+func flattenTokenIntrospectOnlineOAuth2(
+	data *schema.ResourceData,
+	oauth2 *TokenIntrospectOnlineOAuth2,
+) []map[string]any {
+	block := map[string]any{
+		tokenIntrospectIntrospectionEPKey: oauth2.IntrospectionEndpoint,
+		tokenIntrospectCacheTTLKey:        oauth2.CacheTTL,
+	}
+	if oauth2.SecretBasic != nil {
+		secretPath := tokenIntrospectOnlineOAuth2Key + ".0." + tokenIntrospectSecretBasicKey + ".0."
+		clientSecret, _ := data.Get(secretPath + tokenIntrospectClientSecretKey).(string)
+		block[tokenIntrospectSecretBasicKey] = []map[string]any{{
+			tokenIntrospectClientIDKey:     oauth2.SecretBasic.ClientID,
+			tokenIntrospectClientSecretKey: clientSecret,
+		}}
+	}
+	return []map[string]any{block}
+}
+
+// suppressTokenIntrospectDiscoveryDiff hides the diffs caused by API defaults of discovery:
+// an unset value is read back as "oidc", and with pinned public_jwks it is read back empty.
+func suppressTokenIntrospectDiscoveryDiff(_, oldValue, newValue string, data *schema.ResourceData) bool {
+	if newValue == "" && oldValue == tokenIntrospectDiscoveryOIDC {
+		return true
+	}
+	publicJWKs, _ := data.Get(tokenIntrospectOfflineKey + ".0." + tokenIntrospectPublicJWKsKey).([]any)
+	return oldValue == "" && len(publicJWKs) > 0
+}
+
+// validateTokenIntrospectOpaqueValidation enforces that an opaque_matcher is paired with an online
+// validation: offline_validation works only with JWT, and online_validation needs user_info_endpoint
+// as there is no issuer to discover it from.
+func validateTokenIntrospectOpaqueValidation(_ context.Context, d *schema.ResourceDiff, _ any) error {
+	if opaque, _ := d.Get(tokenIntrospectOpaqueKey).([]any); len(opaque) == 0 {
+		return nil
+	}
+	if offline, _ := d.Get(tokenIntrospectOfflineKey).([]any); len(offline) > 0 {
+		return errors.New("`offline_validation` can be used only with `jwt_matcher`")
+	}
+	userInfoEPPath := tokenIntrospectOnlineKey + ".0." + tokenIntrospectUserInfoEPKey
+	if online, _ := d.Get(tokenIntrospectOnlineKey).([]any); len(online) > 0 && d.NewValueKnown(userInfoEPPath) {
+		if v, _ := d.Get(userInfoEPPath).(string); v == "" {
+			return errors.New("`online_validation.0.user_info_endpoint` is required with `opaque_matcher`")
+		}
+	}
+	return nil
 }

@@ -50,6 +50,7 @@ func resourceApplicationSpace() *schema.Resource {
 			ikgStatusKey:          ikgStatusSchema(),
 			regionKey:             regionSchema(),
 			ikgSizeKey:            ikgSizeSchema(),
+			ikgSchemaVersionKey:   ikgSchemaVersionSchema(),
 			replicaRegionKey:      replicaRegionSchema(),
 			dbConnectionKey:       dbConnectionSchema(),
 		},
@@ -129,14 +130,15 @@ func resAppSpaceCreateContext(ctx context.Context, data *schema.ResourceData, me
 	defer cancel()
 
 	req := CreateApplicationSpaceRequest{
-		CustomerID:    data.Get(customerIDKey).(string),
-		Name:          data.Get(nameKey).(string),
-		DisplayName:   stringValue(optionalString(data, displayNameKey)),
-		Description:   stringValue(optionalString(data, descriptionKey)),
-		Region:        data.Get(regionKey).(string),
-		IKGSize:       data.Get(ikgSizeKey).(string),
-		ReplicaRegion: data.Get(replicaRegionKey).(string),
-		DBConnection:  getDBConnection(data),
+		CustomerID:       data.Get(customerIDKey).(string),
+		Name:             data.Get(nameKey).(string),
+		DisplayName:      stringValue(optionalString(data, displayNameKey)),
+		Description:      stringValue(optionalString(data, descriptionKey)),
+		Region:           data.Get(regionKey).(string),
+		IKGSize:          data.Get(ikgSizeKey).(string),
+		IKGSchemaVersion: data.Get(ikgSchemaVersionKey).(string),
+		ReplicaRegion:    data.Get(replicaRegionKey).(string),
+		DBConnection:     getDBConnection(data),
 	}
 
 	var resp ApplicationSpaceResponse
@@ -173,6 +175,7 @@ func getStatus(ctx context.Context, clientCtx *ClientContext, data *schema.Resou
 	setData(&d, data, updateTimeKey, resp.UpdateTime)
 	setData(&d, data, regionKey, resp.Region)
 	setData(&d, data, ikgSizeKey, resp.IKGSize)
+	setData(&d, data, ikgSchemaVersionKey, resp.IKGSchemaVersion)
 	setData(&d, data, replicaRegionKey, resp.ReplicaRegion)
 	setData(&d, data, ikgStatusKey, resp.IKGStatus)
 	setDBConnectionData(&d, data, resp.DBConnection)
@@ -249,6 +252,7 @@ func resAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, meta
 	setData(&d, data, updateTimeKey, resp.UpdateTime)
 	setData(&d, data, regionKey, resp.Region)
 	setData(&d, data, ikgSizeKey, resp.IKGSize)
+	setData(&d, data, ikgSchemaVersionKey, resp.IKGSchemaVersion)
 	setData(&d, data, replicaRegionKey, resp.ReplicaRegion)
 	setDBConnectionData(&d, data, resp.DBConnection)
 

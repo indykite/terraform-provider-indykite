@@ -37,6 +37,7 @@ resource "indykite_application_space" "full" {
   description         = "Application space with all optional fields"
   region              = "us-east1"
   ikg_size            = "4GB"
+  ikg_schema_version  = "v1" # defaults to v1; cannot be changed after creation
   replica_region      = "us-west1"
   deletion_protection = false
 }

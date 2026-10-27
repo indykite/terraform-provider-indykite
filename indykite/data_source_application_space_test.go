@@ -59,16 +59,17 @@ var _ = Describe("DataSource Application Space", func() {
 		createTime := time.Now()
 		updateTime := time.Now()
 		appSpaceResp := indykite.ApplicationSpaceResponse{
-			ID:            appSpaceID,
-			CustomerID:    customerID,
-			Name:          "acme",
-			DisplayName:   "Some Cool Display name",
-			Description:   "Just some AppSpace description",
-			CreateTime:    createTime,
-			UpdateTime:    updateTime,
-			Region:        "us-east1",
-			IKGSize:       "4GB",
-			ReplicaRegion: "us-west1",
+			ID:               appSpaceID,
+			CustomerID:       customerID,
+			Name:             "acme",
+			DisplayName:      "Some Cool Display name",
+			Description:      "Just some AppSpace description",
+			CreateTime:       createTime,
+			UpdateTime:       updateTime,
+			Region:           "us-east1",
+			IKGSize:          "4GB",
+			IKGSchemaVersion: "v1",
+			ReplicaRegion:    "us-west1",
 			DBConnection: &indykite.DBConnection{
 				URL:             "postgresql://localhost:5432/testdb",
 				Username:        "testuser",
@@ -165,26 +166,28 @@ var _ = Describe("DataSource Application Space", func() {
 		createTime := time.Now()
 		updateTime := time.Now()
 		appSpaceResp := indykite.ApplicationSpaceResponse{
-			ID:            appSpaceID,
-			CustomerID:    customerID,
-			Name:          "acme",
-			DisplayName:   "Some Cool Display name",
-			Description:   "Just some AppSpace description",
-			CreateTime:    createTime,
-			UpdateTime:    updateTime,
-			Region:        "us-east1",
-			IKGSize:       "4GB",
-			ReplicaRegion: "us-west1",
+			ID:               appSpaceID,
+			CustomerID:       customerID,
+			Name:             "acme",
+			DisplayName:      "Some Cool Display name",
+			Description:      "Just some AppSpace description",
+			CreateTime:       createTime,
+			UpdateTime:       updateTime,
+			Region:           "us-east1",
+			IKGSize:          "4GB",
+			IKGSchemaVersion: "v1",
+			ReplicaRegion:    "us-west1",
 		}
 		appSpaceResp2 := indykite.ApplicationSpaceResponse{
-			ID:            sampleID,
-			CustomerID:    customerID,
-			Name:          "wonka",
-			CreateTime:    createTime,
-			UpdateTime:    updateTime,
-			Region:        "europe-west1",
-			IKGSize:       "8GB",
-			ReplicaRegion: "europe-west2",
+			ID:               sampleID,
+			CustomerID:       customerID,
+			Name:             "wonka",
+			CreateTime:       createTime,
+			UpdateTime:       updateTime,
+			Region:           "europe-west1",
+			IKGSize:          "8GB",
+			IKGSchemaVersion: "v1",
+			ReplicaRegion:    "europe-west2",
 		}
 
 		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -288,15 +291,16 @@ func testAppSpaceDataExists(
 			"id": Equal(data.ID),
 			"%":  Not(BeEmpty()), // This is Terraform helper
 
-			"customer_id":    Equal(data.CustomerID),
-			"name":           Equal(data.Name),
-			"display_name":   Equal(data.DisplayName),
-			"description":    Equal(data.Description),
-			"create_time":    Not(BeEmpty()),
-			"update_time":    Not(BeEmpty()),
-			"region":         Equal(data.Region),
-			"ikg_size":       Equal(data.IKGSize),
-			"replica_region": Equal(data.ReplicaRegion),
+			"customer_id":        Equal(data.CustomerID),
+			"name":               Equal(data.Name),
+			"display_name":       Equal(data.DisplayName),
+			"description":        Equal(data.Description),
+			"create_time":        Not(BeEmpty()),
+			"update_time":        Not(BeEmpty()),
+			"region":             Equal(data.Region),
+			"ikg_size":           Equal(data.IKGSize),
+			"ikg_schema_version": Equal(data.IKGSchemaVersion),
+			"replica_region":     Equal(data.ReplicaRegion),
 		}
 
 		// Add db_connection checks based on whether it exists in the response
@@ -357,6 +361,7 @@ func testAppSpaceListDataExists(n string, data ...indykite.ApplicationSpaceRespo
 			keys[k+"description"] = Equal(d.Description)
 			keys[k+"region"] = Equal(d.Region)
 			keys[k+"ikg_size"] = Equal(d.IKGSize)
+			keys[k+"ikg_schema_version"] = Equal(d.IKGSchemaVersion)
 			keys[k+"replica_region"] = Equal(d.ReplicaRegion)
 			// Note: db_connection is intentionally omitted from list view for security
 		}
