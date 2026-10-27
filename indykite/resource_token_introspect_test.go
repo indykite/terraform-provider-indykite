@@ -319,7 +319,8 @@ var _ = Describe("Resource TokenIntrospect", func() {
 				{
 					Config: fmt.Sprintf(tfConfigDef, appSpaceID, "name", `ikg_node_type = "MyUser"`),
 					ExpectError: regexp.MustCompile(
-						"one of `offline_validation,online_validation` must be(\\s+)specified"),
+						"one of(\\s+)`offline_validation,online_oauth2_validation,online_validation`" +
+							"(\\s+)must(\\s+)be(\\s+)specified"),
 				},
 				{
 					Config:      fmt.Sprintf(tfConfigDef, appSpaceID, "name", `ikg_node_type = "MyUser"`),
@@ -333,7 +334,16 @@ var _ = Describe("Resource TokenIntrospect", func() {
 						online_validation {}
 						ikg_node_type = "MyUser"`),
 					ExpectError: regexp.MustCompile(
-						"`online_validation.0.user_info_endpoint,opaque_matcher` must be specified"),
+						"`online_validation.0.user_info_endpoint` is required with `opaque_matcher`"),
+				},
+				{
+					Config: fmt.Sprintf(tfConfigDef, appSpaceID, "name",
+						`opaque_matcher {
+							hint = "my.domain.com"
+						}
+						offline_validation {}
+						ikg_node_type = "MyUser"`),
+					ExpectError: regexp.MustCompile("`offline_validation` can be used only with `jwt_matcher`"),
 				},
 
 				{
@@ -541,6 +551,197 @@ var _ = Describe("Resource TokenIntrospect", func() {
 					ResourceName:  resourceName,
 					ImportState:   true,
 					ImportStateId: "wonka-introspect?location=" + appSpaceID,
+				},
+			},
+		})
+	})
+
+	It("Test OAuth 2.0 online validation and offline discovery", func() {
+		var (
+			stored      indykite.TokenIntrospectResponse
+			sentSecrets []string
+		)
+		createTime := time.Now()
+
+		// The mock stores what was sent and answers like the API: client_secret is never
+		// returned, and an unset discovery without public_jwks is read back as "oidc".
+		storeRequest := func(r *http.Request) {
+			var req indykite.CreateTokenIntrospectRequest
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			if req.OnlineOAuth2 != nil && req.OnlineOAuth2.SecretBasic != nil {
+				sentSecrets = append(sentSecrets, req.OnlineOAuth2.SecretBasic.ClientSecret)
+				req.OnlineOAuth2.SecretBasic.ClientSecret = ""
+			}
+			if req.Offline != nil && req.Offline.Discovery == "" && len(req.Offline.PublicJWKs) == 0 {
+				req.Offline.Discovery = "oidc"
+			}
+			if req.Name != "" {
+				stored.Name = req.Name
+			}
+			stored.ID = sampleID
+			stored.CustomerID = customerID
+			stored.AppSpaceID = appSpaceID
+			stored.JWT = req.JWT
+			stored.Opaque = req.Opaque
+			stored.Offline = req.Offline
+			stored.Online = req.Online
+			stored.OnlineOAuth2 = req.OnlineOAuth2
+			stored.IKGNodeType = req.IKGNodeType
+			stored.CreateTime = createTime
+			stored.UpdateTime = time.Now()
+		}
+
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/token-introspects"),
+				r.Method == http.MethodPut && strings.Contains(r.URL.Path, sampleID):
+				storeRequest(r)
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(stored)
+			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, sampleID):
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(stored)
+			case r.Method == http.MethodDelete:
+				w.WriteHeader(http.StatusNoContent)
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		tfConfigDef := `resource "indykite_token_introspect" "development" {
+				project_id = "` + appSpaceID + `"
+				name = "oauth2-introspect"
+				ikg_node_type = "Person"
+				%s
+			}`
+		oauth2Config := func(clientSecret string, cacheTTL int) string {
+			return fmt.Sprintf(tfConfigDef, fmt.Sprintf(`
+				opaque_matcher {
+					hint = "my.domain.com"
+				}
+				online_oauth2_validation {
+					introspection_endpoint = "https://example.com/introspect"
+					secret_basic {
+						client_id = "my-client"
+						client_secret = "%s"
+					}
+					cache_ttl = %d
+				}`, clientSecret, cacheTTL))
+		}
+		oauth2Path := "online_oauth2_validation.0."
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
+			},
+			Steps: []resource.TestStep{
+				// Errors case must be always first
+				{
+					Config: fmt.Sprintf(tfConfigDef, `
+						jwt_matcher {
+							issuer = "https://example.com"
+							audience = "audience-id"
+						}
+						offline_validation {
+							discovery = "openid"
+						}`),
+					ExpectError: regexp.MustCompile(`expected offline_validation.0.discovery to be one of`),
+				},
+				{
+					Config: fmt.Sprintf(tfConfigDef, `
+						opaque_matcher {
+							hint = "my.domain.com"
+						}
+						online_oauth2_validation {
+							introspection_endpoint = "https://example.com/introspect"
+							cache_ttl = 300
+						}`),
+					ExpectError: regexp.MustCompile(`Insufficient secret_basic blocks`),
+				},
+				{
+					// Create with opaque matcher, which needs no user_info_endpoint with OAuth 2.0 validation
+					Config: oauth2Config("my-client-secret", 300),
+					Check: resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttr(resourceName, oauth2Path+"introspection_endpoint",
+							"https://example.com/introspect"),
+						resource.TestCheckResourceAttr(resourceName, oauth2Path+"cache_ttl", "300"),
+						resource.TestCheckResourceAttr(resourceName, oauth2Path+"secret_basic.0.client_id",
+							"my-client"),
+						resource.TestCheckResourceAttr(resourceName, oauth2Path+"secret_basic.0.client_secret",
+							"my-client-secret"),
+						func(*terraform.State) error {
+							if len(sentSecrets) != 1 || sentSecrets[0] != "my-client-secret" {
+								return fmt.Errorf("unexpected client secrets sent: %v", sentSecrets)
+							}
+							return nil
+						},
+					),
+				},
+				{
+					// Matcher changed outside Terraform: refresh must clear the stale opaque_matcher
+					PreConfig: func() {
+						stored.Opaque = nil
+						stored.JWT = &indykite.TokenIntrospectJWT{
+							Issuer:   "https://example.com",
+							Audience: "audience-id",
+						}
+					},
+					RefreshState:       true,
+					ExpectNonEmptyPlan: true,
+					Check: resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttr(resourceName, "jwt_matcher.#", "1"),
+						resource.TestCheckResourceAttr(resourceName, "opaque_matcher.#", "0"),
+					),
+				},
+				{
+					// Update keeps sending the secret, as the API validates the full object
+					Config: oauth2Config("my-client-secret", 600),
+					Check: resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttr(resourceName, oauth2Path+"cache_ttl", "600"),
+						resource.TestCheckResourceAttr(resourceName, oauth2Path+"secret_basic.0.client_secret",
+							"my-client-secret"),
+						func(*terraform.State) error {
+							if len(sentSecrets) != 2 || sentSecrets[1] != "my-client-secret" {
+								return fmt.Errorf("unexpected client secrets sent: %v", sentSecrets)
+							}
+							return nil
+						},
+					),
+				},
+				{
+					// Switch to offline validation with RFC 8414 discovery
+					Config: fmt.Sprintf(tfConfigDef, `
+						jwt_matcher {
+							issuer = "https://example.com"
+							audience = "audience-id"
+						}
+						offline_validation {
+							discovery = "rfc8414"
+						}`),
+					Check: resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttr(resourceName, "offline_validation.0.discovery", "rfc8414"),
+						resource.TestCheckResourceAttr(resourceName, "online_oauth2_validation.#", "0"),
+						resource.TestCheckResourceAttr(resourceName, "opaque_matcher.#", "0"),
+					),
+				},
+				{
+					// Unset discovery is read back as "oidc", which must not cause a diff
+					Config: fmt.Sprintf(tfConfigDef, `
+						jwt_matcher {
+							issuer = "https://example.com"
+							audience = "audience-id"
+						}
+						offline_validation {}`),
+					Check: resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttr(resourceName, "offline_validation.0.discovery", "oidc"),
+					),
 				},
 			},
 		})

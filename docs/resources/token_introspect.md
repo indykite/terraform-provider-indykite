@@ -141,7 +141,47 @@ resource "indykite_token_introspect" "offline_with_ref" {
   sub_claim     = "user_id"
 }
 
-# Example 4: JWT with custom claims mapping
+# Example 4: JWT with offline validation and RFC 8414 discovery
+# Without public_jwks, the keys are fetched from the jwks_uri of the issuer's
+# .well-known/oauth-authorization-server document instead of .well-known/openid-configuration.
+resource "indykite_token_introspect" "offline_rfc8414" {
+  name       = "offline-jwt-rfc8414"
+  project_id = indykite_application_space.my_space.id
+  jwt_matcher {
+    issuer   = "https://auth.example.com"
+    audience = "my-app-rfc8414"
+  }
+  offline_validation {
+    discovery = "rfc8414"
+  }
+  ikg_node_type = "Person"
+}
+
+# Example 5: Opaque token with OAuth 2.0 token introspection (RFC 7662)
+variable "introspection_client_secret" {
+  type      = string
+  sensitive = true
+}
+
+resource "indykite_token_introspect" "opaque_oauth2" {
+  name         = "opaque-oauth2-introspection"
+  display_name = "Opaque OAuth 2.0 introspection"
+  project_id   = indykite_application_space.my_space.id
+  opaque_matcher {
+    hint = "my.domain.com"
+  }
+  online_oauth2_validation {
+    introspection_endpoint = "https://auth.example.com/oauth2/introspect"
+    secret_basic {
+      client_id     = "my-client"
+      client_secret = var.introspection_client_secret
+    }
+    cache_ttl = 300
+  }
+  ikg_node_type = "Person"
+}
+
+# Example 6: JWT with custom claims mapping
 resource "indykite_token_introspect" "custom_claims" {
   name         = "jwt-custom-claims"
   display_name = "JWT with Custom Claims"
@@ -169,7 +209,9 @@ resource "indykite_token_introspect" "custom_claims" {
 
 # Note: The project_id parameter accepts an Application Space ID. location is deprecated, use project_id instead.
 # You must use either jwt_matcher or opaque_matcher (not both).
-# You must use either online_validation or offline_validation (not both).
+# You must use exactly one of offline_validation, online_validation or online_oauth2_validation.
+# offline_validation works only with jwt_matcher; opaque_matcher with online_validation requires user_info_endpoint.
+# client_secret in online_oauth2_validation is write-only: the API never returns it, it is kept from the Terraform state.
 # The token introspect will automatically populate app_space_id and customer_id as computed fields.
 ```
 
@@ -194,6 +236,7 @@ resource "indykite_token_introspect" "custom_claims" {
 - `jwt_matcher` (Block List, Max: 1) Specifies all attributes required to match a JWT token. (see [below for nested schema](#nestedblock--jwt_matcher))
 - `location` (String, Deprecated) Identifier of Location, where to create resource. Deprecated, use project_id instead
 - `offline_validation` (Block List, Max: 1) Offline validation works only with JWT and checks token locally. (see [below for nested schema](#nestedblock--offline_validation))
+- `online_oauth2_validation` (Block List, Max: 1) OAuth 2.0 online validation works with both JWT and Opaque tokens. It will call an RFC 7662 token introspection endpoint to validate token and fetch token claims. The token is accepted only when the endpoint answers with `"active": true`. (see [below for nested schema](#nestedblock--online_oauth2_validation))
 - `online_validation` (Block List, Max: 1) Online validation works with both JWT and Opaque tokens. It will call userinfo endpoint to validate token and fetch user claims. (see [below for nested schema](#nestedblock--online_validation))
 - `opaque_matcher` (Block List, Max: 1) Specify opaque token matcher. A project can have several opaque matchers, each with a different hint. (see [below for nested schema](#nestedblock--opaque_matcher))
 - `perform_upsert` (Boolean) Perform Upsert specify, if we should create and/or update DigitalTwin in IKG if it doesn't exist with.
@@ -226,7 +269,39 @@ Required:
 
 Optional:
 
-- `public_jwks` (List of String) Public JWKs to validate signature of JWT. If there are no public keys specified, they will be fetched and cached from jwks_uri at https://jwt-issuer.tld/.well-known/openid-configuration
+- `discovery` (String) Metadata document used to find the issuer's jwks_uri when no public_jwks are specified.
+    "oidc" (default) reads https://jwt-issuer.tld/.well-known/openid-configuration.
+    "rfc8414" reads the RFC 8414 document https://jwt-issuer.tld/.well-known/oauth-authorization-server,
+    with the well-known suffix inserted between the host and the path of the issuer.
+    Not used when public_jwks are specified.
+- `public_jwks` (List of String) Public JWKs to validate signature of JWT. If there are no public keys specified, they will be fetched and cached from the jwks_uri of the metadata document selected by `discovery`.
+
+
+<a id="nestedblock--online_oauth2_validation"></a>
+### Nested Schema for `online_oauth2_validation`
+
+Required:
+
+- `introspection_endpoint` (String) URI of the RFC 7662 token introspection endpoint, must be https. There is no discovery for it.
+- `secret_basic` (Block List, Min: 1, Max: 1) HTTP Basic authentication against the introspection endpoint (`client_secret_basic`). (see [below for nested schema](#nestedblock--online_oauth2_validation--secret_basic))
+
+Optional:
+
+- `cache_ttl` (Number) Cache TTL of token validity can be used to minimize calls to introspection endpoint.
+    The final cache TTL will be set to lower limit of this value and exp claim of JWT token.
+    If not set, token will not be cached and call to introspection endpoint will be made on every request.
+
+    However, token validity will be checked first if possible (JWT tokens).
+    If token is expired, introspection endpoint will not be called, nor cache checked.
+
+<a id="nestedblock--online_oauth2_validation--secret_basic"></a>
+### Nested Schema for `online_oauth2_validation.secret_basic`
+
+Required:
+
+- `client_id` (String) Client ID used for HTTP Basic authentication, up to 256 characters.
+- `client_secret` (String, Sensitive) Client secret used for HTTP Basic authentication, up to 1024 characters. It is write-only: the API never returns it, so the value is kept from the Terraform state.
+
 
 
 <a id="nestedblock--online_validation"></a>

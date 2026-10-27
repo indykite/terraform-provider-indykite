@@ -601,6 +601,172 @@ var _ = Describe("Resource Application Space", func() {
 			},
 		})
 	})
+
+	It("Test ikg_schema_version defaults to v1 when omitted", func() {
+		var (
+			mu           sync.Mutex
+			createBodies []map[string]any
+			project      map[string]any
+		)
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer GinkgoRecover()
+			mu.Lock()
+			defer mu.Unlock()
+			switch {
+			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/projects"):
+				var body map[string]any
+				Expect(json.NewDecoder(r.Body).Decode(&body)).To(Succeed())
+				createBodies = append(createBodies, body)
+				project = maps.Clone(body)
+				project["id"] = appSpaceID
+				project["ikg_size"] = "2GB"
+				project["ikg_status"] = "ACTIVE"
+				project["create_time"] = "2026-10-19T08:00:00Z"
+				project["update_time"] = "2026-10-19T08:00:00Z"
+				if _, ok := body["ikg_schema_version"]; !ok {
+					project["ikg_schema_version"] = "v1" // like the API: the default version
+				}
+				w.WriteHeader(http.StatusCreated)
+				_ = json.NewEncoder(w).Encode(map[string]any{"id": appSpaceID})
+			case r.Method == http.MethodGet && project != nil:
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(project)
+			case r.Method == http.MethodDelete:
+				project = nil
+				w.WriteHeader(http.StatusOK)
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		configDef := `resource "indykite_application_space" "development" {
+			customer_id = "` + customerID + `"
+			name = "schema-version"
+			region = "us-east1"
+			deletion_protection = false
+			%s
+		}`
+		lastCreate := func(matcher OmegaMatcher) resource.TestCheckFunc {
+			return func(_ *terraform.State) error {
+				mu.Lock()
+				defer mu.Unlock()
+				return convertOmegaMatcherToError(matcher, createBodies[len(createBodies)-1])
+			}
+		}
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
+			},
+			Steps: []resource.TestStep{
+				// Errors case must be always first
+				{
+					// v2 is defined by the API but not supported yet
+					Config:      fmt.Sprintf(configDef, `ikg_schema_version = "v2"`),
+					ExpectError: regexp.MustCompile(`expected ikg_schema_version to be one of \["v1"\]`),
+				},
+				{
+					Config:      fmt.Sprintf(configDef, `ikg_schema_version = "V1"`),
+					ExpectError: regexp.MustCompile(`expected ikg_schema_version to be one of \["v1"\]`),
+				},
+				{
+					// Omitted: not sent, the API default is stored and the next plan is empty.
+					Config: fmt.Sprintf(configDef, ""),
+					Check: resource.ComposeTestCheckFunc(
+						lastCreate(Not(HaveKey("ikg_schema_version"))),
+						resource.TestCheckResourceAttr(resourceName, "ikg_schema_version", "v1"),
+					),
+				},
+				{
+					// Setting the default explicitly matches the stored value: no replacement.
+					Config: fmt.Sprintf(configDef, `ikg_schema_version = "v1"`),
+					Check: resource.ComposeTestCheckFunc(
+						func(_ *terraform.State) error {
+							mu.Lock()
+							defer mu.Unlock()
+							if len(createBodies) != 1 {
+								return fmt.Errorf("expected no replacement, got %d creates", len(createBodies))
+							}
+							return nil
+						},
+						resource.TestCheckResourceAttr(resourceName, "ikg_schema_version", "v1"),
+					),
+				},
+			},
+		})
+	})
+
+	It("Test ikg_schema_version is sent when set", func() {
+		var (
+			mu         sync.Mutex
+			createBody map[string]any
+			project    map[string]any
+		)
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer GinkgoRecover()
+			mu.Lock()
+			defer mu.Unlock()
+			switch {
+			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/projects"):
+				Expect(json.NewDecoder(r.Body).Decode(&createBody)).To(Succeed())
+				project = maps.Clone(createBody)
+				project["id"] = appSpaceID
+				project["ikg_size"] = "2GB"
+				project["ikg_status"] = "ACTIVE"
+				project["create_time"] = "2026-10-19T08:00:00Z"
+				project["update_time"] = "2026-10-19T08:00:00Z"
+				w.WriteHeader(http.StatusCreated)
+				_ = json.NewEncoder(w).Encode(map[string]any{"id": appSpaceID})
+			case r.Method == http.MethodGet && project != nil:
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(project)
+			case r.Method == http.MethodDelete:
+				project = nil
+				w.WriteHeader(http.StatusOK)
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
+			},
+			Steps: []resource.TestStep{
+				{
+					Config: `resource "indykite_application_space" "development" {
+						customer_id = "` + customerID + `"
+						name = "schema-version"
+						region = "us-east1"
+						ikg_schema_version = "v1"
+						deletion_protection = false
+					}`,
+					Check: resource.ComposeTestCheckFunc(
+						func(_ *terraform.State) error {
+							mu.Lock()
+							defer mu.Unlock()
+							return convertOmegaMatcherToError(HaveKeyWithValue("ikg_schema_version", "v1"), createBody)
+						},
+						resource.TestCheckResourceAttr(resourceName, "ikg_schema_version", "v1"),
+					),
+				},
+			},
+		})
+	})
 })
 
 func testAppSpaceResourceDataExists(n string) resource.TestCheckFunc {

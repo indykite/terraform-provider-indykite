@@ -120,7 +120,47 @@ resource "indykite_token_introspect" "offline_with_ref" {
   sub_claim     = "user_id"
 }
 
-# Example 4: JWT with custom claims mapping
+# Example 4: JWT with offline validation and RFC 8414 discovery
+# Without public_jwks, the keys are fetched from the jwks_uri of the issuer's
+# .well-known/oauth-authorization-server document instead of .well-known/openid-configuration.
+resource "indykite_token_introspect" "offline_rfc8414" {
+  name       = "offline-jwt-rfc8414"
+  project_id = indykite_application_space.my_space.id
+  jwt_matcher {
+    issuer   = "https://auth.example.com"
+    audience = "my-app-rfc8414"
+  }
+  offline_validation {
+    discovery = "rfc8414"
+  }
+  ikg_node_type = "Person"
+}
+
+# Example 5: Opaque token with OAuth 2.0 token introspection (RFC 7662)
+variable "introspection_client_secret" {
+  type      = string
+  sensitive = true
+}
+
+resource "indykite_token_introspect" "opaque_oauth2" {
+  name         = "opaque-oauth2-introspection"
+  display_name = "Opaque OAuth 2.0 introspection"
+  project_id   = indykite_application_space.my_space.id
+  opaque_matcher {
+    hint = "my.domain.com"
+  }
+  online_oauth2_validation {
+    introspection_endpoint = "https://auth.example.com/oauth2/introspect"
+    secret_basic {
+      client_id     = "my-client"
+      client_secret = var.introspection_client_secret
+    }
+    cache_ttl = 300
+  }
+  ikg_node_type = "Person"
+}
+
+# Example 6: JWT with custom claims mapping
 resource "indykite_token_introspect" "custom_claims" {
   name         = "jwt-custom-claims"
   display_name = "JWT with Custom Claims"
@@ -148,5 +188,7 @@ resource "indykite_token_introspect" "custom_claims" {
 
 # Note: The project_id parameter accepts an Application Space ID. location is deprecated, use project_id instead.
 # You must use either jwt_matcher or opaque_matcher (not both).
-# You must use either online_validation or offline_validation (not both).
+# You must use exactly one of offline_validation, online_validation or online_oauth2_validation.
+# offline_validation works only with jwt_matcher; opaque_matcher with online_validation requires user_info_endpoint.
+# client_secret in online_oauth2_validation is write-only: the API never returns it, it is kept from the Terraform state.
 # The token introspect will automatically populate app_space_id and customer_id as computed fields.

@@ -2,7 +2,7 @@
 
 The Terraform IndyKite provider is a plugin for Terraform that allows for the full lifecycle management of IndyKite resources. This provider is maintained internally by the IndyKite Provider team.
 
-Generated at: 2026-09-16T08:28:17Z
+Generated at: 2026-10-27T17:08:43Z
 
 DO NOT EDIT!!
 
@@ -14,21 +14,21 @@ Regenerate with `ops-common/.github/actions/trivy-license/script.sh (clone 'ops-
 
 | License | Classification | Severity | Count |
 | --- | --- | --- | ---: |
-| MIT | notice | LOW | 24 |
+| MIT | notice | LOW | 23 |
 | MPL-2.0 | reciprocal | MEDIUM | 19 |
 | BSD-3-Clause | notice | LOW | 12 |
 | Apache-2.0 | notice | LOW | 11 |
 | BSD-2-Clause | notice | LOW | 3 |
 | Unicode-DFS-2016 | notice | LOW | 1 |
 
-**Total packages scanned:** 70
+**Total packages scanned:** 69
 
 ## Report Summary (by target)
 
 | Target | Type | Licenses |
 | --- | --- | ---: |
 | Loose File License(s) | - | 1 |
-| go.mod | gomod | 69 |
+| go.mod | gomod | 68 |
 
 ## Details
 
@@ -38,7 +38,7 @@ Regenerate with `ops-common/.github/actions/trivy-license/script.sh (clone 'ops-
 | --- | --- | --- | --- |
 | LICENSE | Apache-2.0 | notice | LOW |
 
-### `go.mod` (gomod) -- 69 licenses
+### `go.mod` (gomod) -- 68 licenses
 
 | Package | License | Classification | Severity |
 | --- | --- | --- | --- |
@@ -87,7 +87,6 @@ Regenerate with `ops-common/.github/actions/trivy-license/script.sh (clone 'ops-
 | github.com/mitchellh/reflectwalk | MIT | notice | LOW |
 | github.com/onsi/ginkgo/v2 | MIT | notice | LOW |
 | github.com/onsi/gomega | MIT | notice | LOW |
-| github.com/valyala/fastjson | MIT | notice | LOW |
 | github.com/zclconf/go-cty | MIT | notice | LOW |
 | go.yaml.in/yaml/v3 | MIT | notice | LOW |
 | gopkg.in/yaml.v3 | MIT | notice | LOW |

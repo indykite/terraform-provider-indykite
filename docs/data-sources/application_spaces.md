@@ -88,6 +88,7 @@ Read-Only:
 - `description` (String)
 - `display_name` (String)
 - `id` (String)
+- `ikg_schema_version` (String)
 - `ikg_size` (String)
 - `name` (String)
 - `region` (String)

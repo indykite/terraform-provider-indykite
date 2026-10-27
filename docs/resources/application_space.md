@@ -52,6 +52,7 @@ resource "indykite_application_space" "full" {
   description         = "Application space with all optional fields"
   region              = "us-east1"
   ikg_size            = "4GB"
+  ikg_schema_version  = "v1" # defaults to v1; cannot be changed after creation
   replica_region      = "us-west1"
   deletion_protection = false
 }
@@ -127,6 +128,8 @@ resource "indykite_application_space" "appspace_with_composite_db" {
 - `deletion_protection` (Boolean) Whether or not to allow Terraform to destroy the instance. Unless this field is set to false in Terraform state, a terraform destroy or terraform apply that would delete the instance will fail.
 - `description` (String) Your own description of the resource, between 2 and 65000 characters.
 - `display_name` (String) The display name for the instance, between 2 and 254 characters. Can be updated without creating a new resource.
+- `ikg_schema_version` (String) Schema version of the IKG. Defaults to v1 when omitted.
+		It cannot be changed after the application space is created. v1 is currently the only supported value.
 - `ikg_size` (String) IKG size that will be allocated, which corresponds also to number of CPU nodes.
 		When omitted, the default size of the environment is used.
 		Valid values are defined by the environment, see IndyKite documentation for available sizes.
