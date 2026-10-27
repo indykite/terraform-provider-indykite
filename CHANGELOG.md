@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.49.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.48.2...v0.49.0) (2026-10-27)
+
+
+### Features
+
+* add online_oauth2_validation and ikg schema version ([36126bc](https://github.com/indykite/terraform-provider-indykite/commit/36126bc35968e9f0dbaa96498180fb3c3a4260a0))
+
+
+### Miscellaneous Chores
+
+* **deps:** update all non-major dependencies ([3723220](https://github.com/indykite/terraform-provider-indykite/commit/3723220ec8ecdf00d30fa8a52438b228fb8674c4))
+
 ## [0.48.2](https://github.com/indykite/terraform-provider-indykite/compare/v0.48.1...v0.48.2) (2026-10-20)
 
 
