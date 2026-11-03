@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.50.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.49.0...v0.50.0) (2026-11-03)
+
+
+### Features
+
+* add idkey, label in token introspect + maintenance ([6ca3d4e](https://github.com/indykite/terraform-provider-indykite/commit/6ca3d4ea498f6a47364e6d19d9cb738068940fa1))
+
+
+### Miscellaneous Chores
+
+* **deps:** update all non-major dependencies ([#404](https://github.com/indykite/terraform-provider-indykite/issues/404)) ([7d59837](https://github.com/indykite/terraform-provider-indykite/commit/7d59837734c8de6e0aa1eccec0676f9692208843))
+* **deps:** update golang:1.27.3-alpine Docker digest to d200d2d ([964273e](https://github.com/indykite/terraform-provider-indykite/commit/964273eab4c518e113a651fd297c27494660c927))
+* **deps:** update module golang.org/x/net to v0.62.0 [SECURITY] ([7eee6f6](https://github.com/indykite/terraform-provider-indykite/commit/7eee6f63cdb26135ff1309d58942467a138d7bb7))
+* **deps:** update pre-commit hook renovatebot/pre-commit-hooks to v44.192.2 ([62ce398](https://github.com/indykite/terraform-provider-indykite/commit/62ce39854979c8410c875bd6c59096eeeca2837f))
+
 ## [0.49.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.48.2...v0.49.0) (2026-10-27)
 
 
