@@ -131,7 +131,7 @@ var _ = Describe("DataSource config collection lists", func() {
 					{
 						ID: sampleID, CustomerID: customerID, AppSpaceID: appSpaceID,
 						Name: "name-one", DisplayName: "Introspect One",
-						IKGNodeType: "Person", PerformUpsert: true,
+						IKGNodeType: "Person", IDKey: "user_id", Label: "Customer", PerformUpsert: true,
 					},
 					{ID: applicationID, CustomerID: customerID, AppSpaceID: appSpaceID, Name: "name-two"},
 				},
@@ -141,6 +141,8 @@ var _ = Describe("DataSource config collection lists", func() {
 				"id":             sampleID,
 				"name":           "name-one",
 				"ikg_node_type":  "Person",
+				"id_key":         "user_id",
+				"label":          "Customer",
 				"perform_upsert": "true",
 			},
 		},

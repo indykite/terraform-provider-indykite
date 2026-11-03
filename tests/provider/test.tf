@@ -1010,6 +1010,128 @@ resource "indykite_token_introspect" "token_introspect_project_id" {
 }
 
 # -----------------------------------------------------------------------------
+# Test: IKG schema version of the application space
+# The appspace above is created without ikg_schema_version, so the platform applies
+# the default v1, which the provider must read back. A second application space is
+# not created for this: it would provision another IKG for one attribute.
+# -----------------------------------------------------------------------------
+
+data "indykite_application_space" "lookup_appspace_schema_version" {
+  app_space_id = indykite_application_space.appspace.id
+  depends_on   = [indykite_application_space.appspace]
+  lifecycle {
+    postcondition {
+      condition     = self.ikg_schema_version == "v1"
+      error_message = "ikg_schema_version must be read back as the default v1"
+    }
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Test: Token introspect matchers and validations
+# The blocks above use jwt_matcher with online_validation. Each block below covers
+# another validation mode. The platform stores the configuration without calling
+# the issuer, the JWKS or the introspection endpoint, so they can be fictitious.
+# A Token Introspect is unique per issuer or opaque hint within a project.
+# -----------------------------------------------------------------------------
+
+# Opaque token validated by an RFC 7662 token introspection endpoint
+resource "indykite_token_introspect" "token_introspect_oauth2" {
+  name         = "automation-terraform-token-introspect-oauth2-${time_static.example.unix}"
+  display_name = "Automation Terraform token introspect OAuth 2.0 ${time_static.example.unix}"
+  description  = "Token introspect with OAuth 2.0 introspection for terraform pipeline"
+  project_id   = indykite_application_space.appspace.id
+  opaque_matcher {
+    hint = "automation-terraform-oauth2"
+  }
+  online_oauth2_validation {
+    introspection_endpoint = "https://auth-oauth2.example.com/oauth2/introspect"
+    secret_basic {
+      client_id     = "automation-terraform-client"
+      client_secret = "automation-terraform-client-secret" # checkov:skip=CKV_SECRET_6:acceptance test
+    }
+    cache_ttl = 300
+  }
+  ikg_node_type = "Person"
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition = (
+        self.opaque_matcher[0].hint == "automation-terraform-oauth2" &&
+        self.online_oauth2_validation[0].introspection_endpoint == "https://auth-oauth2.example.com/oauth2/introspect" &&
+        self.online_oauth2_validation[0].secret_basic[0].client_id == "automation-terraform-client" &&
+        self.online_oauth2_validation[0].cache_ttl == 300
+      )
+      error_message = "opaque_matcher and online_oauth2_validation must round-trip through create/read"
+    }
+    postcondition {
+      # the API never returns client_secret; Terraform keeps the configured one
+      condition     = nonsensitive(self.online_oauth2_validation[0].secret_basic[0].client_secret) == "automation-terraform-client-secret"
+      error_message = "client_secret must be kept from the configuration, as the API never returns it"
+    }
+  }
+}
+
+# JWT validated offline with pinned public keys and a custom subject claim
+resource "indykite_token_introspect" "token_introspect_offline_jwks" {
+  name         = "automation-terraform-token-introspect-offline-jwks-${time_static.example.unix}"
+  display_name = "Automation Terraform token introspect offline JWKs ${time_static.example.unix}"
+  description  = "Token introspect with pinned public keys for terraform pipeline"
+  project_id   = indykite_application_space.appspace.id
+  jwt_matcher {
+    issuer   = "https://auth-offline.example.com"
+    audience = "automation-terraform-offline-jwks"
+  }
+  offline_validation {
+    public_jwks = [
+      jsonencode({
+        kid = "automation-terraform-key-1"
+        use = "sig"
+        alg = "RS256"
+        kty = "RSA"
+        n   = "sXchB8A4CkaR3DjDdFUXAYVHx_dWx6gT6tEFc6aOaZ5CPAsqJ8lmwczE6xT74j_xoz1PZtKh6q6tRxX4Mk-GB4KFu0YQH1-WN6uEhEcE0fMtsymrZ1OlN3GhxUAt93Q6zpg3ZD9P4ZtXWr7g6OpkqKAv12v2YKvHtJmEznV0OZPZQj5POj1U0EJp0B98VpTmRtT1K2fKjddAlDq3t35u5xPdkL9l9yLeaMLqGw3tNhxG8amj_Mlq3zEy_QwOmR6OKO5mIF0kCshRsfKj8cMyOrUdxzqaZGuv9KYkgA3ulFjHbInCQwFZ8Z5h7bnQZEkSz94Cz3C4X8hGgSyOShLMuWw"
+        e   = "AQAB"
+      })
+    ]
+  }
+  sub_claim     = "user_id"
+  ikg_node_type = "Person"
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition = (
+        length(self.offline_validation[0].public_jwks) == 1 &&
+        self.sub_claim == "user_id"
+      )
+      error_message = "public_jwks and sub_claim must round-trip through create/read"
+    }
+  }
+}
+
+# JWT validated offline with keys discovered through the RFC 8414 metadata document
+resource "indykite_token_introspect" "token_introspect_rfc8414" {
+  name         = "automation-terraform-token-introspect-rfc8414-${time_static.example.unix}"
+  display_name = "Automation Terraform token introspect RFC 8414 ${time_static.example.unix}"
+  description  = "Token introspect with RFC 8414 discovery for terraform pipeline"
+  project_id   = indykite_application_space.appspace.id
+  jwt_matcher {
+    issuer   = "https://auth-rfc8414.example.com"
+    audience = "automation-terraform-rfc8414"
+  }
+  offline_validation {
+    discovery = "rfc8414"
+  }
+  ikg_node_type = "Person"
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = self.offline_validation[0].discovery == "rfc8414"
+      error_message = "discovery must round-trip through create/read"
+    }
+  }
+}
+
+# -----------------------------------------------------------------------------
 # Test: List data sources send project_id
 # Each list reads GET /<type>?project_id=<project>&full_fetch=true and must return
 # exactly the configuration created above, in the right project.

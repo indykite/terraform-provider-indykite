@@ -207,10 +207,29 @@ resource "indykite_token_introspect" "custom_claims" {
   sub_claim      = "user_identifier"
 }
 
+# Example 7: Project with IKG schema v2, where the subject is matched by id_key and label
+# instead of ikg_node_type. id_key names the node property holding the sub claim (or the
+# claim selected by sub_claim) and label names the node label.
+resource "indykite_token_introspect" "ikg_schema_v2" {
+  name       = "jwt-ikg-schema-v2"
+  project_id = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
+  jwt_matcher {
+    issuer   = "https://auth.example.com"
+    audience = "my-app-v2"
+  }
+  online_validation {
+    cache_ttl = 600
+  }
+  id_key         = "user_id"
+  label          = "Person"
+  perform_upsert = true
+}
+
 # Note: The project_id parameter accepts an Application Space ID. location is deprecated, use project_id instead.
 # You must use either jwt_matcher or opaque_matcher (not both).
 # You must use exactly one of offline_validation, online_validation or online_oauth2_validation.
 # offline_validation works only with jwt_matcher; opaque_matcher with online_validation requires user_info_endpoint.
+# ikg_node_type is required with IKG schema v1; id_key and label are required together with IKG schema v2.
 # client_secret in online_oauth2_validation is write-only: the API never returns it, it is kept from the Terraform state.
 # The token introspect will automatically populate app_space_id and customer_id as computed fields.
 ```
@@ -220,7 +239,6 @@ resource "indykite_token_introspect" "custom_claims" {
 
 ### Required
 
-- `ikg_node_type` (String) Node type in IKG to which we will try to match sub claim with DT external_id.
 - `name` (String) Unique client assigned immutable identifier. Can not be updated without creating a new resource.
 
 ### Optional
@@ -233,7 +251,10 @@ resource "indykite_token_introspect" "custom_claims" {
     Value specifies which claim to map and how.
 - `description` (String) Your own description of the resource, between 2 and 65000 characters.
 - `display_name` (String) The display name for the instance, between 2 and 254 characters. Can be updated without creating a new resource.
+- `id_key` (String) Name of the node property where the sub claim, or the claim specified in `sub_claim`, is stored, up to 256 characters. Required together with `label` when the Application Space uses IKG schema v2, ignored with v1.
+- `ikg_node_type` (String) Node type in IKG to which we will try to match sub claim with DT external_id. Required when the Application Space uses IKG schema v1, ignored with v2.
 - `jwt_matcher` (Block List, Max: 1) Specifies all attributes required to match a JWT token. (see [below for nested schema](#nestedblock--jwt_matcher))
+- `label` (String) Label of the node in IKG, which is matched and created by token introspect, up to 256 characters. Required together with `id_key` when the Application Space uses IKG schema v2, ignored with v1.
 - `location` (String, Deprecated) Identifier of Location, where to create resource. Deprecated, use project_id instead
 - `offline_validation` (Block List, Max: 1) Offline validation works only with JWT and checks token locally. (see [below for nested schema](#nestedblock--offline_validation))
 - `online_oauth2_validation` (Block List, Max: 1) OAuth 2.0 online validation works with both JWT and Opaque tokens. It will call an RFC 7662 token introspection endpoint to validate token and fetch token claims. The token is accepted only when the endpoint answers with `"active": true`. (see [below for nested schema](#nestedblock--online_oauth2_validation))

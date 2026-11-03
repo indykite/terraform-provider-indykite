@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -741,6 +742,151 @@ var _ = Describe("Resource TokenIntrospect", func() {
 						offline_validation {}`),
 					Check: resource.ComposeTestCheckFunc(
 						resource.TestCheckResourceAttr(resourceName, "offline_validation.0.discovery", "oidc"),
+					),
+				},
+			},
+		})
+	})
+
+	It("Test IKG schema v2 subject matching with id_key and label", func() {
+		var (
+			stored   indykite.TokenIntrospectResponse
+			sentBody map[string]any
+		)
+		createTime := time.Now()
+
+		// The mock stores what was sent and keeps the raw body, to check which keys were sent.
+		storeRequest := func(r *http.Request) {
+			body, _ := io.ReadAll(r.Body)
+			sentBody = nil
+			_ = json.Unmarshal(body, &sentBody)
+			var req indykite.CreateTokenIntrospectRequest
+			_ = json.Unmarshal(body, &req)
+			if req.Name != "" {
+				stored.Name = req.Name
+			}
+			stored.ID = sampleID
+			stored.CustomerID = customerID
+			stored.AppSpaceID = appSpaceID
+			stored.JWT = req.JWT
+			stored.Online = req.Online
+			stored.IKGNodeType = req.IKGNodeType
+			stored.IDKey = req.IDKey
+			stored.Label = req.Label
+			stored.CreateTime = createTime
+			stored.UpdateTime = time.Now()
+		}
+
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/token-introspects"),
+				r.Method == http.MethodPut && strings.Contains(r.URL.Path, sampleID):
+				storeRequest(r)
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(stored)
+			case r.Method == http.MethodGet && strings.Contains(r.URL.Path, sampleID):
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(stored)
+			case r.Method == http.MethodDelete:
+				w.WriteHeader(http.StatusNoContent)
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		tfConfigDef := `resource "indykite_token_introspect" "development" {
+				project_id = "` + appSpaceID + `"
+				name = "schema-v2-introspect"
+				jwt_matcher {
+					issuer = "https://example.com"
+					audience = "audience-id"
+				}
+				online_validation {
+					cache_ttl = 600
+				}
+				%s
+			}`
+		// sentOnly checks that the last request carried exactly the given subject keys with the given values.
+		sentOnly := func(expected map[string]string) resource.TestCheckFunc {
+			return func(*terraform.State) error {
+				for _, key := range []string{"ikg_node_type", "id_key", "label"} {
+					value, sent := sentBody[key]
+					if want, ok := expected[key]; ok {
+						if !sent || value != want {
+							return fmt.Errorf("expected %s=%q to be sent, got %v (sent: %t)", key, want, value, sent)
+						}
+					} else if sent {
+						return fmt.Errorf("%s must not be sent when it is not configured, got %v", key, value)
+					}
+				}
+				return nil
+			}
+		}
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
+			},
+			Steps: []resource.TestStep{
+				// Errors case must be always first
+				{
+					Config: fmt.Sprintf(tfConfigDef, `perform_upsert = true`),
+					ExpectError: regexp.MustCompile(
+						"one of(\\s+)`id_key,ikg_node_type`(\\s+)must(\\s+)be(\\s+)specified"),
+				},
+				{
+					Config: fmt.Sprintf(tfConfigDef, `id_key = "user_id"`),
+					ExpectError: regexp.MustCompile(
+						"all of(\\s+)`id_key,label`(\\s+)must(\\s+)be(\\s+)specified"),
+				},
+				{
+					Config: fmt.Sprintf(tfConfigDef, `label = "Person"`),
+					ExpectError: regexp.MustCompile(
+						"all of(\\s+)`id_key,label`(\\s+)must(\\s+)be(\\s+)specified"),
+				},
+				{
+					// Create with IKG schema v2 subject matching, without ikg_node_type
+					Config: fmt.Sprintf(tfConfigDef, `
+						id_key = "user_id"
+						label = "Person"`),
+					Check: resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttr(resourceName, "id_key", "user_id"),
+						resource.TestCheckResourceAttr(resourceName, "label", "Person"),
+						resource.TestCheckResourceAttr(resourceName, "ikg_node_type", ""),
+						sentOnly(map[string]string{"id_key": "user_id", "label": "Person"}),
+					),
+				},
+				{
+					// Performs 1 read
+					ResourceName:  resourceName,
+					ImportState:   true,
+					ImportStateId: sampleID,
+				},
+				{
+					// Update sends the full subject matching again
+					Config: fmt.Sprintf(tfConfigDef, `
+						id_key = "user_id"
+						label = "Customer"`),
+					Check: resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttr(resourceName, "label", "Customer"),
+						sentOnly(map[string]string{"id_key": "user_id", "label": "Customer"}),
+					),
+				},
+				{
+					// Switch back to IKG schema v1 subject matching clears id_key and label
+					Config: fmt.Sprintf(tfConfigDef, `ikg_node_type = "Person"`),
+					Check: resource.ComposeTestCheckFunc(
+						resource.TestCheckResourceAttr(resourceName, "ikg_node_type", "Person"),
+						resource.TestCheckResourceAttr(resourceName, "id_key", ""),
+						resource.TestCheckResourceAttr(resourceName, "label", ""),
+						sentOnly(map[string]string{"ikg_node_type": "Person"}),
 					),
 				},
 			},
