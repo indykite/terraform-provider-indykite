@@ -273,8 +273,12 @@ type CreateTokenIntrospectRequest struct {
 	OnlineOAuth2  *TokenIntrospectOnlineOAuth2     `json:"online_oauth2_validation,omitempty"`
 	ClaimsMapping map[string]*TokenIntrospectClaim `json:"claims_mapping,omitempty"`
 	SubClaim      *TokenIntrospectClaim            `json:"sub_claim,omitempty"`
-	IKGNodeType   string                           `json:"ikg_node_type"`
-	PerformUpsert bool                             `json:"perform_upsert"`
+	// IKGNodeType is required with IKG schema v1 and ignored with v2.
+	IKGNodeType string `json:"ikg_node_type,omitempty"`
+	// IDKey and Label are required with IKG schema v2 and ignored with v1.
+	IDKey         string `json:"id_key,omitempty"`
+	Label         string `json:"label,omitempty"`
+	PerformUpsert bool   `json:"perform_upsert"`
 }
 
 // TokenIntrospectResponse represents a token introspect configuration resource.
@@ -297,6 +301,8 @@ type TokenIntrospectResponse struct {
 	CustomerID    string                           `json:"organization_id"`
 	AppSpaceID    string                           `json:"project_id,omitempty"`
 	IKGNodeType   string                           `json:"ikg_node_type"`
+	IDKey         string                           `json:"id_key,omitempty"`
+	Label         string                           `json:"label,omitempty"`
 	Etag          string                           `json:"etag,omitempty"`
 	PerformUpsert bool                             `json:"perform_upsert"`
 }
@@ -312,7 +318,9 @@ type UpdateTokenIntrospectRequest struct {
 	OnlineOAuth2  *TokenIntrospectOnlineOAuth2     `json:"online_oauth2_validation,omitempty"`
 	ClaimsMapping map[string]*TokenIntrospectClaim `json:"claims_mapping,omitempty"`
 	SubClaim      *TokenIntrospectClaim            `json:"sub_claim,omitempty"`
-	IKGNodeType   string                           `json:"ikg_node_type"`
+	IKGNodeType   string                           `json:"ikg_node_type,omitempty"`
+	IDKey         string                           `json:"id_key,omitempty"`
+	Label         string                           `json:"label,omitempty"`
 	PerformUpsert bool                             `json:"perform_upsert"`
 }
 

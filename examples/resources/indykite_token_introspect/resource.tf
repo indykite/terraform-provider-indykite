@@ -186,9 +186,28 @@ resource "indykite_token_introspect" "custom_claims" {
   sub_claim      = "user_identifier"
 }
 
+# Example 7: Project with IKG schema v2, where the subject is matched by id_key and label
+# instead of ikg_node_type. id_key names the node property holding the sub claim (or the
+# claim selected by sub_claim) and label names the node label.
+resource "indykite_token_introspect" "ikg_schema_v2" {
+  name       = "jwt-ikg-schema-v2"
+  project_id = "gid:AAAAAmluZHlraURlgAABDwAAAAA"
+  jwt_matcher {
+    issuer   = "https://auth.example.com"
+    audience = "my-app-v2"
+  }
+  online_validation {
+    cache_ttl = 600
+  }
+  id_key         = "user_id"
+  label          = "Person"
+  perform_upsert = true
+}
+
 # Note: The project_id parameter accepts an Application Space ID. location is deprecated, use project_id instead.
 # You must use either jwt_matcher or opaque_matcher (not both).
 # You must use exactly one of offline_validation, online_validation or online_oauth2_validation.
 # offline_validation works only with jwt_matcher; opaque_matcher with online_validation requires user_info_endpoint.
+# ikg_node_type is required with IKG schema v1; id_key and label are required together with IKG schema v2.
 # client_secret in online_oauth2_validation is write-only: the API never returns it, it is kept from the Terraform state.
 # The token introspect will automatically populate app_space_id and customer_id as computed fields.

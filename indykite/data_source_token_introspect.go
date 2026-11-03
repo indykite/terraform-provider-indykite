@@ -20,7 +20,12 @@ import (
 
 func dataSourceTokenIntrospectList() *schema.Resource {
 	entrySchema := listEntryCommonSchema(true)
-	entrySchema[tokenIntrospectIKGNodeTypeKey] = computedStringSchema("IKG node type the introspected token maps to")
+	entrySchema[tokenIntrospectIKGNodeTypeKey] = computedStringSchema(
+		"IKG node type the introspected token maps to, used with IKG schema v1")
+	entrySchema[tokenIntrospectIDKeyKey] = computedStringSchema(
+		"Node property holding the subject claim, used with IKG schema v2")
+	entrySchema[tokenIntrospectLabelKey] = computedStringSchema(
+		"Label of the IKG node the introspected token maps to, used with IKG schema v2")
 	entrySchema[tokenIntrospectPerformUpsertKey] = &schema.Schema{
 		Type:        schema.TypeBool,
 		Computed:    true,
@@ -46,6 +51,8 @@ func dataSourceTokenIntrospectList() *schema.Resource {
 				displayNameKey:                  ti.DisplayName,
 				descriptionKey:                  ti.Description,
 				tokenIntrospectIKGNodeTypeKey:   ti.IKGNodeType,
+				tokenIntrospectIDKeyKey:         ti.IDKey,
+				tokenIntrospectLabelKey:         ti.Label,
 				tokenIntrospectPerformUpsertKey: ti.PerformUpsert,
 			}
 		},

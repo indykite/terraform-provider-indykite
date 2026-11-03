@@ -60,6 +60,8 @@ Read-Only:
 - `description` (String)
 - `display_name` (String)
 - `id` (String)
+- `id_key` (String)
 - `ikg_node_type` (String)
+- `label` (String)
 - `name` (String)
 - `perform_upsert` (Boolean)

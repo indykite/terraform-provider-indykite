@@ -55,6 +55,8 @@ const (
 	tokenIntrospectCMSelectorKey     = "selector"
 
 	tokenIntrospectIKGNodeTypeKey   = "ikg_node_type"
+	tokenIntrospectIDKeyKey         = "id_key"
+	tokenIntrospectLabelKey         = "label"
 	tokenIntrospectPerformUpsertKey = "perform_upsert"
 )
 
@@ -66,6 +68,8 @@ var (
 func resourceTokenIntrospect() *schema.Resource {
 	matcherOneOf := []string{tokenIntrospectJWTKey, tokenIntrospectOpaqueKey}
 	validationOneOf := []string{tokenIntrospectOfflineKey, tokenIntrospectOnlineKey, tokenIntrospectOnlineOAuth2Key}
+	// The subject is matched by ikg_node_type with IKG schema v1, and by id_key together with label with v2.
+	subjectMatchOneOf := []string{tokenIntrospectIKGNodeTypeKey, tokenIntrospectIDKeyKey}
 
 	return &schema.Resource{
 		Description: `Token introspect configuration adds support for 3rd party tokens to identify the user within IndyKite APIs.
@@ -266,13 +270,34 @@ func resourceTokenIntrospect() *schema.Resource {
 				ValidateFunc: validateCharLength(1, 200),
 			},
 			tokenIntrospectIKGNodeTypeKey: {
-				Type:        schema.TypeString,
-				Description: "Node type in IKG to which we will try to match sub claim with DT external_id.",
-				Required:    true,
+				Type: schema.TypeString,
+				Description: "Node type in IKG to which we will try to match sub claim with DT external_id. " +
+					"Required when the Application Space uses IKG schema v1, ignored with v2.",
+				Optional:     true,
+				AtLeastOneOf: subjectMatchOneOf,
 				ValidateFunc: validation.All(
 					validation.StringLenBetween(2, 64),
 					validation.StringMatch(tokenIntrospectIkgNodeTypeRegex, "must be valid IKG Node Type"),
 				),
+			},
+			tokenIntrospectIDKeyKey: {
+				Type: schema.TypeString,
+				Description: "Name of the node property where the sub claim, or the claim specified in `sub_claim`, " +
+					"is stored, up to 256 characters. " +
+					"Required together with `label` when the Application Space uses IKG schema v2, ignored with v1.",
+				Optional:     true,
+				AtLeastOneOf: subjectMatchOneOf,
+				RequiredWith: []string{tokenIntrospectLabelKey},
+				ValidateFunc: validation.StringLenBetween(1, 256),
+			},
+			tokenIntrospectLabelKey: {
+				Type: schema.TypeString,
+				Description: "Label of the node in IKG, which is matched and created by token introspect, " +
+					"up to 256 characters. " +
+					"Required together with `id_key` when the Application Space uses IKG schema v2, ignored with v1.",
+				Optional:     true,
+				RequiredWith: []string{tokenIntrospectIDKeyKey},
+				ValidateFunc: validation.StringLenBetween(1, 256),
 			},
 			tokenIntrospectPerformUpsertKey: {
 				Type: schema.TypeBool,
@@ -392,6 +417,8 @@ func resTokenIntrospectRead(ctx context.Context, data *schema.ResourceData, meta
 	}
 
 	setData(&d, data, tokenIntrospectIKGNodeTypeKey, resp.IKGNodeType)
+	setData(&d, data, tokenIntrospectIDKeyKey, resp.IDKey)
+	setData(&d, data, tokenIntrospectLabelKey, resp.Label)
 	setData(&d, data, tokenIntrospectPerformUpsertKey, resp.PerformUpsert)
 
 	return d
@@ -415,12 +442,13 @@ func resTokenIntrospectUpdate(ctx context.Context, data *schema.ResourceData, me
 		Description: updateOptionalString(data, descriptionKey),
 	}
 
-	req.IKGNodeType = data.Get(tokenIntrospectIKGNodeTypeKey).(string)
-	req.PerformUpsert = data.Get(tokenIntrospectPerformUpsertKey).(bool)
-
 	// The backend validates the full object on update (PUT), so always send the
-	// matcher, validation and claim fields - not only when they changed.
+	// matcher, validation, claim and subject fields - not only when they changed.
 	tokenReq := buildTokenIntrospectRequest(data)
+	req.IKGNodeType = tokenReq.IKGNodeType
+	req.IDKey = tokenReq.IDKey
+	req.Label = tokenReq.Label
+	req.PerformUpsert = tokenReq.PerformUpsert
 	req.JWT = tokenReq.JWT
 	req.Opaque = tokenReq.Opaque
 	req.Offline = tokenReq.Offline
@@ -456,6 +484,8 @@ func resTokenIntrospectDelete(ctx context.Context, data *schema.ResourceData, me
 func buildTokenIntrospectRequest(data *schema.ResourceData) CreateTokenIntrospectRequest {
 	req := CreateTokenIntrospectRequest{
 		IKGNodeType:   data.Get(tokenIntrospectIKGNodeTypeKey).(string),
+		IDKey:         data.Get(tokenIntrospectIDKeyKey).(string),
+		Label:         data.Get(tokenIntrospectLabelKey).(string),
 		PerformUpsert: data.Get(tokenIntrospectPerformUpsertKey).(bool),
 	}
 

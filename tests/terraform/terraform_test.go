@@ -178,4 +178,70 @@ var _ = Describe("Terraform", func() {
 		Expect(resp.ID).To(Equal(myResult["token_introspect_project_id"]))
 		Expect(resp.AppSpaceID).To(Equal(myResult["appspace"]))
 	})
+
+	// The appspace is created without ikg_schema_version, so the API applies the default v1.
+	It("ReadAppSpaceIKGSchemaVersion", func() {
+		var resp indykite.ApplicationSpaceResponse
+		err := client.Get(context.Background(), "/projects/"+myResult["appspace"], &resp)
+		Expect(err).To(Succeed())
+		Expect(resp.ID).To(Equal(myResult["appspace"]))
+		Expect(resp.IKGSchemaVersion).To(Equal("v1"))
+	})
+
+	// Token introspect validation modes other than jwt_matcher with online_validation.
+	It("ReadTokenIntrospectWithOAuth2Validation", func() {
+		var resp indykite.TokenIntrospectResponse
+		err := client.Get(context.Background(), "/token-introspects/"+myResult["token_introspect_oauth2"], &resp)
+		Expect(err).To(Succeed())
+		Expect(resp.ID).To(Equal(myResult["token_introspect_oauth2"]))
+		Expect(resp.JWT).To(BeNil())
+		Expect(resp.Opaque).To(HaveValue(Equal(indykite.TokenIntrospectOpaque{Hint: "automation-terraform-oauth2"})))
+		Expect(resp.Offline).To(BeNil())
+		Expect(resp.Online).To(BeNil())
+		Expect(resp.OnlineOAuth2).NotTo(BeNil())
+		Expect(resp.OnlineOAuth2.IntrospectionEndpoint).To(
+			Equal("https://auth-oauth2.example.com/oauth2/introspect"))
+		Expect(resp.OnlineOAuth2.CacheTTL).To(Equal(300))
+		Expect(resp.OnlineOAuth2.SecretBasic).NotTo(BeNil())
+		Expect(resp.OnlineOAuth2.SecretBasic.ClientID).To(Equal("automation-terraform-client"))
+		// client_secret is write-only: the API must never return it.
+		Expect(resp.OnlineOAuth2.SecretBasic.ClientSecret).To(BeEmpty())
+	})
+
+	It("ReadTokenIntrospectWithOfflineJWKs", func() {
+		var resp indykite.TokenIntrospectResponse
+		err := client.Get(context.Background(), "/token-introspects/"+myResult["token_introspect_offline_jwks"], &resp)
+		Expect(err).To(Succeed())
+		Expect(resp.ID).To(Equal(myResult["token_introspect_offline_jwks"]))
+		Expect(resp.JWT).To(HaveValue(Equal(indykite.TokenIntrospectJWT{
+			Issuer:   "https://auth-offline.example.com",
+			Audience: "automation-terraform-offline-jwks",
+		})))
+		Expect(resp.Offline).NotTo(BeNil())
+		Expect(resp.Offline.PublicJWKs).To(HaveLen(1))
+		// The modulus is the RSA example key of RFC 7515, split to keep the lines short.
+		modulus := "sXchB8A4CkaR3DjDdFUXAYVHx_dWx6gT6tEFc6aOaZ5CPAsqJ8lmwczE6xT74j_xoz1PZtKh6q6tRxX4Mk-GB4KFu0YQH1" +
+			"-WN6uEhEcE0fMtsymrZ1OlN3GhxUAt93Q6zpg3ZD9P4ZtXWr7g6OpkqKAv12v2YKvHtJmEznV0OZPZQj5POj1U0EJp0B98VpTmRtT1K2" +
+			"fKjddAlDq3t35u5xPdkL9l9yLeaMLqGw3tNhxG8amj_Mlq3zEy_QwOmR6OKO5mIF0kCshRsfKj8cMyOrUdxzqaZGuv9KYkgA3ulFjH" +
+			"bInCQwFZ8Z5h7bnQZEkSz94Cz3C4X8hGgSyOShLMuWw"
+		Expect(resp.Offline.PublicJWKs[0]).To(MatchJSON(`{
+			"kid": "automation-terraform-key-1",
+			"use": "sig",
+			"alg": "RS256",
+			"kty": "RSA",
+			"n": "` + modulus + `",
+			"e": "AQAB"
+		}`))
+		Expect(resp.SubClaim).To(HaveValue(Equal(indykite.TokenIntrospectClaim{Selector: "user_id"})))
+	})
+
+	It("ReadTokenIntrospectWithRFC8414Discovery", func() {
+		var resp indykite.TokenIntrospectResponse
+		err := client.Get(context.Background(), "/token-introspects/"+myResult["token_introspect_rfc8414"], &resp)
+		Expect(err).To(Succeed())
+		Expect(resp.ID).To(Equal(myResult["token_introspect_rfc8414"]))
+		Expect(resp.Offline).NotTo(BeNil())
+		Expect(resp.Offline.PublicJWKs).To(BeEmpty())
+		Expect(resp.Offline.Discovery).To(Equal("rfc8414"))
+	})
 })
