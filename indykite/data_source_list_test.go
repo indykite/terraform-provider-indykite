@@ -196,6 +196,8 @@ var _ = Describe("DataSource config collection lists", func() {
 				"name":         "name-one",
 				"display_name": "Sink One",
 				"description":  "First sink",
+				// The API omits include_cdc_events when false.
+				"include_cdc_events": "false",
 			},
 		},
 		{
@@ -662,6 +664,7 @@ var _ = Describe("DataSource config collection lists", func() {
 			}},
 			"/event-sinks": []any{map[string]any{
 				"id": sampleID, "name": "sink-one", "project_id": appSpaceID,
+				"include_cdc_events": true,
 				"providers": map[string]any{
 					"z-kafka": map[string]any{"kafka": map[string]any{
 						"brokers": []any{"kafka.example.com:9092"}, "topic": "t", "password": "secret-password",
@@ -733,6 +736,8 @@ var _ = Describe("DataSource config collection lists", func() {
 						"event_sinks.0.providers.1.type", "kafka"),
 					resource.TestCheckResourceAttr("data.indykite_event_sinks.test",
 						"event_sinks.0.providers.1.last_error", "dial tcp: no such host"),
+					resource.TestCheckResourceAttr("data.indykite_event_sinks.test",
+						"event_sinks.0.include_cdc_events", "true"),
 					func(s *terraform.State) error {
 						// No credential may reach the state of the list data source.
 						attrs := s.RootModule().Resources["data.indykite_event_sinks.test"].Primary.Attributes

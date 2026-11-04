@@ -1335,3 +1335,81 @@ data "indykite_service_account_credentials" "service_account_credentials" {
     }
   }
 }
+
+# -----------------------------------------------------------------------------
+# Test: Event sink routing CDC (Change Data Capture) events.
+# include_cdc_events must be read back as true and the routes must keep the
+# indykite.audit.cdc.* event types and the label0 key/value filter.
+# The platform allows one event sink per project and indykite_event_sink.create-event
+# already occupies the appspace above, so this one gets its own application space.
+# -----------------------------------------------------------------------------
+
+resource "indykite_application_space" "appspace_cdc" {
+  customer_id         = data.indykite_customer.customer.id
+  name                = "automation-terraform-appspace-cdc-${time_static.example.unix}"
+  display_name        = "Automation Terraform CDC appspace ${time_static.example.unix}"
+  description         = "Application space for the CDC event sink of the terraform pipeline"
+  region              = "us-east1"
+  ikg_size            = "4GB"
+  replica_region      = "us-west1"
+  deletion_protection = false
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "indykite_event_sink" "cdc-event" {
+  name               = "automation-terraform-cdc-event-sink-${time_static.example.unix}"
+  display_name       = "Automation Terraform CDC event sink ${time_static.example.unix}"
+  description        = "Event sink routing CDC events for terraform"
+  project_id         = indykite_application_space.appspace_cdc.id
+  include_cdc_events = true
+  providers {
+    provider_name = "kafka-cdc"
+    kafka {
+      brokers  = ["kafka-cdc-01:9092", "kafka-cdc-02:9092"]
+      topic    = "cdc-events"
+      username = "cdc-username"
+      password = "some-cdc-secret-password" # checkov:skip=CKV_SECRET_6:acceptance test
+    }
+  }
+  routes {
+    provider_id        = "kafka-cdc"
+    stop_processing    = true
+    route_display_name = "cdc-person-node-updates"
+    keys_values_filter {
+      key_value_pairs {
+        key   = "label0"
+        value = "Person"
+      }
+      event_type = "indykite.audit.cdc.node.update"
+    }
+  }
+  routes {
+    provider_id        = "kafka-cdc"
+    stop_processing    = false
+    route_display_name = "cdc-all-events"
+    keys_values_filter {
+      event_type = "indykite.audit.cdc.*"
+    }
+  }
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = self.include_cdc_events && self.project_id == indykite_application_space.appspace_cdc.id
+      error_message = "include_cdc_events must be read back as true in the CDC application space"
+    }
+    postcondition {
+      condition = try(
+        length(self.routes) == 2 &&
+        self.routes[0].keys_values_filter[0].event_type == "indykite.audit.cdc.node.update" &&
+        self.routes[0].keys_values_filter[0].key_value_pairs[0].key == "label0" &&
+        self.routes[0].keys_values_filter[0].key_value_pairs[0].value == "Person" &&
+        self.routes[0].stop_processing &&
+        self.routes[1].keys_values_filter[0].event_type == "indykite.audit.cdc.*",
+        false
+      )
+      error_message = "CDC routes must be read back with their event types, label0 filter and order"
+    }
+  }
+}

@@ -10,3 +10,8 @@ output "event_sink_provider_errors" {
     for p in flatten(data.indykite_event_sinks.example.event_sinks[*].providers) : p.provider_name => p.last_error
   }
 }
+
+# Names of the event sinks that receive CDC (Change Data Capture) events.
+output "event_sinks_with_cdc" {
+  value = [for s in data.indykite_event_sinks.example.event_sinks : s.name if s.include_cdc_events]
+}
