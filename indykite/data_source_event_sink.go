@@ -39,6 +39,11 @@ func dataSourceEventSinkList() *schema.Resource {
 			lastErrorKey:       computedStringSchema("Last delivery error of the provider, empty when none."),
 		}},
 	}
+	entrySchema[includeCdcEventsKey] = &schema.Schema{
+		Type:        schema.TypeBool,
+		Computed:    true,
+		Description: "Whether CDC (Change Data Capture) events are emitted to this event sink.",
+	}
 
 	list := &restListDataSource[EventSinkResponse]{
 		path:            "/event-sinks",
@@ -50,15 +55,19 @@ func dataSourceEventSinkList() *schema.Resource {
 		description:     "List Event Sinks in the given Application Space, filtered by exact name match.",
 		entrySchema:     entrySchema,
 		flatten: func(sink *EventSinkResponse) map[string]any {
-			providers, _ := eventSinkConfigFromResponse(sink)["providers"].(map[string]any)
+			config := eventSinkConfigFromResponse(sink)
+			providers, _ := config["providers"].(map[string]any)
+			// The API omits a false include_cdc_events, which the missing key stands for.
+			includeCDCEvents, _ := getEither(config, "include_cdc_events", "includeCdcEvents").(bool)
 			return map[string]any{
-				"id":           sink.ID,
-				customerIDKey:  sink.CustomerID,
-				appSpaceIDKey:  sink.AppSpaceID,
-				nameKey:        sink.Name,
-				displayNameKey: sink.DisplayName,
-				descriptionKey: sink.Description,
-				providersKey:   summarizeEventSinkProviders(providers),
+				"id":                sink.ID,
+				customerIDKey:       sink.CustomerID,
+				appSpaceIDKey:       sink.AppSpaceID,
+				nameKey:             sink.Name,
+				displayNameKey:      sink.DisplayName,
+				descriptionKey:      sink.Description,
+				providersKey:        summarizeEventSinkProviders(providers),
+				includeCdcEventsKey: includeCDCEvents,
 			}
 		},
 	}
