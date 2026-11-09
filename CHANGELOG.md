@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.50.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.50.0...v0.50.1) (2026-11-09)
+
+
+### Miscellaneous Chores
+
+* **deps:** update golang:1.27.3-alpine Docker digest to fa3d596 ([0e57fc4](https://github.com/indykite/terraform-provider-indykite/commit/0e57fc43d63052402fe8891d904bac62e8e21d8f))
+* **deps:** update pre-commit hook renovatebot/pre-commit-hooks to v44.222.5 ([f8fb63d](https://github.com/indykite/terraform-provider-indykite/commit/f8fb63d7dfbc86cf189d88e4bacefb1cae6324f8))
+
 ## [0.50.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.49.0...v0.50.0) (2026-11-03)
 
 
