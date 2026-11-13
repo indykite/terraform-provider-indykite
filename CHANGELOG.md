@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.51.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.50.1...v0.51.0) (2026-11-13)
+
+
+### Features
+
+* update returned error messages ([482c550](https://github.com/indykite/terraform-provider-indykite/commit/482c550a42c3b5baf6c00db631a878773156b26d))
+* update returned error messages ([b136321](https://github.com/indykite/terraform-provider-indykite/commit/b136321c9c69708b1561c4979eea43cbaadd2485))
+
 ## [0.50.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.50.0...v0.50.1) (2026-11-09)
 
 
