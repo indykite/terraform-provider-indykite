@@ -668,13 +668,8 @@ var _ = Describe("Resource Application Space", func() {
 			Steps: []resource.TestStep{
 				// Errors case must be always first
 				{
-					// v2 is defined by the API but not supported yet
-					Config:      fmt.Sprintf(configDef, `ikg_schema_version = "v2"`),
-					ExpectError: regexp.MustCompile(`expected ikg_schema_version to be one of \["v1"\]`),
-				},
-				{
 					Config:      fmt.Sprintf(configDef, `ikg_schema_version = "V1"`),
-					ExpectError: regexp.MustCompile(`expected ikg_schema_version to be one of \["v1"\]`),
+					ExpectError: regexp.MustCompile(`expected ikg_schema_version to be one of \["v1" "v2"\]`),
 				},
 				{
 					// Omitted: not sent, the API default is stored and the next plan is empty.
@@ -763,6 +758,88 @@ var _ = Describe("Resource Application Space", func() {
 						},
 						resource.TestCheckResourceAttr(resourceName, "ikg_schema_version", "v1"),
 					),
+				},
+				{
+					// v2 is sent as-is; changing the version replaces the application space.
+					Config: `resource "indykite_application_space" "development" {
+						customer_id = "` + customerID + `"
+						name = "schema-version"
+						region = "us-east1"
+						ikg_schema_version = "v2"
+						deletion_protection = false
+					}`,
+					Check: resource.ComposeTestCheckFunc(
+						func(_ *terraform.State) error {
+							mu.Lock()
+							defer mu.Unlock()
+							return convertOmegaMatcherToError(HaveKeyWithValue("ikg_schema_version", "v2"), createBody)
+						},
+						resource.TestCheckResourceAttr(resourceName, "ikg_schema_version", "v2"),
+					),
+				},
+			},
+		})
+	})
+
+	It("Test an API error while waiting for the IKG is reported, not a plugin error", func() {
+		var (
+			mu         sync.Mutex
+			project    map[string]any
+			statusRead bool
+		)
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer GinkgoRecover()
+			mu.Lock()
+			defer mu.Unlock()
+			switch {
+			case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/projects"):
+				var body map[string]any
+				Expect(json.NewDecoder(r.Body).Decode(&body)).To(Succeed())
+				project = maps.Clone(body)
+				project["id"] = appSpaceID
+				project["ikg_size"] = "2GB"
+				project["ikg_status"] = "ACTIVE"
+				project["create_time"] = "2026-10-19T08:00:00Z"
+				project["update_time"] = "2026-10-19T08:00:00Z"
+				w.WriteHeader(http.StatusCreated)
+				_ = json.NewEncoder(w).Encode(map[string]any{"id": appSpaceID})
+			case r.Method == http.MethodGet && project != nil && !statusRead:
+				// The first status check after create fails as if the credentials expired.
+				statusRead = true
+				w.WriteHeader(http.StatusUnauthorized)
+				_, _ = w.Write([]byte(`{"message":"Invalid ServiceAccount JWT in Authorization header"}`))
+			case r.Method == http.MethodGet && project != nil:
+				// Later reads succeed, so the test teardown can destroy the application space.
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(project)
+			case r.Method == http.MethodDelete:
+				project = nil
+				w.WriteHeader(http.StatusOK)
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
+			},
+			Steps: []resource.TestStep{
+				{
+					Config: `resource "indykite_application_space" "development" {
+						customer_id = "` + customerID + `"
+						name = "status-error"
+						region = "us-east1"
+						deletion_protection = false
+					}`,
+					ExpectError: regexp.MustCompile("Authentication with IndyKite failed"),
 				},
 			},
 		})

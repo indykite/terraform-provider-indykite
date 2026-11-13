@@ -491,7 +491,7 @@ Optional:
 
 Read-Only:
 
-- `last_error` (String) Last error message from the Azure Event Grid sink
+- `last_error` (String) Last connection error reported for the Azure Event Grid sink. While retries continue, it includes the failure count and the next retry time. It is cleared when the event sink configuration is saved.
 
 
 <a id="nestedblock--providers--azure_service_bus"></a>
@@ -508,7 +508,7 @@ Optional:
 
 Read-Only:
 
-- `last_error` (String) Last error message from the Azure Service Bus sink
+- `last_error` (String) Last connection error reported for the Azure Service Bus sink. While retries continue, it includes the failure count and the next retry time. It is cleared when the event sink configuration is saved.
 
 
 <a id="nestedblock--providers--kafka"></a>
@@ -529,7 +529,7 @@ Optional:
 
 Read-Only:
 
-- `last_error` (String) Last error message from the Kafka sink
+- `last_error` (String) Last connection error reported for the Kafka sink. While retries continue, it includes the failure count and the next retry time. It is cleared when the event sink configuration is saved.
 
 
 <a id="nestedblock--providers--pubsub"></a>
@@ -547,7 +547,7 @@ Optional:
 
 Read-Only:
 
-- `last_error` (String) Last error message from the Pub/Sub sink
+- `last_error` (String) Last connection error reported for the Pub/Sub sink. While retries continue, it includes the failure count and the next retry time. It is cleared when the event sink configuration is saved.
 
 
 
