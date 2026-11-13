@@ -103,13 +103,12 @@ func ikgSchemaVersionSchema() *schema.Schema {
 	return &schema.Schema{
 		Type: schema.TypeString,
 		// Computed: when omitted, the API applies the default version v1.
-		Optional: true,
-		Computed: true,
-		ForceNew: true,
-		// v2 is defined by the API but not supported yet, so it is refused.
-		ValidateFunc: validation.StringInSlice([]string{"v1"}, false),
-		Description: `Schema version of the IKG. Defaults to v1 when omitted.
-		It cannot be changed after the application space is created. v1 is currently the only supported value.`,
+		Optional:     true,
+		Computed:     true,
+		ForceNew:     true,
+		ValidateFunc: validation.StringInSlice([]string{"v1", "v2"}, false),
+		Description: `Schema version of the IKG: v1 or v2. Defaults to v1 when omitted.
+		It cannot be changed after the application space is created.`,
 	}
 }
 

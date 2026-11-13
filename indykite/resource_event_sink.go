@@ -235,9 +235,11 @@ func providerSchema() map[string]*schema.Schema {
 						),
 					},
 					lastErrorKey: {
-						Type:        schema.TypeString,
-						Computed:    true,
-						Description: "Last error message from the Kafka sink",
+						Type:     schema.TypeString,
+						Computed: true,
+						Description: "Last connection error reported for the Kafka sink. While retries continue, " +
+							"it includes the failure count and the next retry time. " +
+							"It is cleared when the event sink configuration is saved.",
 					},
 				},
 			},
@@ -272,9 +274,11 @@ func providerSchema() map[string]*schema.Schema {
 						),
 					},
 					lastErrorKey: {
-						Type:        schema.TypeString,
-						Computed:    true,
-						Description: "Last error message from the Azure Event Grid sink",
+						Type:     schema.TypeString,
+						Computed: true,
+						Description: "Last connection error reported for the Azure Event Grid sink. While retries " +
+							"continue, it includes the failure count and the next retry time. " +
+							"It is cleared when the event sink configuration is saved.",
 					},
 				},
 			},
@@ -309,9 +313,11 @@ func providerSchema() map[string]*schema.Schema {
 						),
 					},
 					lastErrorKey: {
-						Type:        schema.TypeString,
-						Computed:    true,
-						Description: "Last error message from the Azure Service Bus sink",
+						Type:     schema.TypeString,
+						Computed: true,
+						Description: "Last connection error reported for the Azure Service Bus sink. While retries " +
+							"continue, it includes the failure count and the next retry time. " +
+							"It is cleared when the event sink configuration is saved.",
 					},
 				},
 			},
@@ -353,9 +359,11 @@ func providerSchema() map[string]*schema.Schema {
 						),
 					},
 					lastErrorKey: {
-						Type:        schema.TypeString,
-						Computed:    true,
-						Description: "Last error message from the Pub/Sub sink",
+						Type:     schema.TypeString,
+						Computed: true,
+						Description: "Last connection error reported for the Pub/Sub sink. While retries continue, " +
+							"it includes the failure count and the next retry time. " +
+							"It is cleared when the event sink configuration is saved.",
 					},
 				},
 			},

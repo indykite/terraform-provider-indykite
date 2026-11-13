@@ -382,6 +382,24 @@ func IsServiceError(err error) bool {
 	return false
 }
 
+// IsAuthError checks if the error is an authentication or authorization error (401 or 403).
+func IsAuthError(err error) bool {
+	var restErr *RestError
+	if errors.As(err, &restErr) {
+		return restErr.StatusCode == http.StatusUnauthorized || restErr.StatusCode == http.StatusForbidden
+	}
+	return false
+}
+
+// IsClientError checks if the error is a client error (4xx).
+func IsClientError(err error) bool {
+	var restErr *RestError
+	if errors.As(err, &restErr) {
+		return restErr.StatusCode >= 400 && restErr.StatusCode < 500
+	}
+	return false
+}
+
 // NewTestRestClient creates a REST client for testing with a custom base URL and HTTP client.
 // This function is intended for use in tests only.
 func NewTestRestClient(baseURL string, httpClient *http.Client) *RestClient {
