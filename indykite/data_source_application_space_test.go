@@ -162,6 +162,58 @@ var _ = Describe("DataSource Application Space", func() {
 		})
 	})
 
+	It("Test API errors are reported as API errors, not plugin errors", func() {
+		mockServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/projects/"+appSpaceID):
+				w.WriteHeader(http.StatusUnauthorized)
+				_, _ = w.Write([]byte(`{"message":"Invalid ServiceAccount JWT in Authorization header"}`))
+			case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/projects/"+sampleID):
+				w.WriteHeader(http.StatusForbidden)
+				_, _ = w.Write([]byte(`{"message":"permission denied"}`))
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+
+		cfgFunc := provider.ConfigureContextFunc
+		provider.ConfigureContextFunc = func(ctx context.Context, data *schema.ResourceData) (any, diag.Diagnostics) {
+			client := indykite.NewTestRestClient(mockServer.URL+"/configs/v1", mockServer.Client())
+			ctx = indykite.WithClient(ctx, client)
+			return cfgFunc(ctx, data)
+		}
+
+		resource.Test(GinkgoT(), resource.TestCase{
+			ProviderFactories: map[string]func() (*schema.Provider, error){
+				"indykite": func() (*schema.Provider, error) { return provider, nil },
+			},
+			Steps: []resource.TestStep{
+				{
+					// Expired or invalid credentials.
+					Config: `data "indykite_application_space" "development" {
+						app_space_id = "` + appSpaceID + `"
+					}`,
+					ExpectError: regexp.MustCompile("Authentication with IndyKite failed"),
+				},
+				{
+					// Valid credentials without the required permission.
+					Config: `data "indykite_application_space" "development" {
+						app_space_id = "` + sampleID + `"
+					}`,
+					ExpectError: regexp.MustCompile("Access to IndyKite denied"),
+				},
+				{
+					// A missing application space stays an error for the data source.
+					Config: `data "indykite_application_space" "development" {
+						customer_id = "` + customerID + `"
+						name = "missing"
+					}`,
+					ExpectError: regexp.MustCompile("Application space not found"),
+				},
+			},
+		})
+	})
+
 	It("Test list by multple names", func() {
 		createTime := time.Now()
 		updateTime := time.Now()

@@ -104,8 +104,17 @@ func dataAppSpaceReadContext(ctx context.Context, data *schema.ResourceData, met
 		err = clientCtx.GetClient().Get(ctx, "/projects/"+name.(string), resp)
 	}
 
-	if err != nil {
-		return append(d, buildPluginError(err.Error()))
+	// A data source must fail when the application space does not exist, unlike the
+	// not-found warning HasFailed emits for resources that are then removed from state.
+	if IsNotFoundError(err) {
+		return append(d, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Application space not found",
+			Detail:   err.Error(),
+		})
+	}
+	if HasFailed(&d, err) {
+		return d
 	}
 
 	return dataAppSpaceFlatten(data, resp)

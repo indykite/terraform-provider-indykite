@@ -163,7 +163,8 @@ func getStatus(ctx context.Context, clientCtx *ClientContext, data *schema.Resou
 		if IsNotFoundError(err) {
 			return "", d // Return empty status without error to trigger retry
 		}
-		return "", diag.Diagnostics{buildPluginError("read application space failed")}
+		HasFailed(&d, err)
+		return "", d
 	}
 
 	data.SetId(resp.ID)

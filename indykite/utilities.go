@@ -16,7 +16,9 @@ package indykite
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
+	"net/http"
 	"reflect"
 	"regexp"
 	"sort"
@@ -357,6 +359,28 @@ func HasFailed(d *diag.Diagnostics, err error) bool {
 		*d = append(*d, diag.Diagnostic{
 			Severity: diag.Warning,
 			Summary:  "Resource not found",
+			Detail:   err.Error(),
+		})
+
+	case IsAuthError(err):
+		var restErr *RestError
+		_ = errors.As(err, &restErr)
+		hint := "Check that the service account credentials are valid and not expired."
+		summary := "Authentication with IndyKite failed"
+		if restErr.StatusCode == http.StatusForbidden {
+			hint = "Check that the service account has permission for this operation."
+			summary = "Access to IndyKite denied"
+		}
+		*d = append(*d, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  summary,
+			Detail:   err.Error() + "\n\n" + hint,
+		})
+
+	case IsClientError(err):
+		*d = append(*d, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "IndyKite API rejected the request",
 			Detail:   err.Error(),
 		})
 

@@ -213,11 +213,51 @@ var _ = Describe("HasFailed", func() {
 		})
 	})
 
+	DescribeTable("when the error is an auth error",
+		func(statusCode int, message, summary, hint string) {
+			err := &indykite.RestError{StatusCode: statusCode, Message: message}
+			Expect(indykite.HasFailed(diagnostics, err)).To(BeTrue())
+			Expect(*diagnostics).To(HaveLen(1))
+			Expect((*diagnostics)[0].Severity).To(Equal(diag.Error))
+			Expect((*diagnostics)[0].Summary).To(Equal(summary))
+			Expect((*diagnostics)[0].Detail).To(And(
+				ContainSubstring(message),
+				ContainSubstring(hint),
+				Not(ContainSubstring("plugin error")),
+			))
+		},
+		Entry("401 Unauthorized", http.StatusUnauthorized,
+			`{"message":"Invalid ServiceAccount JWT in Authorization header"}`,
+			"Authentication with IndyKite failed", "credentials are valid and not expired"),
+		Entry("403 Forbidden", http.StatusForbidden,
+			`{"message":"permission denied"}`,
+			"Access to IndyKite denied", "permission for this operation"),
+	)
+
+	DescribeTable("when the error is another client error",
+		func(statusCode int) {
+			err := &indykite.RestError{StatusCode: statusCode, Message: "invalid value"}
+			Expect(indykite.HasFailed(diagnostics, err)).To(BeTrue())
+			Expect(*diagnostics).To(HaveLen(1))
+			Expect((*diagnostics)[0].Severity).To(Equal(diag.Error))
+			Expect((*diagnostics)[0].Summary).To(Equal("IndyKite API rejected the request"))
+			Expect((*diagnostics)[0].Detail).To(And(
+				ContainSubstring("invalid value"),
+				Not(ContainSubstring("plugin error")),
+			))
+		},
+		Entry("400 Bad Request", http.StatusBadRequest),
+		Entry("409 Conflict", http.StatusConflict),
+		Entry("422 Unprocessable Entity", http.StatusUnprocessableEntity),
+	)
+
 	Context("when the error is of another type", func() {
-		It("should log a generic error and return true", func() {
+		It("should log a plugin error and return true", func() {
 			err := errors.New("generic error")
 			Expect(indykite.HasFailed(diagnostics, err)).To(BeTrue())
 			Expect(*diagnostics).To(HaveLen(1))
+			Expect((*diagnostics)[0].Summary).To(Equal("generic error"))
+			Expect((*diagnostics)[0].Detail).To(ContainSubstring("plugin error"))
 		})
 	})
 
