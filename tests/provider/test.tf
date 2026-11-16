@@ -144,7 +144,7 @@ resource "indykite_application_agent" "agent_audit" {
 resource "indykite_application_agent_credential" "with_public" {
   app_agent_id = indykite_application_agent.agent.id
   display_name = "Automation Terraform credential ${time_static.example.unix}"
-  expire_time  = "2026-12-31T12:34:56-01:00"
+  expire_time  = "2027-12-31T12:34:56-01:00"
   lifecycle {
     create_before_destroy = true
   }
@@ -1410,6 +1410,645 @@ resource "indykite_event_sink" "cdc-event" {
         false
       )
       error_message = "CDC routes must be read back with their event types, label0 filter and order"
+    }
+  }
+}
+
+# =============================================================================
+# Extended coverage
+# The blocks below cover attributes and values that the blocks above do not use.
+# Postconditions never compare the description or the display names of event sink
+# providers and routes: test_integration.sh prefixes them with "Updated - " and
+# applies again.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Test: Authorization policies in the 2.0-kbac, 3.0-kbac and 2.0-ciq formats,
+# with tags and the inactive status
+# -----------------------------------------------------------------------------
+
+resource "indykite_authorization_policy" "policy_kbac_v2" {
+  name         = "automation-terraform-policy-kbac-v2-${time_static.example.unix}"
+  display_name = "Automation Terraform policy 2.0-kbac ${time_static.example.unix}"
+  description  = "2.0-kbac policy with a token filter and tags for terraform pipeline"
+  project_id   = indykite_application_space.appspace.id
+  json = jsonencode({
+    meta     = { policy_version = "2.0-kbac" }
+    subject  = { type = "Person" }
+    actions  = ["READ"]
+    resource = { type = "Car" }
+    condition = {
+      cypher = "MATCH (subject:Person)-[:OWNS]->(resource:Car)"
+      filter = {
+        operator  = "IN"
+        attribute = "$token.acr"
+        value     = ["acrX", "acrY"]
+      }
+    }
+  })
+  tags   = ["terraform", "kbac2"]
+  status = "active"
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = toset(self.tags) == toset(["terraform", "kbac2"]) && self.status == "active"
+      error_message = "tags and status must round-trip through create/read"
+    }
+  }
+}
+
+# 3.0-kbac allows composite database routing (USE) but does not require it
+resource "indykite_authorization_policy" "policy_kbac_v3" {
+  name       = "automation-terraform-policy-kbac-v3-${time_static.example.unix}"
+  project_id = indykite_application_space.appspace.id
+  json = jsonencode({
+    meta      = { policy_version = "3.0-kbac" }
+    subject   = { type = "Person" }
+    actions   = ["CAN_DRIVE"]
+    resource  = { type = "Car" }
+    condition = { cypher = "MATCH (subject:Person)-[:OWNS]->(resource:Car)" }
+  })
+  status = "inactive"
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = self.status == "inactive"
+      error_message = "the inactive status must round-trip through create/read"
+    }
+  }
+}
+
+resource "indykite_authorization_policy" "policy_ciq_v2" {
+  name       = "automation-terraform-policy-ciq-v2-${time_static.example.unix}"
+  project_id = indykite_application_space.appspace.id
+  json = jsonencode({
+    meta      = { policy_version = "2.0-ciq" }
+    subject   = { type = "Person" }
+    condition = { cypher = "MATCH (subject:Person)-[r1:ACCEPTED*1..2]->(contract:Contract)" }
+    allowed_reads = {
+      nodes         = ["subject.*", "contract.*"]
+      relationships = ["r1", "r1.*"]
+    }
+    allowed_upserts = {
+      nodes = { existing_nodes = ["contract"] }
+    }
+  })
+  status = "active"
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Test: Knowledge queries on a 2.0-ciq policy, with the draft and inactive statuses
+# -----------------------------------------------------------------------------
+
+resource "indykite_knowledge_query" "query_ciq_v2" {
+  name       = "automation-terraform-query-ciq-v2-${time_static.example.unix}"
+  project_id = indykite_application_space.appspace.id
+  query = jsonencode({
+    nodes         = ["contract.external_id"]
+    relationships = ["r1"]
+    upsert_nodes = [{
+      name       = "contract"
+      properties = [{ type = "status", value = "signed" }]
+    }]
+  })
+  status    = "active"
+  policy_id = indykite_authorization_policy.policy_ciq_v2.id
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = self.policy_id == indykite_authorization_policy.policy_ciq_v2.id
+      error_message = "policy_id must round-trip through create/read"
+    }
+  }
+}
+
+resource "indykite_knowledge_query" "query_draft" {
+  name       = "automation-terraform-query-draft-${time_static.example.unix}"
+  project_id = indykite_application_space.appspace.id
+  query      = jsonencode({ nodes = ["subject.external_id"] })
+  status     = "draft"
+  policy_id  = indykite_authorization_policy.policy_ciq_v2.id
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = self.status == "draft"
+      error_message = "the draft status must round-trip through create/read"
+    }
+  }
+}
+
+resource "indykite_knowledge_query" "query_inactive" {
+  name       = "automation-terraform-query-inactive-${time_static.example.unix}"
+  project_id = indykite_application_space.appspace.id
+  query      = jsonencode({ nodes = ["contract.external_id"] })
+  status     = "inactive"
+  policy_id  = indykite_authorization_policy.policy_ciq_v2.id
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = self.status == "inactive"
+      error_message = "the inactive status must round-trip through create/read"
+    }
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Test: External data resolvers with the PUT and PATCH methods
+# -----------------------------------------------------------------------------
+
+resource "indykite_external_data_resolver" "resolver_put" {
+  name       = "automation-terraform-resolver-put-${time_static.example.unix}"
+  project_id = indykite_application_space.appspace.id
+
+  url    = "https://api.example.com/records"
+  method = "PUT"
+  headers {
+    name   = "Content-Type"
+    values = ["application/json"]
+  }
+  request_type      = "json"
+  request_payload   = jsonencode({ id = "$recordId", state = "synced" })
+  response_type     = "json"
+  response_selector = ".record"
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = self.method == "PUT" && self.response_selector == ".record"
+      error_message = "method and response_selector must round-trip through create/read"
+    }
+  }
+}
+
+resource "indykite_external_data_resolver" "resolver_patch" {
+  name       = "automation-terraform-resolver-patch-${time_static.example.unix}"
+  project_id = indykite_application_space.appspace.id
+
+  url               = "https://api.example.com/records/partial"
+  method            = "PATCH"
+  request_type      = "json"
+  request_payload   = jsonencode({ state = "synced" })
+  response_type     = "json"
+  response_selector = "."
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = self.method == "PATCH"
+      error_message = "method must round-trip through create/read"
+    }
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Test: Entity matching pipeline with a similarity score cutoff
+# 0.75 is exact in float32, which the API stores, so it reads back unchanged.
+# -----------------------------------------------------------------------------
+
+resource "indykite_entity_matching_pipeline" "pipeline_cutoff" {
+  name       = "automation-terraform-pipeline-cutoff-${time_static.example.unix}"
+  project_id = local.location_id
+
+  source_node_filter      = ["Customer"]
+  target_node_filter      = ["Customer"]
+  similarity_score_cutoff = 0.75
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = self.similarity_score_cutoff == 0.75
+      error_message = "similarity_score_cutoff must round-trip through create/read"
+    }
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Test: Trust score profiles with the three and twelve hours schedules
+# -----------------------------------------------------------------------------
+
+resource "indykite_trust_score_profile" "score_three_hours" {
+  name                = "automation-terraform-trust-score-3h-${time_static.example.unix}"
+  project_id          = local.location_id
+  node_classification = "Document"
+  dimension {
+    name   = "NAME_VALIDITY"
+    weight = 0.5
+  }
+  dimension {
+    name   = "NAME_COMPLETENESS"
+    weight = 0.5
+  }
+  schedule = "UPDATE_FREQUENCY_THREE_HOURS"
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = self.schedule == "UPDATE_FREQUENCY_THREE_HOURS" && length(self.dimension) == 2
+      error_message = "schedule and dimensions must round-trip through create/read"
+    }
+  }
+}
+
+resource "indykite_trust_score_profile" "score_twelve_hours" {
+  name                = "automation-terraform-trust-score-12h-${time_static.example.unix}"
+  project_id          = local.location_id
+  node_classification = "Account"
+  dimension {
+    name   = "NAME_ORIGIN"
+    weight = 1.0
+  }
+  schedule = "UPDATE_FREQUENCY_TWELVE_HOURS"
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = self.schedule == "UPDATE_FREQUENCY_TWELVE_HOURS"
+      error_message = "schedule must round-trip through create/read"
+    }
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Test: Application agent with the ContXIQ, EntityMatching and ReadDataSchema permissions
+# -----------------------------------------------------------------------------
+
+resource "indykite_application_agent" "agent_permissions" {
+  application_id  = indykite_application.application.id
+  name            = "automation-terraform-agent-perms-${time_static.example.unix}"
+  api_permissions = ["ContXIQ", "EntityMatching", "ReadDataSchema"]
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = toset(self.api_permissions) == toset(["ContXIQ", "EntityMatching", "ReadDataSchema"])
+      error_message = "api_permissions must round-trip ContXIQ, EntityMatching and ReadDataSchema through create/read"
+    }
+  }
+  deletion_protection = false
+}
+
+# -----------------------------------------------------------------------------
+# Test: Service account with the all_editor role and a credential with expire_time
+# -----------------------------------------------------------------------------
+
+resource "indykite_service_account" "service_account_editor" {
+  customer_id         = data.indykite_customer.customer.id
+  name                = "automation-terraform-sa-editor-${time_static.example.unix}"
+  role                = "all_editor"
+  deletion_protection = false
+  lifecycle {
+    postcondition {
+      condition     = self.role == "all_editor"
+      error_message = "role must stay in state, although the API does not return it"
+    }
+  }
+}
+
+resource "indykite_service_account_credential" "service_account_credential_expiring" {
+  service_account_id = indykite_service_account.service_account_editor.id
+  display_name       = "Automation Terraform expiring credential ${time_static.example.unix}"
+  expire_time        = "2027-12-31T23:59:59Z"
+  lifecycle {
+    postcondition {
+      condition     = timecmp(self.expire_time, "2027-12-31T23:59:59Z") == 0
+      error_message = "expire_time must round-trip through create/read"
+    }
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Test: Application space with only the required attributes
+# ikg_schema_version, ikg_size and replica_region are omitted, so the platform
+# applies its defaults. The configurations allowed once per project (MCP server,
+# event sink and audit signing) get a second instance in this application space.
+# -----------------------------------------------------------------------------
+
+resource "indykite_application_space" "appspace_minimal" {
+  customer_id         = data.indykite_customer.customer.id
+  name                = "automation-terraform-appspace-minimal-${time_static.example.unix}"
+  region              = "us-east1"
+  deletion_protection = false
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = self.ikg_schema_version == "v1"
+      error_message = "ikg_schema_version must be read back as the default v1 when it is omitted"
+    }
+    postcondition {
+      condition     = self.ikg_size != null && self.ikg_size != ""
+      error_message = "ikg_size must be read back with the default size when it is omitted"
+    }
+  }
+}
+
+resource "indykite_application" "application_minimal" {
+  app_space_id        = indykite_application_space.appspace_minimal.id
+  name                = "automation-terraform-application-minimal-${time_static.example.unix}"
+  deletion_protection = false
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "indykite_application_agent" "agent_minimal" {
+  application_id      = indykite_application.application_minimal.id
+  name                = "automation-terraform-agent-minimal-${time_static.example.unix}"
+  api_permissions     = ["Authorization", "ContXIQ"]
+  deletion_protection = false
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# Credential without expire_time
+resource "indykite_application_agent_credential" "agent_credential_minimal" {
+  app_agent_id = indykite_application_agent.agent_minimal.id
+  display_name = "Automation Terraform credential minimal ${time_static.example.unix}"
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = self.kid != "" && self.app_space_id == indykite_application_space.appspace_minimal.id
+      error_message = "kid and app_space_id must be read back after creation without expire_time"
+    }
+  }
+}
+
+# Token introspect backing the MCP server below
+resource "indykite_token_introspect" "token_introspect_minimal" {
+  name       = "automation-terraform-token-introspect-minimal-${time_static.example.unix}"
+  project_id = indykite_application_space.appspace_minimal.id
+  jwt_matcher {
+    issuer   = "https://auth-minimal.example.com"
+    audience = "automation-terraform-minimal"
+  }
+  online_validation {
+    cache_ttl = 300
+  }
+  ikg_node_type  = "Person"
+  perform_upsert = true
+  lifecycle {
+    create_before_destroy = true
+    postcondition {
+      condition     = self.ikg_node_type == "Person" && self.perform_upsert
+      error_message = "ikg_node_type and perform_upsert must round-trip through create/read"
+    }
+  }
+}
+
+# Disabled MCP server
+resource "indykite_mcp_server" "mcp_server_minimal" {
+  name                = "automation-terraform-mcp-server-minimal-${time_static.example.unix}"
+  project_id          = indykite_application_space.appspace_minimal.id
+  app_agent_id        = indykite_application_agent.agent_minimal.id
+  token_introspect_id = indykite_token_introspect.token_introspect_minimal.id
+  scopes_supported    = ["openid", "profile", "email"]
+  enabled             = false
+  lifecycle {
+    postcondition {
+      condition = (
+        !self.enabled &&
+        self.app_space_id == indykite_application_space.appspace_minimal.id &&
+        length(self.scopes_supported) == 3
+      )
+      error_message = "enabled = false, app_space_id and scopes_supported must round-trip through create/read"
+    }
+  }
+}
+
+# Event sink without CDC events, with Kafka TLS options and display names on the
+# Azure providers. One Kafka provider has no username and password.
+resource "indykite_event_sink" "event_sink_minimal" {
+  name               = "automation-terraform-event-sink-minimal-${time_static.example.unix}"
+  project_id         = indykite_application_space.appspace_minimal.id
+  include_cdc_events = false
+  providers {
+    provider_name = "kafka-no-tls"
+    kafka {
+      brokers     = ["kafka-plain-01:9092"]
+      topic       = "events-plain"
+      username    = "plain-username"
+      password    = "some-plain-secret-password" # checkov:skip=CKV_SECRET_6:acceptance test
+      disable_tls = true
+    }
+  }
+  providers {
+    provider_name = "kafka-skip-verify"
+    kafka {
+      brokers         = ["kafka-self-signed-01:9093", "kafka-self-signed-02:9093"]
+      topic           = "events-self-signed"
+      tls_skip_verify = true
+    }
+  }
+  providers {
+    provider_name = "azuregrid-display"
+    azure_event_grid {
+      topic_endpoint        = "https://ik-test-minimal.eventgrid.azure.net/api/events"
+      access_key            = "secret-access-key-minimal"
+      provider_display_name = "Azure Event Grid with display name"
+    }
+  }
+  providers {
+    provider_name = "azurebus-display"
+    azure_service_bus {
+      connection_string     = "personal-connection-info-minimal"
+      queue_or_topic_name   = "your-topic-minimal"
+      provider_display_name = "Azure Service Bus with display name"
+    }
+  }
+  routes {
+    provider_id        = "kafka-no-tls"
+    stop_processing    = true
+    route_display_name = "config-deletes"
+    keys_values_filter {
+      key_value_pairs {
+        key   = "label0"
+        value = "Person"
+      }
+      key_value_pairs {
+        key   = "label1"
+        value = "Customer"
+      }
+      event_type = "indykite.audit.config.delete"
+    }
+  }
+  routes {
+    provider_id     = "kafka-skip-verify"
+    stop_processing = false
+    keys_values_filter {
+      event_type = "indykite.audit.config.*"
+    }
+  }
+  routes {
+    provider_id     = "azuregrid-display"
+    stop_processing = false
+    keys_values_filter {
+      event_type = "indykite.audit.capture.*"
+    }
+  }
+  routes {
+    provider_id     = "azurebus-display"
+    stop_processing = false
+    keys_values_filter {
+      event_type = "indykite.audit.ciq.*"
+    }
+  }
+  lifecycle {
+    postcondition {
+      condition     = !self.include_cdc_events && self.project_id == indykite_application_space.appspace_minimal.id
+      error_message = "include_cdc_events must be read back as false in the minimal application space"
+    }
+    postcondition {
+      condition = try(
+        anytrue([for p in self.providers : p.kafka[0].disable_tls if p.provider_name == "kafka-no-tls"]) &&
+        anytrue([for p in self.providers : p.kafka[0].tls_skip_verify if p.provider_name == "kafka-skip-verify"]),
+        false
+      )
+      error_message = "disable_tls and tls_skip_verify must round-trip through create/read"
+    }
+    postcondition {
+      condition = try(
+        length(self.routes) == 4 &&
+        length(self.routes[0].keys_values_filter[0].key_value_pairs) == 2 &&
+        self.routes[0].stop_processing,
+        false
+      )
+      error_message = "routes must be read back in order with both key/value pairs"
+    }
+  }
+}
+
+# Audit signing with a Google Cloud KMS key. The key is never contacted, see the
+# AWS audit signing test above.
+resource "indykite_audit_signing" "audit_signing_gcp" {
+  name         = "automation-terraform-audit-signing-gcp-${time_static.example.unix}"
+  project_id   = indykite_application_space.appspace_minimal.id
+  key_provider = "CUSTOMER_GCP_KMS"
+  key_resource = "projects/automation-terraform/locations/global/keyRings/audit/cryptoKeys/signing/cryptoKeyVersions/1"
+  kid          = "automation-terraform-gcp"
+  auth_params = {
+    client_email = "audit-signer@automation-terraform.iam.gserviceaccount.com"
+    private_key  = "automation-terraform-private-key" # checkov:skip=CKV_SECRET_6:acceptance test
+  }
+  lifecycle {
+    postcondition {
+      condition = (
+        self.key_provider == "CUSTOMER_GCP_KMS" &&
+        self.kid == "automation-terraform-gcp" &&
+        nonsensitive(toset(keys(self.auth_params))) == toset(["client_email", "private_key"])
+      )
+      error_message = "key_provider, kid and the auth_params keys must round-trip through create/read"
+    }
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Test: Data sources on the minimal application space
+# -----------------------------------------------------------------------------
+
+data "indykite_application_space" "lookup_appspace_minimal" {
+  app_space_id = indykite_application_space.appspace_minimal.id
+  lifecycle {
+    postcondition {
+      condition     = self.ikg_schema_version == "v1" && self.name == indykite_application_space.appspace_minimal.name
+      error_message = "the application space data source must read the default ikg_schema_version v1"
+    }
+  }
+}
+
+data "indykite_application_spaces" "list_app_spaces" {
+  customer_id = data.indykite_customer.customer.id
+  filter      = [indykite_application_space.appspace_minimal.name]
+  depends_on  = [indykite_application_space.appspace_minimal]
+  lifecycle {
+    postcondition {
+      condition = try(
+        length(self.app_spaces) == 1 &&
+        self.app_spaces[0].id == indykite_application_space.appspace_minimal.id &&
+        self.app_spaces[0].ikg_schema_version == "v1",
+        false
+      )
+      error_message = "indykite_application_spaces must list the minimal application space by name"
+    }
+  }
+}
+
+data "indykite_applications" "list_applications" {
+  app_space_id = indykite_application_space.appspace_minimal.id
+  filter       = [indykite_application.application_minimal.name]
+  depends_on   = [indykite_application.application_minimal]
+  lifecycle {
+    postcondition {
+      condition = try(
+        length(self.applications) == 1 &&
+        self.applications[0].id == indykite_application.application_minimal.id,
+        false
+      )
+      error_message = "indykite_applications must list the application by name"
+    }
+  }
+}
+
+data "indykite_application_agents" "list_application_agents" {
+  app_space_id = indykite_application_space.appspace_minimal.id
+  filter       = [indykite_application_agent.agent_minimal.name]
+  depends_on   = [indykite_application_agent.agent_minimal]
+  lifecycle {
+    postcondition {
+      condition = try(
+        length(self.app_agents) == 1 &&
+        self.app_agents[0].id == indykite_application_agent.agent_minimal.id &&
+        toset(self.app_agents[0].api_permissions) == toset(["Authorization", "ContXIQ"]),
+        false
+      )
+      error_message = "indykite_application_agents must list the agent with its api_permissions"
+    }
+  }
+}
+
+data "indykite_application_agent_credentials" "list_application_agent_credentials" {
+  app_space_id = indykite_application_space.appspace_minimal.id
+  depends_on   = [indykite_application_agent_credential.agent_credential_minimal]
+  lifecycle {
+    postcondition {
+      condition = contains(
+        [for c in self.app_agent_credentials : c.id],
+        indykite_application_agent_credential.agent_credential_minimal.id
+      )
+      error_message = "indykite_application_agent_credentials must list the credential"
+    }
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Test: Audit signing with the platform managed key
+# The CDC application space has no audit signing yet. PLATFORM_MANAGED takes no
+# key_resource, kid or auth_params.
+# -----------------------------------------------------------------------------
+
+resource "indykite_audit_signing" "audit_signing_platform" {
+  name         = "automation-terraform-audit-signing-platform-${time_static.example.unix}"
+  project_id   = indykite_application_space.appspace_cdc.id
+  key_provider = "PLATFORM_MANAGED"
+  lifecycle {
+    postcondition {
+      condition = (
+        self.key_provider == "PLATFORM_MANAGED" &&
+        self.app_space_id == indykite_application_space.appspace_cdc.id
+      )
+      error_message = "key_provider PLATFORM_MANAGED and app_space_id must round-trip through create/read"
+    }
+  }
+}
+
+data "indykite_audit_signings" "list_audit_signings_platform" {
+  app_space_id = indykite_application_space.appspace_cdc.id
+  filter       = [indykite_audit_signing.audit_signing_platform.name]
+  lifecycle {
+    postcondition {
+      condition = try(
+        length(self.audit_signings) == 1 &&
+        self.audit_signings[0].id == indykite_audit_signing.audit_signing_platform.id &&
+        self.audit_signings[0].key_provider == "PLATFORM_MANAGED",
+        false
+      )
+      error_message = "audit signing list must return exactly the PLATFORM_MANAGED config"
     }
   }
 }
