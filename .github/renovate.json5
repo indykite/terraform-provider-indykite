@@ -1,56 +1,57 @@
 {
-  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    // org shared config - https://github.com/indykite/.github/blob/master/.github/renovate.json5
-    "github>indykite/.github//.github/renovate.json5"
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    'github>indykite/.github//.github/renovate.json5',
   ],
-  "draftPR": true,
-  "dependencyDashboardFooter": "@indykite/be-team, @indykite/ops, here's your overview of Renovate-managed dependencies",
-  "ignorePaths": [
-    "**/vendor/**",
-    "**/examples/**",
-    "**/testdata/**"
+  draftPR: true,
+  dependencyDashboard: {
+    footer: "@indykite/be-team, @indykite/ops, here's your overview of Renovate-managed dependencies",
+  },
+  ignorePaths: [
+    '**/vendor/**',
+    '**/examples/**',
+    '**/testdata/**',
   ],
-  "packageRules": [
+  packageRules: [
     {
-      "matchPackageNames": [
-        "*"
+      matchPackageNames: [
+        '*',
       ],
-      "matchUpdateTypes": [
-        "major"
+      matchUpdateTypes: [
+        'major',
       ],
-      "addLabels": [
-        "SemVer Major"
-      ]
+      addLabels: [
+        'SemVer Major',
+      ],
     },
     {
-      "matchUpdateTypes": [
-        "minor"
+      matchUpdateTypes: [
+        'minor',
       ],
-      "addLabels": [
-        "SemVer Minor"
-      ]
+      addLabels: [
+        'SemVer Minor',
+      ],
     },
     {
-      "matchUpdateTypes": [
-        "patch",
-        "digest",
-        "bump"
+      matchUpdateTypes: [
+        'patch',
+        'digest',
+        'bump',
       ],
-      "addLabels": [
-        "SemVer Patch"
-      ]
+      addLabels: [
+        'SemVer Patch',
+      ],
     },
     {
-      "matchUpdateTypes": [
-        "minor",
-        "patch"
+      matchUpdateTypes: [
+        'minor',
+        'patch',
       ],
-      "groupName": "all non-major dependencies",
-      "groupSlug": "all-minor-patch"
-    }
+      groupName: 'all non-major dependencies',
+      groupSlug: 'all-minor-patch',
+    },
   ],
-  "postUpdateOptions": [
-    "gomodTidy"
-  ]
+  postUpdateOptions: [
+    'gomodTidy',
+  ],
 }
