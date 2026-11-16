@@ -668,8 +668,13 @@ var _ = Describe("Resource Application Space", func() {
 			Steps: []resource.TestStep{
 				// Errors case must be always first
 				{
+					// v2 is defined by the API but the platform refuses it on create
+					Config:      fmt.Sprintf(configDef, `ikg_schema_version = "v2"`),
+					ExpectError: regexp.MustCompile(`expected ikg_schema_version to be one of \["v1"\]`),
+				},
+				{
 					Config:      fmt.Sprintf(configDef, `ikg_schema_version = "V1"`),
-					ExpectError: regexp.MustCompile(`expected ikg_schema_version to be one of \["v1" "v2"\]`),
+					ExpectError: regexp.MustCompile(`expected ikg_schema_version to be one of \["v1"\]`),
 				},
 				{
 					// Omitted: not sent, the API default is stored and the next plan is empty.
@@ -757,24 +762,6 @@ var _ = Describe("Resource Application Space", func() {
 							return convertOmegaMatcherToError(HaveKeyWithValue("ikg_schema_version", "v1"), createBody)
 						},
 						resource.TestCheckResourceAttr(resourceName, "ikg_schema_version", "v1"),
-					),
-				},
-				{
-					// v2 is sent as-is; changing the version replaces the application space.
-					Config: `resource "indykite_application_space" "development" {
-						customer_id = "` + customerID + `"
-						name = "schema-version"
-						region = "us-east1"
-						ikg_schema_version = "v2"
-						deletion_protection = false
-					}`,
-					Check: resource.ComposeTestCheckFunc(
-						func(_ *terraform.State) error {
-							mu.Lock()
-							defer mu.Unlock()
-							return convertOmegaMatcherToError(HaveKeyWithValue("ikg_schema_version", "v2"), createBody)
-						},
-						resource.TestCheckResourceAttr(resourceName, "ikg_schema_version", "v2"),
 					),
 				},
 			},

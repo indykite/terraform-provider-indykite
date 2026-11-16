@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"time"
 
 	"github.com/indykite/terraform-provider-indykite/indykite"
 
@@ -243,5 +244,192 @@ var _ = Describe("Terraform", func() {
 		Expect(resp.Offline).NotTo(BeNil())
 		Expect(resp.Offline.PublicJWKs).To(BeEmpty())
 		Expect(resp.Offline.Discovery).To(Equal("rfc8414"))
+	})
+
+	// Extended coverage: the configurations below come from the "Extended coverage"
+	// section of test.tf.
+
+	// The minimal application space is created without ikg_schema_version and ikg_size,
+	// so the platform defaults apply.
+	It("ReadAppSpaceMinimal", func() {
+		var resp indykite.ApplicationSpaceResponse
+		err := client.Get(context.Background(), "/projects/"+myResult["appspace_minimal"], &resp)
+		Expect(err).To(Succeed())
+		Expect(resp.ID).To(Equal(myResult["appspace_minimal"]))
+		Expect(resp.IKGSchemaVersion).To(Equal("v1"))
+		Expect(resp.IKGSize).NotTo(BeEmpty())
+		Expect(resp.ReplicaRegion).To(BeEmpty())
+	})
+
+	It("ReadTokenIntrospectInMinimalProject", func() {
+		var resp indykite.TokenIntrospectResponse
+		err := client.Get(context.Background(), "/token-introspects/"+myResult["token_introspect_minimal"], &resp)
+		Expect(err).To(Succeed())
+		Expect(resp.ID).To(Equal(myResult["token_introspect_minimal"]))
+		Expect(resp.AppSpaceID).To(Equal(myResult["appspace_minimal"]))
+		Expect(resp.IKGNodeType).To(Equal("Person"))
+		Expect(resp.PerformUpsert).To(BeTrue())
+	})
+
+	It("ReadPoliciesInNewerFormats", func() {
+		formats := map[string]string{
+			"policy_kbac_v2": "2.0-kbac",
+			"policy_kbac_v3": "3.0-kbac",
+			"policy_ciq_v2":  "2.0-ciq",
+		}
+		for name, format := range formats {
+			var resp indykite.AuthorizationPolicyResponse
+			err := client.Get(context.Background(), "/authorization-policies/"+myResult[name], &resp)
+			Expect(err).To(Succeed(), name)
+			Expect(resp.ID).To(Equal(myResult[name]), name)
+			Expect(resp.Policy).To(ContainSubstring(`"`+format+`"`), name)
+		}
+
+		var kbacV2 indykite.AuthorizationPolicyResponse
+		Expect(client.Get(context.Background(), "/authorization-policies/"+myResult["policy_kbac_v2"], &kbacV2)).
+			To(Succeed())
+		Expect(kbacV2.Tags).To(ConsistOf("terraform", "kbac2"))
+		Expect(kbacV2.Status).To(Equal("ACTIVE"))
+
+		var kbacV3 indykite.AuthorizationPolicyResponse
+		Expect(client.Get(context.Background(), "/authorization-policies/"+myResult["policy_kbac_v3"], &kbacV3)).
+			To(Succeed())
+		Expect(kbacV3.Status).To(Equal("INACTIVE"))
+	})
+
+	It("ReadKnowledgeQueryStatuses", func() {
+		statuses := map[string]string{
+			"query_ciq_v2":   "ACTIVE",
+			"query_draft":    "DRAFT",
+			"query_inactive": "INACTIVE",
+		}
+		for name, status := range statuses {
+			var resp indykite.KnowledgeQueryResponse
+			err := client.Get(context.Background(), "/knowledge-queries/"+myResult[name], &resp)
+			Expect(err).To(Succeed(), name)
+			Expect(resp.ID).To(Equal(myResult[name]), name)
+			Expect(resp.Status).To(Equal(status), name)
+			Expect(resp.PolicyID).To(Equal(myResult["policy_ciq_v2"]), name)
+		}
+	})
+
+	It("ReadExternalDataResolverMethods", func() {
+		methods := map[string]string{
+			"resolver_put":   "PUT",
+			"resolver_patch": "PATCH",
+		}
+		for name, method := range methods {
+			var resp indykite.ExternalDataResolverResponse
+			err := client.Get(context.Background(), "/external-data-resolvers/"+myResult[name], &resp)
+			Expect(err).To(Succeed(), name)
+			Expect(resp.ID).To(Equal(myResult[name]), name)
+			Expect(resp.Method).To(Equal(method), name)
+			Expect(resp.RequestPayload).NotTo(BeEmpty(), name)
+		}
+	})
+
+	It("ReadEntityMatchingPipelineWithCutoff", func() {
+		var resp indykite.EntityMatchingPipelineResponse
+		err := client.Get(context.Background(), "/entity-matching-pipelines/"+myResult["pipeline_cutoff"], &resp)
+		Expect(err).To(Succeed())
+		Expect(resp.ID).To(Equal(myResult["pipeline_cutoff"]))
+		Expect(resp.SimilarityScoreCutoff).To(Equal(float32(0.75)))
+	})
+
+	It("ReadTrustScoreProfileSchedules", func() {
+		schedules := map[string]string{
+			"score_three_hours":  "THREE_HOURS",
+			"score_twelve_hours": "TWELVE_HOURS",
+		}
+		for name, schedule := range schedules {
+			var resp indykite.TrustScoreProfileResponse
+			err := client.Get(context.Background(), "/trust-score-profiles/"+myResult[name], &resp)
+			Expect(err).To(Succeed(), name)
+			Expect(resp.ID).To(Equal(myResult[name]), name)
+			Expect(resp.Schedule).To(Equal(schedule), name)
+		}
+	})
+
+	It("ReadAgentWithDataPermissions", func() {
+		var resp indykite.ApplicationAgentResponse
+		err := client.Get(context.Background(), "/application-agents/"+myResult["agent_permissions"], &resp)
+		Expect(err).To(Succeed())
+		Expect(resp.ID).To(Equal(myResult["agent_permissions"]))
+		Expect(resp.APIPermissions).To(ConsistOf("ContXIQ", "EntityMatching", "ReadDataSchema"))
+	})
+
+	It("ReadAgentCredentialWithoutExpireTime", func() {
+		var resp indykite.ApplicationAgentCredentialResponse
+		err := client.Get(context.Background(),
+			"/application-agent-credentials/"+myResult["agent_credential_minimal"], &resp)
+		Expect(err).To(Succeed())
+		Expect(resp.ID).To(Equal(myResult["agent_credential_minimal"]))
+		Expect(resp.ApplicationAgentID).To(Equal(myResult["agent_minimal"]))
+		Expect(resp.AppSpaceID).To(Equal(myResult["appspace_minimal"]))
+	})
+
+	It("ReadServiceAccountCredentialWithExpireTime", func() {
+		var resp indykite.ServiceAccountCredentialResponse
+		err := client.Get(context.Background(),
+			"/service-account-credentials/"+myResult["service_account_credential_expiring"], &resp)
+		Expect(err).To(Succeed())
+		Expect(resp.ID).To(Equal(myResult["service_account_credential_expiring"]))
+		Expect(resp.ServiceAccountID).To(Equal(myResult["service_account_editor"]))
+		Expect(time.Parse(time.RFC3339, resp.ExpireTime)).
+			To(BeTemporally("==", time.Date(2027, 12, 31, 23, 59, 59, 0, time.UTC)))
+	})
+
+	// Only one MCP server is allowed per project: this one is in the minimal application space.
+	It("ReadMCPServerDisabled", func() {
+		var resp indykite.MCPServerResponse
+		err := client.Get(context.Background(), "/mcp-servers/"+myResult["mcp_server_minimal"], &resp)
+		Expect(err).To(Succeed())
+		Expect(resp.ID).To(Equal(myResult["mcp_server_minimal"]))
+		Expect(resp.AppSpaceID).To(Equal(myResult["appspace_minimal"]))
+		Expect(resp.Enabled).To(BeFalse())
+		Expect(resp.AppAgentID).To(Equal(myResult["agent_minimal"]))
+		Expect(resp.TokenIntrospectID).To(Equal(myResult["token_introspect_minimal"]))
+		Expect(resp.ScopesSupported).To(ConsistOf("openid", "profile", "email"))
+	})
+
+	// Only one event sink is allowed per project: this one is in the minimal application space.
+	It("ReadEventSinkWithoutCDCEvents", func() {
+		var resp indykite.EventSinkResponse
+		err := client.Get(context.Background(), "/event-sinks/"+myResult["event_sink_minimal"], &resp)
+		Expect(err).To(Succeed())
+		Expect(resp.ID).To(Equal(myResult["event_sink_minimal"]))
+		Expect(resp.AppSpaceID).To(Equal(myResult["appspace_minimal"]))
+		Expect(resp.IncludeCDCEvents).To(Or(BeNil(), HaveValue(BeFalse())))
+		Expect(resp.Providers).To(HaveLen(4))
+		Expect(resp.Providers).To(HaveKey("kafka-no-tls"))
+		Expect(resp.Providers).To(HaveKey("kafka-skip-verify"))
+		Expect(resp.Providers).To(HaveKey("azuregrid-display"))
+		Expect(resp.Providers).To(HaveKey("azurebus-display"))
+	})
+
+	// Only one audit signing configuration is allowed per project: the GCP one is in the
+	// minimal application space and the platform managed one in the CDC application space.
+	It("ReadAuditSigningGCP", func() {
+		var resp indykite.AuditSigningResponse
+		err := client.Get(context.Background(), "/audit-signings/"+myResult["audit_signing_gcp"], &resp)
+		Expect(err).To(Succeed())
+		Expect(resp.ID).To(Equal(myResult["audit_signing_gcp"]))
+		Expect(resp.AppSpaceID).To(Equal(myResult["appspace_minimal"]))
+		Expect(resp.Provider).To(Equal("CUSTOMER_GCP_KMS"))
+		Expect(resp.KeyResource).To(HaveValue(Equal(
+			"projects/automation-terraform/locations/global/keyRings/audit/cryptoKeys/signing/cryptoKeyVersions/1")))
+		Expect(resp.Kid).To(HaveValue(Equal("automation-terraform-gcp")))
+		// auth_params is write-only: the keys come back, the values are always masked.
+		Expect(resp.AuthParams).To(Equal(map[string]string{"client_email": "", "private_key": ""}))
+	})
+
+	It("ReadAuditSigningPlatformManaged", func() {
+		var resp indykite.AuditSigningResponse
+		err := client.Get(context.Background(), "/audit-signings/"+myResult["audit_signing_platform"], &resp)
+		Expect(err).To(Succeed())
+		Expect(resp.ID).To(Equal(myResult["audit_signing_platform"]))
+		Expect(resp.AppSpaceID).To(Equal(myResult["appspace_cdc"]))
+		Expect(resp.Provider).To(Equal("PLATFORM_MANAGED"))
+		Expect(resp.AuthParams).To(BeEmpty())
 	})
 })
