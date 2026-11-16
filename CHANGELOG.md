@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.51.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.51.0...v0.51.1) (2026-11-16)
+
+
+### Bug Fixes
+
+* add integration tests and remove schema v2 ([2e2841f](https://github.com/indykite/terraform-provider-indykite/commit/2e2841f3a7ec6bf36e03a40a8d193cccc91675e8))
+
+
+### Miscellaneous Chores
+
+* **deps:** migrate config .github/renovate.json5 ([61e8428](https://github.com/indykite/terraform-provider-indykite/commit/61e8428f5a070a9cfad454b6d8908d237bca8e48))
+
 ## [0.51.0](https://github.com/indykite/terraform-provider-indykite/compare/v0.50.1...v0.51.0) (2026-11-13)
 
 
