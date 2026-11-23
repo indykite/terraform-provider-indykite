@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.2](https://github.com/indykite/terraform-provider-indykite/compare/v0.51.1...v0.51.2) (2026-11-23)
+
+
+### Miscellaneous Chores
+
+* **deps:** update all non-major dependencies ([3ebf561](https://github.com/indykite/terraform-provider-indykite/commit/3ebf561a8dc55b5c1dc757943ba8053599b4617a))
+
 ## [0.51.1](https://github.com/indykite/terraform-provider-indykite/compare/v0.51.0...v0.51.1) (2026-11-16)
 
 
